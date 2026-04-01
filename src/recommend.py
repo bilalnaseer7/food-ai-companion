@@ -1,18 +1,19 @@
-from retrieval import retrieve_reviews
+from src.retrieval import retrieve_reviews
 
 def recommend(query, df):
     retrieved = retrieve_reviews(query, df)
-    
-    context = "\n".join(retrieved)
-    
-    prompt = f"""
-User wants: {query}
 
-Here are similar reviews:
-{context}
+    if not retrieved:
+        return "No matching reviews were found for this query."
 
-Recommend a restaurant or food choice based on this.
-Explain briefly.
-"""
-    
-    return prompt  # for now just return prompt
+    output = []
+    output.append(f"User query: {query}\n")
+    output.append("Top retrieved reviews:\n")
+
+    for i, item in enumerate(retrieved, start=1):
+        output.append(
+            f"{i}. {item['business_name']} | Rating: {item['rating']}\n"
+            f"   Review: {item['text']}\n"
+        )
+
+    return "\n".join(output)
