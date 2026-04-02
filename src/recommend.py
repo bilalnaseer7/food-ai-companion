@@ -112,11 +112,6 @@ def rag_recommend(client: OpenAI, query: str, user_profile: dict, df, top_k: int
     return answer, retrieved
 
 def foursquare_recommend(client: OpenAI, query: str, user_profile: dict, borough: str = "manhattan") -> tuple[str, list]:
-    """
-    Fourth pipeline mode: live Foursquare data instead of static CSV.
-    Searches for real NYC restaurants matching the query, enriches with
-    user tips, and asks the LLM to pick the best matches against the profile.
-    """
     from src.foursquare_places import search_restaurants, format_for_prompt, price_sensitivity_to_tier
  
     price_tier = price_sensitivity_to_tier(user_profile.get("budget", "moderate"))
