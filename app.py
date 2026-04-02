@@ -10,7 +10,7 @@ from src.taste_profile import load_profile, save_profile, update_profile, profil
 load_dotenv()
 
 st.set_page_config(
-    page_title="CravAI",
+    page_title="Food AI",
     page_icon="🍽️",
     layout="wide",
     initial_sidebar_state="expanded",
