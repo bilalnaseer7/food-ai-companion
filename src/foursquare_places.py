@@ -2,7 +2,7 @@ import os
 import requests
 from typing import Optional
 
-FSQ_API_KEY    = os.getenv("FOURSQUARE_API_KEY")
+FSQ_API_KEY    = "KCDHAPXPTGTOYEVYFQQDZCHPETAQ4VJD4VCPGKBLUQR3IATF"
 FSQ_SEARCH_URL = "https://api.foursquare.com/v3/places/search"
 FSQ_TIPS_URL   = "https://api.foursquare.com/v3/places/{fsq_id}/tips"
 
