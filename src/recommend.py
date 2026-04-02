@@ -110,3 +110,45 @@ def rag_recommend(client: OpenAI, query: str, user_profile: dict, df, top_k: int
 
     answer = _chat(client, system_prompt, user_prompt)
     return answer, retrieved
+
+def foursquare_recommend(client: OpenAI, query: str, user_profile: dict, borough: str = "manhattan") -> tuple[str, list]:
+    """
+    Fourth pipeline mode: live Foursquare data instead of static CSV.
+    Searches for real NYC restaurants matching the query, enriches with
+    user tips, and asks the LLM to pick the best matches against the profile.
+    """
+    from src.foursquare_places import search_restaurants, format_for_prompt, price_sensitivity_to_tier
+ 
+    price_tier = price_sensitivity_to_tier(user_profile.get("budget", "moderate"))
+    restaurants = search_restaurants(
+        query=query,
+        borough=borough,
+        price=price_tier,
+        limit=8,
+    )
+ 
+    restaurant_block = format_for_prompt(restaurants, fetch_tips=True)
+ 
+    system_prompt = (
+        "You are a restaurant recommendation assistant for New York City. "
+        "You must recommend only from the live restaurant data provided below. "
+        "Use the user's taste profile and the retrieved evidence together. "
+        "Do not invent restaurants outside the retrieved list."
+    )
+ 
+    user_prompt = (
+        f"User request: {query}\n\n"
+        f"User taste profile:\n{_profile_to_text(user_profile)}\n\n"
+        f"{restaurant_block}\n\n"
+        "Pick the best 3 restaurants from the list above. "
+        "For each recommendation, provide:\n"
+        "1. Restaurant name\n"
+        "2. Why it matches the user's request\n"
+        "3. Why it matches the taste profile\n"
+        "4. One short detail from the user tips if available\n\n"
+        "Then include one short overall summary comparing why the top choice is strongest."
+    )
+ 
+    answer = _chat(client, system_prompt, user_prompt)
+    return answer, restaurants
+ 
