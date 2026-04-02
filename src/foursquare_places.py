@@ -6,10 +6,9 @@ FSQ_API_KEY    = "KCDHAPXPTGTOYEVYFQQDZCHPETAQ4VJD4VCPGKBLUQR3IATF"
 FSQ_SEARCH_URL = "https://api.foursquare.com/v3/places/search"
 FSQ_TIPS_URL   = "https://api.foursquare.com/v3/places/{fsq_id}/tips"
 
-# Foursquare category ID for all Dining & Drinking (covers restaurants, bars, cafes)
+# Foursquare category ID for all F and B
 DINING_CATEGORY_ID = "13000"
 
-# Borough name -> Foursquare "near" locality string (natural language geocoding)
 BOROUGH_NEAR = {
     "manhattan":     "Manhattan, New York, NY",
     "brooklyn":      "Brooklyn, New York, NY",
