@@ -1,6 +1,8 @@
 # food-ai-companion
 
 [Bilal] - Changelog
+
+
 Set up the GitHub repository and project structure (data/, src/, main.py, etc.) for the Milestone 2 prototype.
 Added and updated the restaurant review dataset used for the Eat Out recommendation mode (aligned with project proposal focus on restaurant-based retrieval).
 Built the core data loading pipeline to correctly read and process the review dataset (data_loader.py), including fixing column mapping issues based on TA feedback.
