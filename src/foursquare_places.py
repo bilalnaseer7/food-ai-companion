@@ -27,11 +27,6 @@ PRICE_SENSITIVITY_MAP = {
 
 
 def _headers() -> dict:
-    if not FSQ_API_KEY:
-        raise EnvironmentError(
-            "FOURSQUARE_API_KEY not set. "
-            "Get a free key at https://location.foursquare.com/developer/"
-        )
     return {
         "Authorization": FSQ_API_KEY,
         "Accept":        "application/json",
