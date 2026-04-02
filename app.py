@@ -308,18 +308,6 @@ st.markdown("""
     #MainMenu, footer, header { visibility: hidden; }
     [data-testid="stToolbar"] { display: none; }
 
-    .restaurant-name {
-        font-family: 'DM Serif Display', serif;
-        font-size: 1.05rem;
-        color: var(--white);
-        margin-bottom: 0.2rem;
-    }
-    
-    .restaurant-meta {
-        font-size: 0.8rem;
-        color: var(--white-dim);
-        margin-bottom: 0.4rem;
-    }
 </style>
 """, unsafe_allow_html=True)
 
