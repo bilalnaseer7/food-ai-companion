@@ -100,8 +100,12 @@ def rag_recommend(client: OpenAI, query: str, user_profile: dict, df, top_k: int
         f"User taste profile:\n{_profile_to_text(user_profile)}\n\n"
         f"Retrieved restaurant evidence:\n{context_text}\n\n"
         "Pick the best 3 restaurants from the retrieved records. "
-        "For each recommendation, explain why it matches the user's profile. "
-        "Also include one short overall summary comparing why the top choice is strongest."
+        "For each recommendation, provide: \n"
+        "1. Restaurant name\n"
+        "2. Why it matches the user's request\n"
+        "3. Why it matches the taste profile\n"
+        "4. One short evidence phrase from the retrieved review text\n\n"
+        "Then include one short overall summary comparing why the top choice is strongest."
     )
 
     answer = _chat(client, system_prompt, user_prompt)
