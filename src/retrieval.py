@@ -1,4 +1,7 @@
+import hashlib
 import os
+import pathlib import Path
+
 import numpy as np
 from openai import OpenAI
 
@@ -29,6 +32,9 @@ def _build_retrieval_query(query: str, user_profile: dict) -> str:
         f"Occasion: {occasion}."
     )
 
+def _dataset_signature(df) -> str:
+    joined = "||".join(df["combined_text"].astype(str).tolist())
+    return hashlib.md5(joined.encode("utf-8")).hexdigest()
 
 def build_or_load_embeddings(
     df,
@@ -36,11 +42,18 @@ def build_or_load_embeddings(
     cache_path: str = "data/restaurant_embeddings.npz",
     batch_size: int = 100,
 ) -> np.ndarray:
-    if os.path.exists(cache_path):
-        cached = np.load(cache_path, allow_pickle=True)
+    cache_file = Path(cache_path)
+    cache_file.parent.mkdir(parents=True, exist_ok=True)
+
+    current_signature = _dataset_signature(df)
+
+    if cache_file.exists():
+        cached = np.load(cache_file, allow_pickle=True)
         cached_embeddings = cached["embeddings"]
         cached_n_rows = int(cached["n_rows"])
-        if cached_n_rows == len(df):
+        cached_signature = str(cached["signature"])
+
+        if cached_n_rows == len(df) and cached_signature == current_signature:
             return cached_embeddings
 
     texts = df["combined_text"].tolist()
@@ -59,6 +72,7 @@ def build_or_load_embeddings(
         cache_path,
         embeddings=embeddings,
         n_rows=len(df),
+        signature=current_signature,
     )
 
     return embeddings
@@ -89,6 +103,7 @@ def retrieve_restaurants(
     liked_foods = [x.lower() for x in user_profile.get("liked_foods", [])]
     disliked_foods = [x.lower() for x in user_profile.get("disliked_foods", [])]
     online_pref = str(user_profile.get("online_order", "")).strip().lower()
+    budget_pref = str(user_profile.get("budget", "")).strip().lower()
 
     scored = []
     for idx, base_score in enumerate(cosine_scores):
@@ -111,6 +126,19 @@ def retrieve_restaurants(
 
         if online_pref in {"yes", "no"} and online_order == online_pref:
             score += 0.05
+
+        if budget_pref == "cheap":
+            cheap_signals = ["cheap", "affordable", "budget", "value", "inexpensive"]
+            if any(signal in combined_text for signal in cheap_signals):
+                score += 0.08
+        elif budget_pref == "moderate":
+            moderate_signals = ["moderate", "reasonable", "fair price", "casual"]
+            if any(signal in combined_text for signal in moderate_signals):
+                score += 0.04
+        elif budget_pref == "premium":
+            premium_signals = ["fine dining", "upscale", "premium", "expensive", "high-end"]
+            if any(signal in combined_text for signal in premium_signals):
+                score += 0.08
 
         score += min(row["num_reviews"] / 10000.0, 0.05)
 
