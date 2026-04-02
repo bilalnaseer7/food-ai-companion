@@ -11,7 +11,7 @@ load_dotenv()
 
 st.set_page_config(
     page_title="Food AI",
-    page_icon="🍽️",
+    page_icon="🍽️", #placeholder
     layout="wide",
     initial_sidebar_state="expanded",
 )
