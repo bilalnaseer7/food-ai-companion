@@ -5,7 +5,7 @@ COLUMN_MAP = {
     "Title": "title",
     "Number of review": "num_reviews",
     "Catagory": "category",
-    "Reviw Comment": "review_text",
+    "Reveiw Comment": "review_text",
     "Popular food": "popular_food",
     "Online Order": "online_order",
 }
@@ -54,3 +54,4 @@ def load_reviews(path: str = "data/restaurants.csv", max_rows: int | None = None
         df = df.head(max_rows).copy()
 
     return df
+
