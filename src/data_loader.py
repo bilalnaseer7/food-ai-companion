@@ -42,13 +42,15 @@ def load_reviews(path: str = "data/restaurants.csv", max_rows: int | None = None
     df = df[df["review_text"] != ""].copy()
     df = df.drop_duplicates(subset=["title", "review_text"]).reset_index(drop=True)
 
+    df["city"] = "New York City"
+
     df["combined_text"] = (
-        "Restaurant: " + df["title"]
-        + ". Category: " + df["category"]
-        + ". Popular food: " + df["popular_food"]
-        + ". Online order: " + df["online_order"]
-        + ". Review: " + df["review_text"]
-    )
+    df["title"] + " is a restaurant in New York City serving " + df["category"] + ". "
+    + "It is known for " + df["popular_food"] + ". "
+    + "Customers mention: " + df["review_text"] + ". "
+    + "Online ordering is " + df["online_order"] + ". "
+    + "It has " + df["num_reviews"].astype(str) + " reviews."
+)
 
     if max_rows is not None:
         df = df.head(max_rows).copy()
