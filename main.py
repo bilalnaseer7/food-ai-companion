@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 from src.data_loader import load_reviews
-from src.recommend import baseline_recommend, profile_recommend, rag_recommend
+from src.recommend import baseline_recommend, profile_recommend, rag_recommend, foursquare_recommend
 
 
 def write_section_header(f, title: str) -> None:
@@ -74,6 +74,7 @@ def main():
             baseline_output = baseline_recommend(client, query)
             profile_output = profile_recommend(client, query, default_profile)
             rag_output, retrieved = rag_recommend(client, query, default_profile, df, top_k=5)
+            fsq_output, fsq_restaurants = foursquare_recommend(client, query, default_profile)
 
             f.write("=== BASELINE LLM ===\n")
             f.write(baseline_output + "\n\n")
@@ -95,6 +96,21 @@ def main():
                     f"Score: {row['retrieval_score']}\n"
                 )
                 f.write(f"   Review excerpt: {row['review_text'][:250]}\n")
+            f.write("\n")
+
+            f.write("=== LLM + TASTE PROFILE + RAG (Foursquare) ===\n")
+            f.write(fsq_output + "\n\n")
+            
+            f.write("=== RETRIEVED RESTAURANTS (Foursquare) ===\n")
+            for rank, r in enumerate(fsq_restaurants, start=1):
+                price_str = {1: "$", 2: "$$", 3: "$$$", 4: "$$$$"}.get(r.get("price"), "?")
+                f.write(
+                    f"{rank}. {r['name']} | "
+                    f"{', '.join(r['categories'][:2])} | "
+                    f"{price_str} | "
+                    f"Rating: {r.get('rating', 'N/A')}/10 | "
+                    f"{r['address']}\n"
+                )
             f.write("\n")
 
         # Taste profile comparison with same query
