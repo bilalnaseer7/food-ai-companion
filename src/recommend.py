@@ -146,4 +146,44 @@ def foursquare_recommend(client: OpenAI, query: str, user_profile: dict, borough
  
     answer = _chat(client, system_prompt, user_prompt)
     return answer, restaurants
+
+def recommend_recipe(craving: str, profile: dict) -> str:
+    pantry = profile.get("pantry", [])
+    if not pantry:
+        return "Your pantry is empty. Add some ingredients in the Cook tab."
+
+    system_prompt = (
+        "You are a creative home cooking assistant. "
+        "Generate a recipe using primarily the user's available ingredients. "
+        "If key ingredients are missing, suggest a specific substitution with a brief flavor explanation. "
+        f"The user likes: {', '.join(profile.get('liked_foods', []) or ['varied flavors'])}. "
+        f"Dislikes: {', '.join(profile.get('disliked_foods', []) or ['nothing noted'])}."
+    )
+
+    user_prompt = (
+        f"Craving: {craving}\n"
+        f"Available ingredients: {', '.join(pantry)}\n\n"
+        "Generate a recipe that matches the craving, flags missing ingredients with substitutions, and gives clear steps."
+    )
+
+    return _chat(OpenAI(), system_prompt, user_prompt)
+
+
+def recommend_cocktail(vibe: str, profile: dict) -> str:
+    bar = profile.get("bar_inventory", [])
+    if not bar:
+        return "Your bar is empty. Add some spirits and mixers in the Cocktails tab."
+
+    system_prompt = (
+        "You are a creative bartender. Generate a cocktail from the user's available spirits and mixers. "
+        "If a classic ingredient is missing, find a lateral substitute and explain the flavor logic briefly."
+    )
+
+    user_prompt = (
+        f"Vibe: {vibe}\n"
+        f"Available: {', '.join(bar)}\n\n"
+        "Create a drink with exact measurements, substitution rationale if needed, and an optional garnish."
+    )
+
+    return _chat(OpenAI(), system_prompt, user_prompt)
  
