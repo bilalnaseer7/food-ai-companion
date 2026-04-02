@@ -10,7 +10,7 @@ Output:
 function: retrieve(query, profile) → top restaurants
 
 
-2. Core System + LLM Pipeline (Bilal – You)
+2. Core System + LLM Pipeline (Bilal)
 define taste profile (preferences, budget, cuisine, etc.)
 integrate OpenAI LLM (already done)
 build 3 pipelines:
