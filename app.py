@@ -2,6 +2,7 @@ import os
 import streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
+import html
 
 from src.data_loader import load_reviews
 from src.recommend import baseline_recommend, rag_recommend, foursquare_recommend
@@ -11,7 +12,7 @@ load_dotenv()
 
 st.set_page_config(
     page_title="Food AI",
-    page_icon="🍽️", #placeholder
+    page_icon="🍽️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -67,7 +68,7 @@ st.markdown("""
     }
 
     /* Header */
-    .cravai-header {
+    .foodai-header {
         font-family: 'DM Serif Display', serif !important;
         font-size: 2.2rem !important;
         color: var(--white) !important;
@@ -75,7 +76,7 @@ st.markdown("""
         margin-bottom: 0.25rem;
     }
 
-    .cravai-subtitle {
+    .foodai-subtitle {
         color: var(--white-dim) !important;
         font-size: 0.9rem !important;
         font-weight: 300 !important;
@@ -304,9 +305,21 @@ st.markdown("""
         font-weight: 400 !important;
     }
 
-    /* Hide streamlit default elements */
     #MainMenu, footer, header { visibility: hidden; }
     [data-testid="stToolbar"] { display: none; }
+
+    .restaurant-name {
+        font-family: 'DM Serif Display', serif;
+        font-size: 1.05rem;
+        color: var(--white);
+        margin-bottom: 0.2rem;
+    }
+    
+    .restaurant-meta {
+        font-size: 0.8rem;
+        color: var(--white-dim);
+        margin-bottom: 0.4rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -354,8 +367,8 @@ def init_session():
 
 def render_sidebar():
     with st.sidebar:
-        st.markdown('<div class="cravai-header">CravAI</div>', unsafe_allow_html=True)
-        st.markdown('<div class="cravai-subtitle">Your AI food companion</div>', unsafe_allow_html=True)
+        st.markdown('<div class="foodai-header">Food AI</div>', unsafe_allow_html=True)
+        st.markdown('<div class="foodai-subtitle">Your AI food companion</div>', unsafe_allow_html=True)
         st.markdown("---")
 
         st.markdown('<div class="section-label">Taste Profile</div>', unsafe_allow_html=True)
@@ -445,12 +458,9 @@ def render_restaurant_card(r, source="fsq", idx=0):
     meta_parts = [p for p in [cats, price_str, rating_str, address] if p]
     meta_str = " · ".join(meta_parts)
 
-    st.markdown(f"""
-    <div class="{card_class}">
-        <div class="restaurant-name">{name}</div>
-        <div class="restaurant-meta">{meta_str}</div>
-    </div>
-    """, unsafe_allow_html=True)
+    with st.container():
+        st.markdown(f'<div class="restaurant-name">{name}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="restaurant-meta">{meta_str}</div>', unsafe_allow_html=True)
 
     if not already_accepted and not already_rejected:
         col1, col2, _ = st.columns([1, 1, 4])
@@ -593,8 +603,8 @@ def main():
     init_session()
     render_sidebar()
 
-    st.markdown('<div class="cravai-header">CravAI</div>', unsafe_allow_html=True)
-    st.markdown('<div class="cravai-subtitle">Tell me what you want. I\'ll figure out the rest.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="foodai-header">Food AI</div>', unsafe_allow_html=True)
+    st.markdown('<div class="foodai-subtitle">Tell me what you want. I\'ll figure out the rest.</div>', unsafe_allow_html=True)
 
     client = get_client()
     df = get_df()
@@ -613,4 +623,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-  
+    
