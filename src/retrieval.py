@@ -1,6 +1,6 @@
 import hashlib
 import os
-import pathlib import Path
+from pathlib import Path
 
 import numpy as np
 from openai import OpenAI
