@@ -7,8 +7,9 @@ implement embedding-based retrieval (vector search) instead of keyword matching
 return top-k relevant restaurants with scores
 
 Output:
-
 function: retrieve(query, profile) → top restaurants
+
+
 2. Core System + LLM Pipeline (Bilal – You)
 define taste profile (preferences, budget, cuisine, etc.)
 integrate OpenAI LLM (already done)
@@ -22,9 +23,10 @@ retrieved restaurant context
 generate final recommendations + explanations
 
 Output:
-
 function: input → recommendation (3 versions)
 working main.py pipeline (already done)
+
+
 3. Ranking + Evaluation (Owen)
 improve ranking logic on top of retrieval:
 filter mismatches (like fried rice for Italian)
@@ -38,5 +40,4 @@ diversity
 consistency
 
 Output:
-
 evaluation table + analysis
