@@ -2,7 +2,7 @@
 
 [Bilal] - Changelog
 
-Set up the GitHub repository and project structure (data/, src/, main.py, etc.) for the Milestone 2 prototype.
+Set up the GitHub repository and overall project structure (data/, src/, main.py, etc.) for the Milestone 2 prototype.
 
 Added and updated the restaurant review dataset used for the Eat Out recommendation mode (aligned with project proposal focus on restaurant-based retrieval).
 
@@ -38,5 +38,28 @@ saves outputs to results/milestone2_outputs.txt for evaluation
 
 Integrated .env setup for secure API key handling and ensured it is excluded via .gitignore.
 
+[Hoerim Kim] - Changelog
 
+Refactored the dataset representation to improve retrieval quality by converting structured fields into natural-language text (combined_text).
+
+Improved the embedding-based retrieval pipeline:
+- ensured cosine similarity ranking works correctly
+- added caching with dataset validation to avoid stale embeddings
+- refined retrieval queries to better incorporate user preferences
+
+Enhanced the RAG pipeline:
+- passed richer retrieved context (reviews + attributes) to the LLM
+- enforced grounding so recommendations come only from retrieved results
+
+Strengthened personalization:
+- integrated taste profile into both retrieval and reranking steps
+
+Extended the evaluation pipeline:
+- added multiple queries instead of a single test case
+- compared baseline LLM, LLM + profile, and LLM + profile + RAG
+- added a profile comparison experiment to show how preferences affect outputs
+
+Improved output formatting for clearer comparison and analysis.
+
+Aligned the implementation with the proposal by making the Eat Out mode a complete end-to-end RAG system.
 
