@@ -1,5 +1,4 @@
 import hashlib
-import os
 from pathlib import Path
 
 import numpy as np
@@ -7,6 +6,14 @@ from openai import OpenAI
 
 
 EMBED_MODEL = "text-embedding-3-small"
+GENERIC_POPULAR_FOODS = {"", "bar", "beer", "diner", "garden", "pub", "pub food", "the pub", "vegetarian"}
+CATEGORY_FOOD_HINTS = {
+    "italian": {"pizza", "pasta", "spaghetti", "lasagna", "carbonara", "cannoli", "tiramisu"},
+    "pizza": {"pizza", "pasta", "spaghetti", "lasagna", "cannoli"},
+    "korean": {"korean bbq", "bbq", "bulgogi", "bibimbap", "kimchi", "noodles", "rice"},
+    "japanese": {"sushi", "sashimi", "ramen", "omakase", "tempura"},
+    "sushi": {"sushi", "sashimi", "omakase"},
+}
 
 
 def _normalize(vectors: np.ndarray) -> np.ndarray:
@@ -31,6 +38,35 @@ def _build_retrieval_query(query: str, user_profile: dict) -> str:
         f"Online order preference: {online_order}. "
         f"Occasion: {occasion}."
     )
+
+
+def _contains_any(target_text: str, phrases: list[str]) -> bool:
+    target_text = target_text.lower()
+    for phrase in phrases:
+        phrase = phrase.strip().lower()
+        if phrase and phrase in target_text:
+            return True
+    return False
+
+
+def _food_matches_category(food: str, category: str) -> bool:
+    food = food.lower()
+    category = category.lower()
+    matched_hint_groups = 0
+
+    for label, hints in CATEGORY_FOOD_HINTS.items():
+        if label in category:
+            matched_hint_groups += 1
+            if food in hints:
+                return True
+
+    return matched_hint_groups == 0
+
+
+def _has_strong_preference_mismatch(row_text: str, preferred_cuisines: list[str]) -> bool:
+    if not preferred_cuisines:
+        return False
+    return not _contains_any(row_text, preferred_cuisines)
 
 def _dataset_signature(df) -> str:
     joined = "||".join(df["combined_text"].astype(str).tolist())
@@ -110,18 +146,23 @@ def retrieve_restaurants(
         row = df.iloc[idx]
         score = float(base_score)
 
-        category = row["category"].lower()
-        review_text = row["review_text"].lower()
-        popular_food = row["popular_food"].lower()
-        online_order = row["online_order"].lower()
+        category = str(row["category"]).lower()
+        review_text = str(row["review_text"]).lower()
+        popular_food = str(row["popular_food"]).lower()
+        online_order = str(row["online_order"]).lower()
+        title = str(row["title"]).lower()
+        row_text = " ".join([title, category, review_text, popular_food])
+        quality_score = float(row.get("quality_score", 1.0))
 
-        if preferred_cuisines and any(c in category for c in preferred_cuisines):
+        if preferred_cuisines and _contains_any(category, preferred_cuisines):
             score += 0.15
+        elif _has_strong_preference_mismatch(row_text, preferred_cuisines):
+            score -= 0.25
 
-        if liked_foods and any(food in popular_food or food in review_text for food in liked_foods):
+        if liked_foods and _contains_any(f"{popular_food} {review_text}", liked_foods):
             score += 0.10
 
-        if disliked_foods and any(food in popular_food or food in review_text for food in disliked_foods):
+        if disliked_foods and _contains_any(f"{popular_food} {review_text}", disliked_foods):
             score -= 0.12
 
         if online_pref in {"yes", "no"} and online_order == online_pref:
@@ -140,6 +181,12 @@ def retrieve_restaurants(
             if any(signal in review_text for signal in premium_signals):
                 score += 0.08
 
+        if popular_food in GENERIC_POPULAR_FOODS:
+            score -= 0.05
+        elif not _food_matches_category(popular_food, category):
+            score -= 0.25
+
+        score += (quality_score - 0.5) * 0.10
         score += min(row["num_reviews"] / 10000.0, 0.05)
 
         scored.append((score, idx))
@@ -152,8 +199,24 @@ def retrieve_restaurants(
     for score, idx in scored:
         row = df.iloc[idx].to_dict()
         title = row["title"]
+        category = str(row["category"]).lower()
+        row_text = " ".join(
+            [
+                str(row["title"]).lower(),
+                category,
+                str(row["review_text"]).lower(),
+                str(row["popular_food"]).lower(),
+            ]
+        )
 
         if title in seen_titles:
+            continue
+
+        if _has_strong_preference_mismatch(row_text, preferred_cuisines):
+            continue
+
+        if liked_foods and not _contains_any(row_text, liked_foods) and not _contains_any(category, preferred_cuisines):
+            # Keep stricter filtering only when the user has given concrete foods and cuisines.
             continue
 
         row["retrieval_score"] = round(score, 4)
