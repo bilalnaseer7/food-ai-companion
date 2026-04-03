@@ -63,8 +63,13 @@ st.markdown("""
         border-right: 1px solid var(--card-border) !important;
     }
 
-    [data-testid="stSidebar"] * {
-        color: var(--white) !important;
+    [data-testid="collapsedControl"],
+    [data-testid="collapsedControl"] button,
+    [data-testid="collapsedControl"] svg {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
     }
 
     /* Header */
