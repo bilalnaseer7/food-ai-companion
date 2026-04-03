@@ -1,173 +1,198 @@
-import pandas as pd
+import hashlib
+from pathlib import Path
+
+import numpy as np
+from openai import OpenAI
 
 
-COLUMN_ALIASES = {
-    "Title": "title",
-    "Number of review": "num_reviews",
-    "Catagory": "category",
-    "Category": "category",
-    "Reveiw Comment": "review_text",
-    "Review Comment": "review_text",
-    "Reviw Comment": "review_text",
-    "Popular food": "popular_food",
-    "Online Order": "online_order",
-}
+EMBED_MODEL = "text-embedding-3-small"
 
 
-def _clean_text(value: object) -> str:
-    if pd.isna(value):
-        return ""
-    return str(value).replace('"', "").strip()
+def _normalize(vectors: np.ndarray) -> np.ndarray:
+    norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+    return vectors / np.clip(norms, 1e-12, None)
 
 
-def _normalize_online_order(value: str) -> str:
-    value = value.strip().title()
-    if value not in {"Yes", "No"}:
-        return "Unknown"
-    return value
+def _dataset_signature(df) -> str:
+    joined = "||".join(df["combined_text"].astype(str).tolist())
+    return hashlib.md5(joined.encode("utf-8")).hexdigest()
 
 
-def _split_list_field(value: str) -> list[str]:
-    if not value:
-        return []
-    parts = [x.strip() for x in value.split(",")]
-    return [x for x in parts if x and x.lower() != "no"]
+def _build_retrieval_query(query: str, user_profile: dict) -> str:
+    preferred_cuisines = ", ".join(user_profile.get("preferred_cuisines", []))
+    liked_foods = ", ".join(user_profile.get("liked_foods", []))
+    disliked_foods = ", ".join(user_profile.get("disliked_foods", []))
+    budget = user_profile.get("budget", "")
+    online_order = user_profile.get("online_order", "")
+    occasion = user_profile.get("occasion", "")
+    city = user_profile.get("city", "New York City")
 
-
-def _unique_preserve_order(items: list[str]) -> list[str]:
-    seen = set()
-    output = []
-    for item in items:
-        key = item.lower()
-        if key not in seen:
-            seen.add(key)
-            output.append(item)
-    return output
-
-
-def load_reviews(path: str = "data/restaurants.csv", max_rows: int | None = None) -> pd.DataFrame:
-    df = pd.read_csv(path)
-
-    # Clean raw column names first
-    df.columns = [str(col).strip() for col in df.columns]
-
-    rename_dict = {}
-    for col in df.columns:
-        if col in COLUMN_ALIASES:
-            rename_dict[col] = COLUMN_ALIASES[col]
-
-    df = df.rename(columns=rename_dict)
-
-    required_cols = ["title", "num_reviews", "category", "review_text", "popular_food", "online_order"]
-    missing_cols = [col for col in required_cols if col not in df.columns]
-    if missing_cols:
-        raise ValueError(f"Missing expected cleaned columns in dataset: {missing_cols}")
-
-    df = df[required_cols].copy()
-
-    # Clean fields
-    text_cols = ["title", "category", "review_text", "popular_food", "online_order"]
-    for col in text_cols:
-        df[col] = df[col].apply(_clean_text)
-
-    df["num_reviews"] = (
-        df["num_reviews"]
-        .astype(str)
-        .str.replace(",", "", regex=False)
-        .str.replace('"', "", regex=False)
-        .str.strip()
+    return (
+        f"User query: {query}. "
+        f"City: {city}. "
+        f"Preferred cuisines: {preferred_cuisines}. "
+        f"Liked foods: {liked_foods}. "
+        f"Disliked foods: {disliked_foods}. "
+        f"Budget: {budget}. "
+        f"Online order preference: {online_order}. "
+        f"Occasion: {occasion}."
     )
-    df["num_reviews"] = pd.to_numeric(df["num_reviews"], errors="coerce").fillna(0).astype(int)
 
-    df["online_order"] = df["online_order"].apply(_normalize_online_order)
 
-    # Remove empty review rows
-    df = df[df["review_text"] != ""].copy()
+def build_or_load_embeddings(
+    df,
+    client: OpenAI,
+    cache_path: str = "data/restaurant_embeddings.npz",
+    batch_size: int = 100,
+) -> np.ndarray:
+    cache_file = Path(cache_path)
+    cache_file.parent.mkdir(parents=True, exist_ok=True)
 
-    # Deduplicate at row level first
-    df = df.drop_duplicates(subset=["title", "review_text"]).reset_index(drop=True)
+    current_signature = _dataset_signature(df)
 
-    # Light parsing for category and food fields
-    df["category_list"] = df["category"].apply(_split_list_field)
-    df["popular_food_list"] = df["popular_food"].apply(_split_list_field)
+    if cache_file.exists():
+        cached = np.load(cache_file, allow_pickle=True)
+        cached_embeddings = cached["embeddings"]
+        cached_n_rows = int(cached["n_rows"])
+        cached_signature = str(cached["signature"])
 
-    # ---- Layer 1: restaurant-level aggregation ----
-    grouped_rows = []
+        if cached_n_rows == len(df) and cached_signature == current_signature:
+            return cached_embeddings
 
-    for title, group in df.groupby("title", sort=False):
-        category_items = []
-        food_items = []
-        review_items = []
-        online_values = []
+    texts = df["combined_text"].tolist()
+    all_embeddings = []
 
-        for _, row in group.iterrows():
-            category_items.extend(row["category_list"])
-            food_items.extend(row["popular_food_list"])
-            online_values.append(row["online_order"])
+    for start in range(0, len(texts), batch_size):
+        batch = texts[start:start + batch_size]
+        response = client.embeddings.create(model=EMBED_MODEL, input=batch)
+        batch_embeddings = [item.embedding for item in response.data]
+        all_embeddings.extend(batch_embeddings)
 
-            review_text = row["review_text"]
-            if review_text:
-                review_items.append(review_text)
+    embeddings = np.array(all_embeddings, dtype="float32")
+    embeddings = _normalize(embeddings)
 
-        categories = _unique_preserve_order(category_items)
-        popular_foods = _unique_preserve_order(food_items)
+    np.savez_compressed(
+        cache_path,
+        embeddings=embeddings,
+        n_rows=len(df),
+        signature=current_signature,
+    )
 
-        # Keep only a few review snippets so retrieval context stays focused
-        review_items = _unique_preserve_order(review_items)[:3]
+    return embeddings
 
-        # Use the max review count seen for that restaurant
-        max_reviews = int(group["num_reviews"].max())
 
-        # Majority vote on online ordering
-        yes_count = sum(1 for x in online_values if x == "Yes")
-        no_count = sum(1 for x in online_values if x == "No")
-        if yes_count > no_count:
-            online_order = "Yes"
-        elif no_count > yes_count:
-            online_order = "No"
-        else:
-            online_order = online_values[0] if online_values else "Unknown"
+def _contains_any(target_text: str, phrases: list[str]) -> bool:
+    target_text = target_text.lower()
+    for phrase in phrases:
+        phrase = phrase.strip().lower()
+        if phrase and phrase in target_text:
+            return True
+    return False
 
-        category_str = ", ".join(categories) if categories else "Unknown"
-        popular_food_str = ", ".join(popular_foods[:5]) if popular_foods else "Unknown"
 
-        snippet_parts = []
-        for idx, review in enumerate(review_items, start=1):
-            snippet_parts.append(f"Review {idx}: {review}")
-        review_snippets = " ".join(snippet_parts)
+def retrieve_restaurants(
+    query: str,
+    user_profile: dict,
+    df,
+    client: OpenAI,
+    top_k: int = 5,
+    cache_path: str = "data/restaurant_embeddings.npz",
+):
+    embeddings = build_or_load_embeddings(df, client, cache_path=cache_path)
 
-        combined_text = (
-            f"{title} is a restaurant in New York City. "
-            f"Category: {category_str}. "
-            f"Popular foods: {popular_food_str}. "
-            f"Online ordering: {online_order}. "
-            f"Total reviews: {max_reviews}. "
-            f"{review_snippets}"
-        )
+    retrieval_query = _build_retrieval_query(query, user_profile)
+    query_embedding = client.embeddings.create(
+        model=EMBED_MODEL,
+        input=[retrieval_query],
+    ).data[0].embedding
 
-        grouped_rows.append(
-            {
-                "title": title,
-                "num_reviews": max_reviews,
-                "category": category_str,
-                "popular_food": popular_food_str,
-                "online_order": online_order,
-                "review_snippets": review_snippets,
-                "city": "New York City",
-                "combined_text": combined_text,
-            }
-        )
+    query_embedding = np.array(query_embedding, dtype="float32").reshape(1, -1)
+    query_embedding = _normalize(query_embedding)[0]
 
-    restaurant_df = pd.DataFrame(grouped_rows)
+    cosine_scores = embeddings @ query_embedding
 
-    # Prioritize stronger restaurants before optional row truncation
-    restaurant_df = restaurant_df.sort_values(
-        by=["num_reviews", "title"],
-        ascending=[False, True]
-    ).reset_index(drop=True)
+    preferred_cuisines = [x.lower() for x in user_profile.get("preferred_cuisines", [])]
+    liked_foods = [x.lower() for x in user_profile.get("liked_foods", [])]
+    disliked_foods = [x.lower() for x in user_profile.get("disliked_foods", [])]
+    online_pref = str(user_profile.get("online_order", "")).strip().lower()
+    budget_pref = str(user_profile.get("budget", "")).strip().lower()
 
-    if max_rows is not None:
-        restaurant_df = restaurant_df.head(max_rows).copy()
+    cheap_signals = ["cheap", "affordable", "budget", "value", "inexpensive", "reasonable"]
+    moderate_signals = ["moderate", "reasonable", "casual", "solid value"]
+    premium_signals = ["fine dining", "upscale", "premium", "expensive", "high-end", "luxury"]
 
-    return restaurant_df
+    scored = []
+
+    for idx, base_score in enumerate(cosine_scores):
+        row = df.iloc[idx]
+        score = float(base_score)
+
+        category = str(row["category"]).lower()
+        popular_food = str(row["popular_food"]).lower()
+        review_snippets = str(row["review_snippets"]).lower()
+        online_order = str(row["online_order"]).lower()
+        combined_text = str(row["combined_text"]).lower()
+
+        # ---- Layer 3: hybrid reranking ----
+
+        # cuisine/category alignment
+        if preferred_cuisines and _contains_any(category, preferred_cuisines):
+            score += 0.18
+
+        # liked foods in review or popular food
+        if liked_foods and (
+            _contains_any(popular_food, liked_foods) or _contains_any(review_snippets, liked_foods)
+        ):
+            score += 0.12
+
+        # disliked foods penalty
+        if disliked_foods and (
+            _contains_any(popular_food, disliked_foods) or _contains_any(review_snippets, disliked_foods)
+        ):
+            score -= 0.18
+
+        # online ordering preference
+        if online_pref in {"yes", "no"} and online_order == online_pref:
+            score += 0.06
+
+        # budget alignment from review language
+        if budget_pref == "cheap" and _contains_any(combined_text, cheap_signals):
+            score += 0.10
+        elif budget_pref == "moderate" and _contains_any(combined_text, moderate_signals):
+            score += 0.05
+        elif budget_pref == "premium" and _contains_any(combined_text, premium_signals):
+            score += 0.10
+
+        # review-count confidence boost
+        score += min(row["num_reviews"] / 15000.0, 0.05)
+
+        # noisy signal guard: if category says Italian/Pizza but popular_food is clearly off-domain,
+        # reduce its influence slightly instead of letting it dominate
+        if _contains_any(category, ["italian", "pizza"]):
+            off_domain_foods = ["fried rice", "sushi", "biryani", "ramen", "taco"]
+            if _contains_any(popular_food, off_domain_foods):
+                score -= 0.08
+
+        scored.append((score, idx))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+
+    results = []
+    seen_titles = set()
+
+    for score, idx in scored:
+        row = df.iloc[idx].to_dict()
+        title = row["title"]
+
+        if title in seen_titles:
+            continue
+
+        row["retrieval_score"] = round(score, 4)
+        results.append(row)
+        seen_titles.add(title)
+
+        if len(results) >= top_k:
+            break
+
+    return results
 
