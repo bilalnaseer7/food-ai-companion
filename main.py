@@ -1,7 +1,10 @@
 import os
 from pathlib import Path
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError:  # pragma: no cover
+    load_dotenv = None
 from openai import OpenAI
 
 from src.data_loader import load_reviews
@@ -28,7 +31,13 @@ def write_retrieved_restaurants(f, retrieved: list) -> None:
 
 
 def main():
-    load_dotenv()
+    if load_dotenv is not None:
+        load_dotenv()
+
+    # If a local proxy is configured in your environment, it can break OpenAI requests
+    # (e.g., returning 403 via the proxy). Clear proxy env vars for direct API access.
+    for key in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"):
+        os.environ.pop(key, None)
 
     if not os.getenv("OPENAI_API_KEY"):
         raise EnvironmentError("OPENAI_API_KEY not found. Add it to your local .env file.")
