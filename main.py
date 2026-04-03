@@ -128,8 +128,6 @@ def main():
                 )
             f.write("\n")
 
-            # Simulate feedback: accept the top RAG result, reject the second
-            # In the real app this would come from user input
             if retrieved:
                 default_profile = update_profile(
                     default_profile,
@@ -145,6 +143,24 @@ def main():
                     accepted=False,
                     cuisines=[retrieved[1]["category"]],
                     foods=[retrieved[1]["popular_food"]],
+                )
+            
+            # Update profile from top Foursquare result
+            if fsq_restaurants:
+                default_profile = update_profile(
+                    default_profile,
+                    restaurant_name=fsq_restaurants[0]["name"],
+                    accepted=True,
+                    cuisines=fsq_restaurants[0]["categories"][:1],
+                    foods=None,
+                )
+            if len(fsq_restaurants) > 1:
+                default_profile = update_profile(
+                    default_profile,
+                    restaurant_name=fsq_restaurants[1]["name"],
+                    accepted=False,
+                    cuisines=fsq_restaurants[1]["categories"][:1],
+                    foods=None,
                 )
 
         save_profile(default_profile)
