@@ -123,7 +123,8 @@ This will:
 
 ### 1. Data Loading and Cleaning
 
-The restaurant dataset is loaded in [src/data_loader.py](/Users/bilalnaseer/Documents/Spring%20'26/Intro%20to%20LLM/Project_G17/food-ai-companion-main/src/data_loader.py). The loader:
+The restaurant dataset is loaded in [src/data_loader.py](https://github.com/bilalnaseer7/food-ai-companion/blob/bn's-new-branch/src/data_loader.py
+). The loader:
 
 - normalizes inconsistent column names
 - cleans noisy text fields
@@ -148,7 +149,8 @@ This profile is injected into prompt construction and retrieval scoring.
 
 ### 3. Retrieval Layer
 
-The retrieval pipeline in [src/retrieval.py](/Users/bilalnaseer/Documents/Spring%20'26/Intro%20to%20LLM/Project_G17/food-ai-companion-main/src/retrieval.py):
+The retrieval pipeline in [src/retrieval.py](https://github.com/bilalnaseer7/food-ai-companion/blob/bn's-new-branch/src/retrieval.py
+):
 
 - builds embeddings with `text-embedding-3-small`
 - caches embeddings to avoid recomputation
@@ -159,7 +161,8 @@ The retrieval pipeline in [src/retrieval.py](/Users/bilalnaseer/Documents/Spring
 
 ### 4. Recommendation Layer
 
-The recommendation pipeline in [src/recommend.py](/Users/bilalnaseer/Documents/Spring%20'26/Intro%20to%20LLM/Project_G17/food-ai-companion-main/src/recommend.py) provides three output settings:
+The recommendation pipeline in [src/recommend.py](https://github.com/bilalnaseer7/food-ai-companion/blob/bn's-new-branch/src/recommend.py
+) provides three output settings:
 
 - `baseline_recommend`: generic LLM recommendation without retrieved evidence
 - `profile_recommend`: LLM recommendation conditioned on a taste profile
@@ -182,7 +185,7 @@ The saved outputs include:
 - retrieval scores
 - qualitative comparison across settings
 
-See [results/milestone2_outputs.txt](/Users/bilalnaseer/Documents/Spring%20'26/Intro%20to%20LLM/Project_G17/food-ai-companion-main/results/milestone2_outputs.txt).
+See [results/milestone2_outputs.txt](https://github.com/bilalnaseer7/food-ai-companion/blob/bn's-new-branch/results/milestone2_outputs.txt).
 
 ## Task Breakdown for Milestone 2
 
