@@ -70,6 +70,7 @@ st.markdown("""
     /* Header */
     .foodai-header {
         font-family: 'DM Sans', sans-serif !important;
+        font-weight: 700 !important;
         font-size: 2.2rem !important;
         color: var(--white) !important;
         letter-spacing: -0.5px;
