@@ -39,42 +39,81 @@ saves outputs to results/milestone2_outputs.txt for evaluation
 Integrated .env setup for secure API key handling and ensured it is excluded via .gitignore.
 
 🧱 Data Layer Improvements (Layer 1)
+
 added column alias handling so small dataset header variations do not break the loader
+
 added text cleaning helpers for safer preprocessing
+
 normalized online_order values into Yes / No / Unknown
+
 parsed category and popular_food into structured list-style fields
+
 removed old row-level noisy aggregation
+
 introduced restaurant-level aggregation
+
 limited to top 3 distinct review snippets per restaurant
+
 aggregated restaurant metadata into a cleaner restaurant profile
+
 rebuilt combined_text for stronger semantic representation
+
 sorted restaurants by review count before truncation
+
+
 🔍 Retrieval + Embeddings (Layer 2)
+
 integrated embedding-based semantic retrieval (vector search)
+
 preserved embedding cache + vector architecture
+
 replaced row-level logic with restaurant-level retrieval
+
 improved query construction using user profile + city context
+
 added safer phrase matching utilities
+
 implemented hybrid reranking:
+
 cuisine matching boost
+
 liked food boost
+
 disliked food penalties
+
 budget-aware scoring
+
 review-count confidence boost
+
 added noise filtering guard to reduce mismatched results (e.g., non-Italian foods ranking for Italian queries)
+
+
 🤖 LLM + RAG Pipeline (Layer 3)
+
 fixed field mismatches (review_text → review_snippets)
+
 improved prompt design across all three modes:
+
 baseline LLM
+
 profile-aware LLM
+
 RAG-based system
+
 reduced temperature for more stable outputs
+
 clarified baseline/profile limitations for transparency
+
 strengthened RAG grounding requirements:
+
 explicit request match
+
 taste profile alignment
+
 required evidence phrase
+
 added uncertainty/caution reasoning
+
 improved overall output structure and professionalism
 
 
