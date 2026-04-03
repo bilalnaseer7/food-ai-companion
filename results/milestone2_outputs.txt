@@ -1,0 +1,300 @@
+================================================================================
+MILESTONE 2 OUTPUTS
+================================================================================
+
+Dataset summary:
+- Number of restaurant-level records loaded: 1188
+- Pipeline settings: baseline LLM vs taste-profile LLM vs taste-profile + RAG
+- Retrieval: embedding-based semantic search + hybrid reranking
+
+================================================================================
+QUERY 1: I want cheap Italian food in NYC with good pasta and online ordering.
+================================================================================
+
+=== BASELINE LLM ===
+Here are three recommendations for cheap Italian food in NYC that are known for good pasta and typically offer online ordering:
+
+1. **Lombardi's Pizza** - While primarily known for its pizza, Lombardi's also offers a selection of pasta dishes that are both tasty and affordable. Their casual atmosphere and reputation make it a great spot for a quick meal, and they usually have online ordering available.
+
+2. **Pasta e Vino** - This restaurant focuses on pasta dishes and is known for its generous portions at reasonable prices. They often have a variety of pasta options, and many locations offer online ordering for convenience.
+
+3. **Carbone's Italian Deli** - A classic deli-style Italian spot, Carbone's serves up hearty pasta dishes alongside sandwiches and other Italian favorites. Their prices are generally budget-friendly, and they typically provide online ordering for takeout.
+
+Please note that these recommendations are based on general knowledge and may vary in availability and offerings.
+
+=== LLM + TASTE PROFILE ===
+Here are three great options for cheap Italian food in NYC that offer good pasta and online ordering:
+
+1. **Lombardi's Pizza**
+   - **Why it matches:** Lombardi's is known for its classic New York-style pizza, but they also offer a variety of pasta dishes that are both delicious and affordable. Their casual atmosphere makes it perfect for a relaxed dinner. Plus, they provide online ordering, making it easy to enjoy your meal at home.
+
+2. **Pasta e Vino**
+   - **Why it matches:** This restaurant specializes in pasta, offering a range of traditional Italian dishes at reasonable prices. Their menu includes several pasta options that are sure to satisfy your cravings. They also support online ordering, allowing you to conveniently enjoy a casual dinner without breaking the bank.
+
+3. **Joe's Pizza**
+   - **Why it matches:** While primarily known for their pizza, Joe's also serves a selection of pasta dishes that are both tasty and budget-friendly. The laid-back vibe makes it an ideal spot for a casual dinner. They offer online ordering, so you can easily get your meal delivered or ready for pickup.
+
+These options should provide you with a satisfying Italian dining experience that aligns perfectly with your preferences!
+
+=== LLM + TASTE PROFILE + RAG ===
+### Recommendation 1: Sardi's Restaurant
+1. **Restaurant name:** Sardi's Restaurant
+2. **Why it matches the user's request:** It offers Italian cuisine with a focus on pasta and has online ordering available.
+3. **Why it matches the taste profile:** The restaurant is noted for its pasta dishes, which aligns perfectly with the user's preference for pasta.
+4. **Supporting evidence:** "My daughter and I both stuck with pasta..."
+5. **Caution/uncertainty:** While it is known for pasta, the overall pricing may vary, so it’s advisable to check the menu for specific prices.
+
+### Recommendation 2: Piccola Cucina Estiatorio
+1. **Restaurant name:** Piccola Cucina Estiatorio
+2. **Why it matches the user's request:** This restaurant serves Italian cuisine and allows for online ordering.
+3. **Why it matches the taste profile:** It features pasta dishes like penne al pomodoro and bucatini cacio e pepe, which are popular among Italian food lovers.
+4. **Supporting evidence:** "Penne al pomodoro and bucatini cacio e pepe were delicious."
+5. **Caution/uncertainty:** The restaurant's focus on Sicilian cuisine may include some seafood dishes, which the user dislikes.
+
+### Recommendation 3: Tavola
+1. **Restaurant name:** Tavola
+2. **Why it matches the user's request:** It provides Italian and pizza options with online ordering available.
+3. **Why it matches the taste profile:** The restaurant serves both pizza and pasta, catering to the user's preferences.
+4. **Supporting evidence:** "Pizza, pasta, cannoli's, cheesecake."
+5. **Caution/uncertainty:** The emphasis on pizza may overshadow pasta options, so it’s worth checking the menu for pasta variety.
+
+### Final Summary
+The strongest overall choice is **Sardi's Restaurant** because it directly focuses on pasta, which is a key preference for the user, and it has a significant number of reviews indicating a solid reputation for its pasta dishes. Additionally, it meets the budget and online ordering criteria, making it an excellent fit for a casual dinner.
+
+=== RETRIEVED RESTAURANTS ===
+1. Joe's Pizza | Category: Italian, Pizza | Popular food: pizza | Online order: Yes | Reviews: 586 | Score: 1.0032
+   Review snippets: New York Style Pizza
+2. Piccola Cucina Estiatorio | Category: Italian, Sicilian | Popular food: pizza | Online order: Yes | Reviews: 403 | Score: 1.0023
+   Review snippets: penne al pomodoro and bucatini cacio e pepe were delicious.
+3. Tavola | Category: Italian, Pizza | Popular food: pizza | Online order: Yes | Reviews: 969 | Score: 1.0007
+   Review snippets: Pizza, pasta, cannoli's, cheesecake.
+4. Sardi's Restaurant | Category: Italian, American | Popular food: pasta | Online order: Yes | Reviews: 2093 | Score: 0.9869
+   Review snippets: My daughter and I both stuck with pasta...
+5. Via Carota | Category: Italian | Popular food: pizza | Online order: Yes | Reviews: 387 | Score: 0.9851
+   Review snippets: A must in nyc
+
+================================================================================
+QUERY 2: I am looking for a casual Korean restaurant in NYC with generous portions.
+================================================================================
+
+=== BASELINE LLM ===
+Here are three casual Korean restaurant options in NYC known for their generous portions:
+
+1. **Jongro BBQ** - This restaurant offers a traditional Korean BBQ experience where you can grill your own meats at the table. The portions are typically generous, and the variety of side dishes (banchan) adds to the overall meal experience. It's a lively spot that captures the essence of casual dining.
+
+2. **Korean BBQ House** - Many locations around the city serve all-you-can-eat options, allowing you to enjoy a variety of meats and sides. These places are known for their hearty portions and are perfect for a casual meal with friends or family.
+
+3. **Banchan** - This restaurant focuses on homestyle Korean dishes and is known for its generous servings. The casual atmosphere makes it a great spot for enjoying comfort food like bibimbap or stews, and the portions are typically satisfying.
+
+Please note that these recommendations are based on general knowledge and may vary in current offerings.
+
+=== LLM + TASTE PROFILE ===
+Here are three casual Korean restaurant options in NYC that align well with your taste profile:
+
+1. **Korean BBQ Restaurants (e.g., Jongro BBQ)**  
+   - **Why it matches:** Korean BBQ is a great fit for your preference for generous portions, as these restaurants typically offer all-you-can-eat options or large platters of marinated meats that you can grill at your table. Jongro BBQ, in particular, is known for its high-quality meats and vibrant atmosphere, making it perfect for a casual dinner. You can enjoy a variety of side dishes (banchan) that complement your meal, and you can focus on the BBQ without any seafood options.
+
+2. **Noodle Houses (e.g., Myeongdong Gyoja)**  
+   - **Why it matches:** If you're in the mood for noodles, Myeongdong Gyoja specializes in handmade noodles and dumplings, with generous portions that are perfect for a casual dining experience. Their signature dishes, like the kalguksu (knife-cut noodles), are hearty and satisfying, aligning well with your preference for rice and noodles while avoiding seafood. The casual setting makes it an ideal spot for a relaxed dinner.
+
+3. **Casual Korean Rice Bowl Places (e.g., Bibble & Sip)**  
+   - **Why it matches:** Bibble & Sip offers a variety of Korean-inspired rice bowls that are both filling and flavorful. You can choose from options like bulgogi or spicy pork, served over rice, which fits your liking for rice dishes. The casual atmosphere and moderate pricing make it a great choice for a laid-back dinner, and you can enjoy generous portions without the worry of seafood.
+
+These options should provide a delightful and satisfying dining experience that aligns with your preferences for Korean cuisine!
+
+=== LLM + TASTE PROFILE + RAG ===
+Here are the top three restaurant recommendations based on your request for a casual Korean restaurant in NYC with generous portions:
+
+### 1. Miss Korea BBQ
+- **Why it matches the user's request:** This restaurant specializes in Korean BBQ, which aligns perfectly with your preference for casual dining.
+- **Why it matches the taste profile:** It offers a variety of BBQ options, which you enjoy, and is known for generous portions.
+- **Supporting evidence:** "One of the best Korean BBQ spots in NYC."
+- **Caution/uncertainty:** While the reviews are positive, specific details about portion sizes are not mentioned.
+
+### 2. Don's Bogam BBQ & Wine Bar
+- **Why it matches the user's request:** This restaurant focuses on BBQ and has a casual atmosphere, making it suitable for a relaxed dinner.
+- **Why it matches the taste profile:** It features popular Korean dishes like kimchi, bibimbap, and BBQ, which align with your preferences.
+- **Supporting evidence:** "Arrive the kimchi, bibimbap, bean paste stew, and tofu to soothed, satisfied..."
+- **Caution/uncertainty:** The review does not explicitly mention portion sizes, so it's unclear if they are generous.
+
+### 3. Barn Joo
+- **Why it matches the user's request:** Barn Joo is described as a cozy Korean restaurant, ideal for a casual dining experience.
+- **Why it matches the taste profile:** It offers BBQ options, which you like, but the evidence is less specific about portion sizes compared to the other two.
+- **Supporting evidence:** "Cozy Korean restaurant."
+- **Caution/uncertainty:** The review does not provide details on portion sizes or specific dishes.
+
+### Final Summary
+The strongest overall choice is **Miss Korea BBQ** because it is highly regarded as one of the best Korean BBQ spots in NYC, which aligns perfectly with your request for casual dining and generous portions. The positive reviews suggest a strong reputation for quality, making it a reliable option for your dinner.
+
+=== RETRIEVED RESTAURANTS ===
+1. Miss Korea BBQ | Category: Asian, Korean | Popular food: korean bbq | Online order: No | Reviews: 616 | Score: 1.0415
+   Review snippets: One of the best Korean BBQ spots in nyc
+2. Bar Boulud | Category: Korean | Popular food: bbq | Online order: No | Reviews: 925 | Score: 0.9813
+   Review snippets: Perfect Pre Lincoln Center Dinner
+3. Barn Joo | Category: Asian, Korean | Popular food: bbq | Online order: No | Reviews: 177 | Score: 0.9676
+   Review snippets: Cozy Korean restaurant
+4. Don's Bogam BBQ & Wine Bar | Category: Asian, Korean, Barbecue | Popular food: bbq | Online order: No | Reviews: 208 | Score: 0.9545
+   Review snippets: Arrive the kimchi, bibimbap, bean paste stew, and tofu to soothed, satisfied...
+5. Carnegie Diner & Cafe | Category: Asian, Korean | Popular food: bbq | Online order: No | Reviews: 124 | Score: 0.9444
+   Review snippets: Ok for lunch
+
+================================================================================
+QUERY 3: Find me a date-night Japanese restaurant in NYC that is not too expensive.
+================================================================================
+
+=== BASELINE LLM ===
+Here are three Japanese restaurant options in NYC that are generally considered good for a date night without breaking the bank:
+
+1. **Sushi Nakazawa** - While it is on the higher end of the mid-range spectrum, this sushi spot offers an intimate setting and a well-curated omakase experience. It's a great place for sushi lovers and can be a memorable date night if you’re willing to splurge a little.
+
+2. **Ippudo** - Known for its delicious ramen, Ippudo has a lively atmosphere that can be perfect for a casual yet fun date night. The prices are reasonable, and sharing bowls of ramen can create a cozy dining experience.
+
+3. **Yakiniku West** - This spot offers a fun dining experience where you can grill your own meats at the table. The prices are generally affordable, and the interactive nature of cooking together can make for a unique and engaging date night.
+
+These recommendations are based on general knowledge of the NYC dining scene and may vary in experience and pricing.
+
+=== LLM + TASTE PROFILE ===
+Here are three Japanese restaurant options in New York City that would be perfect for a date night, keeping your preferences and budget in mind:
+
+1. **Sushi Nakazawa**  
+   - **Why it matches:** Sushi Nakazawa offers an intimate dining experience with a focus on high-quality sushi. While it can be on the pricier side, they do offer a more affordable lunch omakase that could fit your moderate budget if you go during the day. The ambiance is perfect for a date night, and the chef's attention to detail makes for a memorable meal. Plus, since you enjoy sushi, this restaurant would be a great fit.
+
+2. **Ippudo**  
+   - **Why it matches:** Ippudo is renowned for its delicious ramen, making it a great choice for your taste profile. The atmosphere is lively yet cozy, ideal for a date night. Prices are reasonable, and you can enjoy a variety of ramen options along with some small plates. This restaurant allows for a casual yet special dining experience without breaking the bank.
+
+3. **Sake Bar Satsko**  
+   - **Why it matches:** This charming spot offers a cozy atmosphere with a focus on both sushi and a variety of sake. The prices are moderate, and the menu features a selection of sushi rolls and small dishes that pair well with sake. The intimate setting is perfect for a date night, allowing for conversation and a relaxed dining experience.
+
+These options should provide a delightful Japanese dining experience for your date night while staying within your budget!
+
+=== LLM + TASTE PROFILE + RAG ===
+Here are the top three restaurant recommendations for a date-night Japanese experience in NYC that fits your budget and taste profile:
+
+### 1. Zen Ramen & Sushi
+- **Why it matches the user's request:** Zen Ramen & Sushi offers a cozy atmosphere suitable for a date night and is known for its moderate pricing.
+- **Why it matches the taste profile:** The restaurant features both sushi and ramen, aligning perfectly with your preferred foods.
+- **Supporting evidence:** "Excellent sushi, ramen, and service."
+- **Caution/uncertainty:** The number of reviews is lower compared to other options, which may indicate less popularity.
+
+### 2. Ivan Ramen
+- **Why it matches the user's request:** Ivan Ramen is well-regarded for its ambiance, making it a great choice for a special occasion like a date night.
+- **Why it matches the taste profile:** It specializes in ramen, which you enjoy, and has a good reputation for quality.
+- **Supporting evidence:** "Anniversary Dinner."
+- **Caution/uncertainty:** While it has a good number of reviews, the focus is primarily on ramen, so sushi options may be limited.
+
+### 3. Hide-Chan Ramen Midtown East
+- **Why it matches the user's request:** This restaurant provides a casual yet intimate setting, ideal for a date night without breaking the bank.
+- **Why it matches the taste profile:** It focuses on ramen, which you like, and offers a variety of options.
+- **Supporting evidence:** "Ramen on the east side."
+- **Caution/uncertainty:** The reviews are positive, but it may not have the same level of acclaim as the top two options.
+
+### Final Summary
+Zen Ramen & Sushi stands out as the strongest overall choice due to its combination of excellent sushi and ramen offerings, a cozy atmosphere perfect for a date night, and solid positive reviews. It aligns well with your preferences and budget, making it an ideal option for your evening out.
+
+=== RETRIEVED RESTAURANTS ===
+1. Zuma | Category: Japanese, Sushi | Popular food: sushi | Online order: No | Reviews: 818 | Score: 0.9582
+   Review snippets: Sushi top! cool atmosphere and one of the place to be at NYC. Overall it is a...
+2. Zen Ramen & Sushi | Category: Japanese, Sushi, Asian | Popular food: sushi | Online order: No | Reviews: 169 | Score: 0.9278
+   Review snippets: Excellent sushi, ramen, and service.
+3. Ivan Ramen | Category: Japanese, Asian | Popular food: ramen | Online order: No | Reviews: 389 | Score: 0.9138
+   Review snippets: Anniversary Dinner
+4. Hide-Chan Ramen Midtown East | Category: Japanese, Asian | Popular food: ramen | Online order: No | Reviews: 181 | Score: 0.8966
+   Review snippets: Ramen on the east side
+5. ICHIRAN Times Square | Category: Japanese, Asian | Popular food: ramen | Online order: No | Reviews: 84 | Score: 0.8927
+   Review snippets: Amazing tonkotsu ramen near Times Square
+
+================================================================================
+TASTE PROFILE COMPARISON: I want something good for dinner in NYC.
+================================================================================
+
+=== PROFILE A ===
+{'preferred_cuisines': ['Italian', 'Pizza'], 'liked_foods': ['pasta', 'pizza'], 'disliked_foods': ['seafood'], 'budget': 'cheap', 'online_order': 'Yes', 'occasion': 'casual dinner', 'city': 'New York City'}
+
+Here are the top three restaurant recommendations for your casual dinner in NYC:
+
+### 1. Via Della Pace
+1. **Restaurant name**: Via Della Pace
+2. **Why it matches the user's request**: This restaurant offers Italian cuisine with a focus on pizza, making it suitable for a casual dinner.
+3. **Why it matches the taste profile**: It features both Italian dishes and pizza, aligning perfectly with your preferences for pasta and pizza.
+4. **Supporting evidence**: "Good Italian in the Lower East Side."
+5. **Caution/uncertainty**: While it has a good reputation, specific details about pasta offerings are not mentioned.
+
+### 2. Joe's Pizza
+1. **Restaurant name**: Joe's Pizza
+2. **Why it matches the user's request**: This establishment is known for its pizza, which is ideal for a casual dinner.
+3. **Why it matches the taste profile**: It specializes in New York-style pizza, fitting your liking for pizza and Italian cuisine.
+4. **Supporting evidence**: "New York Style Pizza."
+5. **Caution/uncertainty**: The focus is primarily on pizza, so pasta options may be limited.
+
+### 3. Hangawi
+1. **Restaurant name**: Hangawi
+2. **Why it matches the user's request**: It offers Italian cuisine and has online ordering available, making it convenient for dinner.
+3. **Why it matches the taste profile**: It features pizza, which aligns with your preferences, though it is more focused on vegan options.
+4. **Supporting evidence**: "Fantastic Vegan Eats in NYC."
+5. **Caution/uncertainty**: The emphasis on vegan dishes may not appeal to everyone, especially if you're looking for traditional Italian fare.
+
+### Summary
+The strongest overall choice is **Via Della Pace** because it offers a well-rounded Italian dining experience with a focus on pizza, has a good number of positive reviews, and aligns closely with your preferences for casual dining.
+
+Retrieved restaurants for Profile A:
+1. Hangawi | Category: Italian | Popular food: pizza | Online order: Yes | Reviews: 645 | Score: 0.9892
+   Review snippets: Fantastic Vegan Eats in NYC
+2. Via Della Pace | Category: Italian, Pizza | Popular food: pizza | Online order: Yes | Reviews: 984 | Score: 0.986
+   Review snippets: Good Italian in the Lower East Side
+3. Joe's Pizza | Category: Italian, Pizza | Popular food: pizza | Online order: Yes | Reviews: 586 | Score: 0.985
+   Review snippets: New York Style Pizza
+4. Via Carota | Category: Italian | Popular food: pizza | Online order: Yes | Reviews: 387 | Score: 0.9846
+   Review snippets: A must in nyc
+5. Eataly NYC Downtown | Category: Italian | Popular food: pizza | Online order: Yes | Reviews: 164 | Score: 0.9809
+   Review snippets: Tourist spot
+
+=== PROFILE B ===
+{'preferred_cuisines': ['Japanese'], 'liked_foods': ['sushi', 'ramen'], 'disliked_foods': ['pizza'], 'budget': 'moderate', 'online_order': 'No', 'occasion': 'date night', 'city': 'New York City'}
+
+Here are the top three restaurant recommendations for your dinner in NYC:
+
+### 1. Zuma
+1. **Restaurant name:** Zuma
+2. **Why it matches the user's request:** Zuma is a well-known Japanese restaurant that offers a vibrant atmosphere, making it suitable for a date night.
+3. **Why it matches the taste profile:** It specializes in sushi, which aligns perfectly with your preference for Japanese cuisine and sushi.
+4. **Supporting evidence:** "Sushi top! cool atmosphere and one of the place to be at NYC."
+5. **Caution/uncertainty:** While the reviews are positive, they do not mention ramen, which you also enjoy.
+
+### 2. Zen Ramen & Sushi
+1. **Restaurant name:** Zen Ramen & Sushi
+2. **Why it matches the user's request:** This restaurant offers a cozy setting that is ideal for a dinner date.
+3. **Why it matches the taste profile:** It features both sushi and ramen, catering to your preferences perfectly.
+4. **Supporting evidence:** "Excellent sushi, ramen, and service."
+5. **Caution/uncertainty:** The number of reviews is lower compared to other options, which may indicate less popularity.
+
+### 3. Ivan Ramen
+1. **Restaurant name:** Ivan Ramen
+2. **Why it matches the user's request:** Ivan Ramen is known for its inviting atmosphere, making it a great choice for a date night.
+3. **Why it matches the taste profile:** It specializes in ramen, which you enjoy, though it does not focus on sushi.
+4. **Supporting evidence:** "Anniversary Dinner."
+5. **Caution/uncertainty:** The focus is primarily on ramen, so if sushi is a priority, this may not be the best fit.
+
+### Final Summary
+Zuma stands out as the strongest overall choice due to its strong reputation for sushi and a vibrant atmosphere, making it ideal for a date night. While Zen Ramen & Sushi offers both sushi and ramen, its lower review count may suggest less reliability. Ivan Ramen, while excellent for ramen, does not cater to your sushi preference.
+
+Retrieved restaurants for Profile B:
+1. Zuma | Category: Japanese, Sushi | Popular food: sushi | Online order: No | Reviews: 818 | Score: 0.9712
+   Review snippets: Sushi top! cool atmosphere and one of the place to be at NYC. Overall it is a...
+2. Natsumi | Category: Japanese, Sushi | Popular food: sushi | Online order: No | Reviews: 890 | Score: 0.9225
+   Review snippets: For the main course we both had the shrimp and salmon teriyaki.
+3. Zen Ramen & Sushi | Category: Japanese, Sushi, Asian | Popular food: sushi | Online order: No | Reviews: 169 | Score: 0.9179
+   Review snippets: Excellent sushi, ramen, and service.
+4. Ivan Ramen | Category: Japanese, Asian | Popular food: ramen | Online order: No | Reviews: 389 | Score: 0.9135
+   Review snippets: Anniversary Dinner
+5. Hide-Chan Ramen Midtown East | Category: Japanese, Asian | Popular food: ramen | Online order: No | Reviews: 181 | Score: 0.9126
+   Review snippets: Ramen on the east side
+
+================================================================================
+SHORT PROGRESS NOTES
+================================================================================
+
+- We implemented an end-to-end Eat Out mode.
+- The system supports three settings: baseline LLM, taste-profile LLM, and taste-profile + RAG.
+- Retrieval is embedding-based using OpenAI embeddings and cosine similarity.
+- A lightweight reranking layer adjusts retrieval using cuisine, liked/disliked foods, budget, and ordering preferences.
+- This milestone focuses on one proposal mode (Eat Out) before expanding to Cook at Home and Drink modes.
