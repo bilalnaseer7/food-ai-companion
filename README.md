@@ -1,146 +1,238 @@
-# food-ai-companion
+# Food AI Companion
 
-[Bilal] - Changelog
+Food AI Companion is an AI-powered recommendation system for food decisions. The full project vision, based on the proposal for Advanced Data Science, is a shared platform that helps users decide where to eat out, what to cook at home, and what to drink by using a persistent taste profile plus external grounding data.
 
-Set up the GitHub repository and overall project structure (data/, src/, main.py, etc.) for the Milestone 2 prototype.
+The current repository implements the **Milestone 2 Eat Out prototype**. This milestone focuses on restaurant recommendation in New York City and compares three settings:
 
-Added and updated the restaurant review dataset used for the Eat Out recommendation mode (aligned with project proposal focus on restaurant-based retrieval).
+- Baseline LLM
+- LLM + taste profile
+- LLM + taste profile + retrieval-augmented generation (RAG)
 
-Built the core data loading pipeline to correctly read and process the review dataset (data_loader.py), including fixing column mapping issues based on TA feedback.
+## Team
 
-Implemented the baseline LLM recommendation pipeline using OpenAI API to generate restaurant suggestions from a user query.
+- Bilal Naseer
+- Hoerim Kim
+- Owen Nie
 
-Added a structured taste profile layer (preferences, budget, disliked foods, etc.) and integrated it into the recommendation pipeline to personalize outputs.
+Course: Advanced Data Science
 
-Implemented a retrieval (RAG) pipeline: 
+## Project Vision
 
-retrieves relevant restaurants from dataset
+The full proposed system includes three modes:
 
-passes retrieved context to the LLM
+- Eat Out: personalized restaurant recommendations grounded in external restaurant data
+- Cook at Home: recipe generation from available ingredients
+- Drink/Cocktail: drink suggestions with flavor-aware substitution logic
 
-generates grounded recommendations based on real review data
+All three modes are intended to share a taste profile that captures preferences such as cuisine, liked and disliked foods, budget sensitivity, and context. As described in the proposal, the longer-term goal is a recommendation system that improves personalization while staying grounded in real-world data.
 
-Combined all three stages into a single workflow for comparison:
+## Current Milestone 2 Scope
 
-baseline LLM
+This repository currently implements the **Eat Out** mode prototype only.
 
-LLM + taste profile
+What is implemented:
 
-LLM + taste profile + RAG
+- Restaurant dataset loading and preprocessing
+- Taste-profile-based restaurant recommendation
+- Embedding-based retrieval over restaurant records
+- A RAG pipeline that injects retrieved restaurant evidence into the LLM prompt
+- A comparison workflow across baseline, profile-aware, and RAG-based recommendations
+- Saved evaluation outputs for multiple sample queries
 
-Built end-to-end execution in main.py:
+What is not yet implemented in this repository:
 
-loads dataset
+- Cook at Home mode
+- Drink/Cocktail mode
+- Persistent user memory that updates from accepted/rejected recommendations
+- LangGraph orchestration across all modes
+- Reddit/PRAW grounding pipeline
+- Recipe dataset grounding
 
-runs all three pipelines
+## Recent Improvements
 
-saves outputs to results/milestone2_outputs.txt for evaluation
+To address recent TA feedback and improve demo credibility, the current codebase now includes:
 
-Integrated .env setup for secure API key handling and ensured it is excluded via .gitignore.
+- stronger dataset cleaning for noisy and inconsistent restaurant rows
+- category repair using title and review evidence
+- better `popular_food` cleanup for obviously incorrect values
+- restaurant-level consolidation of duplicate rows
+- stricter reranking and filtering to reduce bad cuisine matches
+- a more conservative grounded recommendation prompt for the RAG stage
 
-🧱 Data Layer Improvements (Layer 1)
+These changes were added to reduce visibly incorrect outputs such as Korean BBQ being labeled as pizza or Italian restaurants surfacing with unrelated foods like fried rice.
 
-added column alias handling so small dataset header variations do not break the loader
+## Repository Structure
 
-added text cleaning helpers for safer preprocessing
+```text
+food-ai-companion-main/
+├── data/
+│   ├── restaurants.csv
+│   └── restaurant_embeddings.npz
+├── results/
+│   └── milestone2_outputs.txt
+├── src/
+│   ├── data_loader.py
+│   ├── recommend.py
+│   ├── retrieval.py
+│   ├── foursquare_places.py
+│   └── requirements.txt
+├── main.py
+└── task_breakdown.txt
+```
 
-normalized online_order values into Yes / No / Unknown
+## Installation
 
-parsed category and popular_food into structured list-style fields
+### 1. Create and activate a virtual environment
 
-removed old row-level noisy aggregation
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
 
-introduced restaurant-level aggregation
+### 2. Install dependencies
 
-limited to top 3 distinct review snippets per restaurant
+```bash
+pip install -r src/requirements.txt
+```
 
-aggregated restaurant metadata into a cleaner restaurant profile
+### 3. Add your OpenAI API key
 
-rebuilt combined_text for stronger semantic representation
+Create a local `.env` file in the project root:
 
-sorted restaurants by review count before truncation
+```bash
+OPENAI_API_KEY=your_api_key_here
+```
 
+## How to Run
 
-🔍 Retrieval + Embeddings (Layer 2)
+Run the full Milestone 2 comparison pipeline with:
 
-integrated embedding-based semantic retrieval (vector search)
+```bash
+python3 main.py
+```
 
-preserved embedding cache + vector architecture
+This will:
 
-replaced row-level logic with restaurant-level retrieval
+- load the cleaned restaurant dataset
+- run the baseline LLM pipeline
+- run the taste-profile pipeline
+- run the taste-profile + RAG pipeline
+- save outputs to [results/milestone2_outputs.txt](/Users/bilalnaseer/Documents/Spring%20'26/Intro%20to%20LLM/Project_G17/food-ai-companion-main/results/milestone2_outputs.txt)
 
-improved query construction using user profile + city context
+## Pipeline Overview
 
-added safer phrase matching utilities
+### 1. Data Loading and Cleaning
 
-implemented hybrid reranking:
+The restaurant dataset is loaded in [src/data_loader.py](/Users/bilalnaseer/Documents/Spring%20'26/Intro%20to%20LLM/Project_G17/food-ai-companion-main/src/data_loader.py). The loader:
 
-cuisine matching boost
+- normalizes inconsistent column names
+- cleans noisy text fields
+- repairs obvious category mismatches using title and review evidence
+- cleans low-quality `popular_food` values
+- groups duplicate rows into cleaner restaurant-level records
+- builds `combined_text` used for retrieval embeddings
 
-liked food boost
+### 2. Taste Profile
 
-disliked food penalties
+The current taste profile includes:
 
-budget-aware scoring
+- preferred cuisines
+- liked foods
+- disliked foods
+- budget
+- online ordering preference
+- occasion
+- city
 
-review-count confidence boost
+This profile is injected into prompt construction and retrieval scoring.
 
-added noise filtering guard to reduce mismatched results (e.g., non-Italian foods ranking for Italian queries)
+### 3. Retrieval Layer
 
+The retrieval pipeline in [src/retrieval.py](/Users/bilalnaseer/Documents/Spring%20'26/Intro%20to%20LLM/Project_G17/food-ai-companion-main/src/retrieval.py):
 
-🤖 LLM + RAG Pipeline (Layer 3)
+- builds embeddings with `text-embedding-3-small`
+- caches embeddings to avoid recomputation
+- embeds a query enriched with the taste profile
+- ranks restaurants using cosine similarity
+- reranks using cuisine match, liked/disliked foods, budget cues, and ordering preference
+- filters obviously weak or contradictory matches
 
-fixed field mismatches (review_text → review_snippets)
+### 4. Recommendation Layer
 
-improved prompt design across all three modes:
+The recommendation pipeline in [src/recommend.py](/Users/bilalnaseer/Documents/Spring%20'26/Intro%20to%20LLM/Project_G17/food-ai-companion-main/src/recommend.py) provides three output settings:
 
-baseline LLM
+- `baseline_recommend`: generic LLM recommendation without retrieved evidence
+- `profile_recommend`: LLM recommendation conditioned on a taste profile
+- `rag_recommend`: LLM recommendation grounded in retrieved restaurant records
 
-profile-aware LLM
+## Current Evaluation Setup
 
-RAG-based system
+The Milestone 2 pipeline currently evaluates multiple sample queries and compares:
 
-reduced temperature for more stable outputs
+- baseline LLM
+- LLM + taste profile
+- LLM + taste profile + RAG
 
-clarified baseline/profile limitations for transparency
+It also includes a profile comparison experiment to show how different user preferences change outputs for the same query.
 
-strengthened RAG grounding requirements:
+The saved outputs include:
 
-explicit request match
+- generated recommendations
+- retrieved restaurants
+- retrieval scores
+- qualitative comparison across settings
 
-taste profile alignment
+See [results/milestone2_outputs.txt](/Users/bilalnaseer/Documents/Spring%20'26/Intro%20to%20LLM/Project_G17/food-ai-companion-main/results/milestone2_outputs.txt).
 
-required evidence phrase
+## Task Breakdown for Milestone 2
 
-added uncertainty/caution reasoning
+This breakdown is aligned with the proposal and the current milestone plan.
 
-improved overall output structure and professionalism
+### Bilal Naseer
 
+- set up the overall project structure and execution flow
+- defined the taste profile schema used by the recommendation pipeline
+- integrated the OpenAI LLM pipeline
+- implemented the three comparison settings in `main.py`
+- connected inputs, profile context, and retrieved evidence into end-to-end recommendation generation
+- recently strengthened the Milestone 2 system further by improving the data-cleaning and reranking workflow used for demo-facing outputs
 
+### Hoerim Kim
 
+- finalized and restructured the NYC restaurant dataset
+- improved restaurant text representation for retrieval
+- built and refined the embedding-based retrieval pipeline
+- added embedding cache validation
+- improved grounding by passing richer restaurant evidence to the LLM
 
-[Hoerim Kim] - Changelog
+### Owen Nie
 
-Refactored the dataset representation to improve retrieval quality by converting structured fields into natural-language text (combined_text).
+- focused on ranking and evaluation logic
+- planned mismatch filtering and stronger profile-aware ranking
+- prepared query-based comparison goals for baseline vs profile vs RAG evaluation
 
-Improved the embedding-based retrieval pipeline:
-- ensured cosine similarity ranking works correctly
-- added caching with dataset validation to avoid stale embeddings
-- refined retrieval queries to better incorporate user preferences
+## Limitations
 
-Enhanced the RAG pipeline:
-- passed richer retrieved context (reviews + attributes) to the LLM
-- enforced grounding so recommendations come only from retrieved results
+This repository is still a prototype. Current limitations include:
 
-Strengthened personalization:
-- integrated taste profile into both retrieval and reranking steps
+- only the Eat Out mode is implemented
+- evaluation is primarily qualitative and demo-oriented
+- the restaurant dataset is static rather than fully live
+- some proposed external data integrations are planned but not yet complete
 
-Extended the evaluation pipeline:
-- added multiple queries instead of a single test case
-- compared baseline LLM, LLM + profile, and LLM + profile + RAG
-- added a profile comparison experiment to show how preferences affect outputs
+## Future Work
 
-Improved output formatting for clearer comparison and analysis.
+Based on the original proposal, the next major steps are:
 
-Aligned the implementation with the proposal by making the Eat Out mode a complete end-to-end RAG system.
+- improve evaluation with clearer relevance, diversity, and consistency analysis
+- add stronger grounding from external food discussion and recipe sources
+- implement Cook at Home mode
+- implement Drink/Cocktail mode
+- extend the taste profile into a persistent memory component
+- connect the full multi-mode system into one shared workflow
 
+## Notes
+
+- The active milestone is intentionally narrower than the full project proposal.
+- The README describes both the broader project vision and the current implemented milestone so the documentation stays accurate.
+- If you change the dataset or retrieval logic substantially, regenerate outputs by rerunning `main.py`.
