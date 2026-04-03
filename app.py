@@ -311,6 +311,15 @@ st.markdown("""
         font-weight: 400 !important;
     }
 
+    html, body {
+        overscroll-behavior: none !important;
+        -webkit-overflow-scrolling: auto !important;
+    }
+
+    .stApp {
+        overscroll-behavior: none !important;
+    }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -488,7 +497,7 @@ def render_eat_out_tab(client, df):
     with col1:
         query = st.text_input("What are you craving?", placeholder="e.g. cozy ramen, cheap tacos, date night Italian", key="eat_query")
     with col2:
-        borough = st.selectbox("Borough", ["manhattan", "brooklyn", "queens", "bronx", "staten island"], key="eat_borough")
+        zipcode = st.text_input("Zip Code", placeholder="10001", key="eat_zipcode")
 
     if st.button("Find Restaurants", key="eat_search"):
         if not query:
@@ -501,6 +510,7 @@ def render_eat_out_tab(client, df):
             st.session_state.eat_llm_response = rag_response
 
             try:
+                borough = zipcode if zipcode else "New York, NY"
                 fsq_response, fsq_restaurants = foursquare_recommend(client, query, st.session_state.profile, borough=borough)
                 st.session_state.eat_fsq_results = fsq_restaurants
                 st.session_state.eat_fsq_response = fsq_response
@@ -614,4 +624,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
+
