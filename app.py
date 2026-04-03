@@ -69,7 +69,7 @@ st.markdown("""
 
     /* Header */
     .foodai-header {
-        font-family: 'DM Serif Display', serif !important;
+        font-family: '', serif !important;
         font-size: 2.2rem !important;
         color: var(--white) !important;
         letter-spacing: -0.5px;
@@ -189,7 +189,7 @@ st.markdown("""
     }
 
     .restaurant-name {
-        font-family: 'DM Serif Display', serif;
+        font-family: '', serif;
         font-size: 1.05rem;
         color: var(--white);
         margin-bottom: 0.2rem;
@@ -229,7 +229,7 @@ st.markdown("""
     }
 
     .profile-card h4 {
-        font-family: 'DM Serif Display', serif;
+        font-family: '', serif;
         color: var(--light-blue-1);
         margin-bottom: 0.75rem;
         font-size: 1rem;
@@ -283,7 +283,7 @@ st.markdown("""
 
     [data-testid="stMetricValue"] {
         color: var(--light-blue-1) !important;
-        font-family: 'DM Serif Display', serif !important;
+        font-family: '', serif !important;
     }
 
     [data-testid="stMetricLabel"] {
@@ -293,7 +293,7 @@ st.markdown("""
 
     /* Markdown headers inside app */
     .stMarkdown h3 {
-        font-family: 'DM Serif Display', serif !important;
+        font-family: '', serif !important;
         color: var(--white) !important;
         font-size: 1.1rem !important;
     }
