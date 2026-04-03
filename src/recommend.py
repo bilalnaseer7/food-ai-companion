@@ -95,6 +95,7 @@ def rag_recommend(client: OpenAI, query: str, user_profile: dict, df, top_k: int
         "You must recommend only from the retrieved restaurant records provided. "
         "Use the user's request, the taste profile, and the retrieved evidence together. "
         "Do not invent restaurants or unsupported claims. "
+        "Do not select a restaurant if its cuisine or featured food clearly conflicts with the user's request. "
         "If evidence is weak for a restaurant, say so briefly instead of making things up."
     )
 
