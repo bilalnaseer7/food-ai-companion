@@ -117,7 +117,7 @@ This will:
 - run the baseline LLM pipeline
 - run the taste-profile pipeline
 - run the taste-profile + RAG pipeline
-- save outputs to [results/milestone2_outputs.txt](/Users/bilalnaseer/Documents/Spring%20'26/Intro%20to%20LLM/Project_G17/food-ai-companion-main/results/milestone2_outputs.txt)
+- save outputs to [results/milestone2_outputs.txt](https://github.com/bilalnaseer7/food-ai-companion/blob/bn's-new-branch/results/milestone2_outputs.txt)
 
 ## Pipeline Overview
 
