@@ -129,15 +129,15 @@ def retrieve_restaurants(
 
         if budget_pref == "cheap":
             cheap_signals = ["cheap", "affordable", "budget", "value", "inexpensive"]
-            if any(signal in combined_text for signal in cheap_signals):
+            if any(signal in review_text for signal in cheap_signals):
                 score += 0.08
         elif budget_pref == "moderate":
             moderate_signals = ["moderate", "reasonable", "fair price", "casual"]
-            if any(signal in combined_text for signal in moderate_signals):
+            if any(signal in review_text for signal in moderate_signals):
                 score += 0.04
         elif budget_pref == "premium":
             premium_signals = ["fine dining", "upscale", "premium", "expensive", "high-end"]
-            if any(signal in combined_text for signal in premium_signals):
+            if any(signal in review_text for signal in premium_signals):
                 score += 0.08
 
         score += min(row["num_reviews"] / 10000.0, 0.05)
