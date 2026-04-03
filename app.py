@@ -305,7 +305,7 @@ st.markdown("""
         font-weight: 400 !important;
     }
 
-    #MainMenu, footer, header { visibility: hidden; }
+    #MainMenu, footer { visibility: hidden; }
     [data-testid="stToolbar"] { display: none; }
 
 </style>
