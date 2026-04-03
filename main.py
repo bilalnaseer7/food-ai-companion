@@ -13,6 +13,20 @@ def write_section_header(f, title: str) -> None:
     f.write(f"{line}\n{title}\n{line}\n\n")
 
 
+def write_retrieved_restaurants(f, retrieved: list) -> None:
+    for rank, row in enumerate(retrieved, start=1):
+        f.write(
+            f"{rank}. {row['title']} | "
+            f"Category: {row['category']} | "
+            f"Popular food: {row['popular_food']} | "
+            f"Online order: {row['online_order']} | "
+            f"Reviews: {row['num_reviews']} | "
+            f"Score: {row['retrieval_score']}\n"
+        )
+        f.write(f"   Review snippets: {row['review_snippets'][:350]}\n")
+    f.write("\n")
+
+
 def main():
     load_dotenv()
 
@@ -21,23 +35,48 @@ def main():
 
     client = OpenAI()
 
-    # Adjust max_rows depending on speed/cost
-    df = load_reviews(path="data/restaurants.csv", max_rows=3000)
+    # Keep this moderate for faster testing and lower API cost.
+    # You can increase later if needed.
+    df = load_reviews(path="data/restaurants.csv", max_rows=1500)
 
-    queries = [
-        "I want cheap Italian food in NYC with good pasta and online ordering.",
-        "I am looking for a casual Korean restaurant in NYC with generous portions.",
-        "Find me a date-night Japanese restaurant in NYC that is not too expensive.",
+    query_profiles = [
+        {
+            "query": "I want cheap Italian food in NYC with good pasta and online ordering.",
+            "profile": {
+                "preferred_cuisines": ["Italian", "Pizza"],
+                "liked_foods": ["pasta", "pizza"],
+                "disliked_foods": ["seafood"],
+                "budget": "cheap",
+                "online_order": "Yes",
+                "occasion": "casual dinner",
+                "city": "New York City",
+            },
+        },
+        {
+            "query": "I am looking for a casual Korean restaurant in NYC with generous portions.",
+            "profile": {
+                "preferred_cuisines": ["Korean"],
+                "liked_foods": ["bbq", "noodles", "rice"],
+                "disliked_foods": ["seafood"],
+                "budget": "moderate",
+                "online_order": "No",
+                "occasion": "casual dinner",
+                "city": "New York City",
+            },
+        },
+        {
+            "query": "Find me a date-night Japanese restaurant in NYC that is not too expensive.",
+            "profile": {
+                "preferred_cuisines": ["Japanese"],
+                "liked_foods": ["sushi", "ramen"],
+                "disliked_foods": ["pizza"],
+                "budget": "moderate",
+                "online_order": "No",
+                "occasion": "date night",
+                "city": "New York City",
+            },
+        },
     ]
-
-    default_profile = {
-        "preferred_cuisines": ["Italian", "Pizza"],
-        "liked_foods": ["pasta", "pizza"],
-        "disliked_foods": ["seafood"],
-        "budget": "cheap",
-        "online_order": "Yes",
-        "occasion": "casual dinner",
-    }
 
     profile_a = {
         "preferred_cuisines": ["Italian", "Pizza"],
@@ -46,6 +85,7 @@ def main():
         "budget": "cheap",
         "online_order": "Yes",
         "occasion": "casual dinner",
+        "city": "New York City",
     }
 
     profile_b = {
@@ -55,6 +95,7 @@ def main():
         "budget": "moderate",
         "online_order": "No",
         "occasion": "date night",
+        "city": "New York City",
     }
 
     os.makedirs("results", exist_ok=True)
@@ -64,16 +105,20 @@ def main():
         write_section_header(f, "MILESTONE 2 OUTPUTS")
 
         f.write("Dataset summary:\n")
-        f.write(f"- Number of review rows loaded: {len(df)}\n")
-        f.write("- Pipeline settings: baseline LLM vs taste-profile LLM vs taste-profile + RAG\n\n")
+        f.write(f"- Number of restaurant-level records loaded: {len(df)}\n")
+        f.write("- Pipeline settings: baseline LLM vs taste-profile LLM vs taste-profile + RAG\n")
+        f.write("- Retrieval: embedding-based semantic search + hybrid reranking\n\n")
 
-        # Main comparison across 3 queries
-        for i, query in enumerate(queries, start=1):
+        # Main comparison across multiple queries
+        for i, item in enumerate(query_profiles, start=1):
+            query = item["query"]
+            profile = item["profile"]
+
             write_section_header(f, f"QUERY {i}: {query}")
 
             baseline_output = baseline_recommend(client, query)
-            profile_output = profile_recommend(client, query, default_profile)
-            rag_output, retrieved = rag_recommend(client, query, default_profile, df, top_k=5)
+            profile_output = profile_recommend(client, query, profile)
+            rag_output, retrieved = rag_recommend(client, query, profile, df, top_k=5)
 
             f.write("=== BASELINE LLM ===\n")
             f.write(baseline_output + "\n\n")
@@ -85,17 +130,7 @@ def main():
             f.write(rag_output + "\n\n")
 
             f.write("=== RETRIEVED RESTAURANTS ===\n")
-            for rank, row in enumerate(retrieved, start=1):
-                f.write(
-                    f"{rank}. {row['title']} | "
-                    f"Category: {row['category']} | "
-                    f"Popular food: {row['popular_food']} | "
-                    f"Online order: {row['online_order']} | "
-                    f"Reviews: {row['num_reviews']} | "
-                    f"Score: {row['retrieval_score']}\n"
-                )
-                f.write(f"   Review excerpt: {row['review_text'][:250]}\n")
-            f.write("\n")
+            write_retrieved_restaurants(f, retrieved)
 
         # Taste profile comparison with same query
         comparison_query = "I want something good for dinner in NYC."
@@ -107,39 +142,22 @@ def main():
         f.write("=== PROFILE A ===\n")
         f.write(str(profile_a) + "\n\n")
         f.write(rag_a + "\n\n")
-
         f.write("Retrieved restaurants for Profile A:\n")
-        for rank, row in enumerate(retrieved_a, start=1):
-            f.write(
-                f"{rank}. {row['title']} | "
-                f"Category: {row['category']} | "
-                f"Popular food: {row['popular_food']} | "
-                f"Score: {row['retrieval_score']}\n"
-            )
-        f.write("\n")
+        write_retrieved_restaurants(f, retrieved_a)
 
         f.write("=== PROFILE B ===\n")
         f.write(str(profile_b) + "\n\n")
         f.write(rag_b + "\n\n")
-
         f.write("Retrieved restaurants for Profile B:\n")
-        for rank, row in enumerate(retrieved_b, start=1):
-            f.write(
-                f"{rank}. {row['title']} | "
-                f"Category: {row['category']} | "
-                f"Popular food: {row['popular_food']} | "
-                f"Score: {row['retrieval_score']}\n"
-            )
-        f.write("\n")
+        write_retrieved_restaurants(f, retrieved_b)
 
-        # Short interpretation note for professor check-in
         write_section_header(f, "SHORT PROGRESS NOTES")
         f.write(
             "- We implemented an end-to-end Eat Out mode.\n"
             "- The system supports three settings: baseline LLM, taste-profile LLM, and taste-profile + RAG.\n"
             "- Retrieval is embedding-based using OpenAI embeddings and cosine similarity.\n"
-            "- A lightweight personalization reranking layer adjusts retrieval using cuisine, liked/disliked foods, budget, and ordering preferences.\n"
-            "- The current milestone focuses on one proposal mode (Eat Out) before expanding to Cook at Home and Drink modes.\n"
+            "- A lightweight reranking layer adjusts retrieval using cuisine, liked/disliked foods, budget, and ordering preferences.\n"
+            "- This milestone focuses on one proposal mode (Eat Out) before expanding to Cook at Home and Drink modes.\n"
         )
 
     print(f"Saved outputs to {output_path}")
