@@ -472,11 +472,10 @@ def render_restaurant_card(r, source="fsq", idx=0, blurb=""):
 
     blurb_html = f'<div class="restaurant-blurb">{blurb}</div>' if blurb else ""
 
-    st.markdown(
-        f'<div class="{card_class}"><div class="restaurant-name">{name}</div>'
-        f'<div class="restaurant-meta">{meta_str}</div>{blurb_html}</div>',
-        unsafe_allow_html=True
-    )
+    st.markdown(f'<div class="{card_class}"><div class="restaurant-name">{name}</div><div class="restaurant-meta">{meta_str}</div></div>', unsafe_allow_html=True)
+
+    if blurb:
+        st.markdown(f'<div class="restaurant-blurb">{blurb}</div>', unsafe_allow_html=True)
 
     if not already_accepted and not already_rejected:
         col1, col2, _ = st.columns([1, 1, 4])
@@ -536,8 +535,7 @@ def render_eat_out_tab(client, df):
     if st.session_state.eat_llm_response:
         fsq_count = len(st.session_state.eat_fsq_results or [])
         csv_count = len(st.session_state.eat_results or [])
-        st.caption(f"📊 {csv_count} from dataset · 📍 {fsq_count} live from Places")
-        st.markdown(f'<div class="llm-response">{st.session_state.eat_llm_response}</div>', unsafe_allow_html=True)
+        st.caption(f"Considered 📊 {csv_count} from dataset · 📍 {fsq_count} live from Places")
         st.markdown('<div class="section-label">Results</div>', unsafe_allow_html=True)
         for i, r in enumerate(st.session_state.eat_fsq_results or []):
             render_restaurant_card(r, source="fsq", idx=i)
