@@ -53,6 +53,16 @@ def search_restaurants(
         "languageCode": "en",
     }
 
+    if borough == "New York, NY":
+        body["locationBias"] = {
+            "circle": {
+                "center": {"latitude": 40.7128, "longitude": -74.0060},
+                "radius": 20000.0
+            }
+        }
+    else:
+        body["textQuery"] = f"{query} restaurant near {borough} New York"
+
     if open_now:
         body["openNow"] = True
 
