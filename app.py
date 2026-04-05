@@ -482,10 +482,7 @@ def render_restaurant_card(r, source="fsq", idx=0, blurb=""):
 
     blurb_html = f'<div class="restaurant-blurb">{blurb}</div>' if blurb else ""
 
-    st.markdown(f'<div class="{card_class}"><div class="restaurant-name">{name}</div><div class="restaurant-meta">{meta_str}</div></div>', unsafe_allow_html=True)
-
-    if blurb:
-        st.markdown(f'<div class="restaurant-blurb">{blurb}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="{card_class}"><div class="restaurant-name">{name}</div><div class="restaurant-meta">{meta_str}</div>{blurb_html}</div>', unsafe_allow_html=True)
 
     if not already_accepted and not already_rejected:
         col1, col2, _ = st.columns([1, 1, 4])
