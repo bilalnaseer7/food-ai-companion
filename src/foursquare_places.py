@@ -25,11 +25,10 @@ PRICE_SENSITIVITY_MAP = {
     "premium":  3,
 }
 
-
 def _headers() -> dict:
     return {
-        "Authorization": FSQ_API_KEY,
-        "Accept":        "application/json",
+        "Authorization": f"Bearer {FSQ_API_KEY}",
+        "Accept": "application/json",
     }
 
 
