@@ -187,21 +187,22 @@ def recommend_cocktail(vibe: str, profile: dict) -> str:
 
     return _chat(OpenAI(), system_prompt, user_prompt)
 
-def combined_recommend(client: OpenAI, query: str, user_profile: dict, csv_results: list, fsq_results: list) -> str:
+def combined_recommend(client: OpenAI, query: str, user_profile: dict, csv_results: list, fsq_results: list) -> tuple[str, list]:
     csv_block = "\n".join([
         f"- {r['title']} | {r['category']} | Popular: {r['popular_food']}"
         for r in csv_results
     ])
 
     fsq_block = "\n".join([
-        f"- {r['name']} | {', '.join(r.get('categories', [])[:2])} | Rating: {r.get('rating', 'N/A')}/10"
-        for r in fsq_results
+        f"[{i}] {r['name']} | {', '.join(r.get('categories', [])[:2])} | "
+        f"Rating: {r.get('rating', 'N/A')}/5 | {r.get('address', '')}"
+        for i, r in enumerate(fsq_results)
     ]) if fsq_results else "No live results available."
 
     system_prompt = (
         "You are a restaurant recommendation assistant for New York City. "
         "You have two sources of restaurant data: a curated dataset and live Google Places results. "
-        "Use both sources together to give the best recommendations. "
+        "Use both sources together with the user's taste profile to select the best 5 restaurants. "
         "Do not invent restaurants outside the provided lists."
     )
 
@@ -209,11 +210,26 @@ def combined_recommend(client: OpenAI, query: str, user_profile: dict, csv_resul
         f"User request: {query}\n\n"
         f"User taste profile:\n{_profile_to_text(user_profile)}\n\n"
         f"Curated dataset results:\n{csv_block}\n\n"
-        f"Live Places results:\n{fsq_block}\n\n"
-        "Pick the best 3-5 restaurants across both sources. "
-        "For each, give the name, why it fits the request, and why it fits the taste profile. "
-        "End with one sentence summarizing the best overall pick."
+        f"Live Google Places results (indexed):\n{fsq_block}\n\n"
+        "Select the best 5 restaurants from the live results above that best match the request and taste profile. "
+        "Return your answer in two parts:\n"
+        "1. A JSON array of the indices of your top 5 picks from the live results, in order of preference. "
+        "Format: SELECTED_INDICES: [0, 2, 4, 5, 7]\n"
+        "2. For each selected restaurant, explain why it matches the request and taste profile in 1-2 sentences.\n"
+        "End with one sentence naming the single best overall pick and why."
     )
 
-    return _chat(client, system_prompt, user_prompt)
- 
+    answer = _chat(client, system_prompt, user_prompt)
+
+    selected = fsq_results
+    try:
+        import re
+        match = re.search(r'SELECTED_INDICES:\s*\[([0-9,\s]+)\]', answer)
+        if match:
+            indices = [int(x.strip()) for x in match.group(1).split(',')]
+            selected = [fsq_results[i] for i in indices if i < len(fsq_results)][:5]
+            answer = re.sub(r'SELECTED_INDICES:\s*\[[0-9,\s]+\]', '', answer).strip()
+    except Exception:
+        selected = fsq_results[:5]
+
+    return answer, selected
