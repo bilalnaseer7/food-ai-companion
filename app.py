@@ -489,7 +489,6 @@ def render_restaurant_card(r, source="fsq", idx=0):
     else:
         st.markdown('<span style="color:#eb123f;font-size:0.8rem">✗ Passed</span>', unsafe_allow_html=True)
 
-
 def render_eat_out_tab(client, df):
     st.markdown('<div class="section-label">Eat Out / Order In</div>', unsafe_allow_html=True)
 
@@ -505,34 +504,27 @@ def render_eat_out_tab(client, df):
             return
 
         with st.spinner("Searching..."):
-            rag_response, retrieved = rag_recommend(client, query, st.session_state.profile, df, top_k=5)
+            _, retrieved = rag_recommend(client, query, st.session_state.profile, df, top_k=5)
             st.session_state.eat_results = retrieved
-            st.session_state.eat_llm_response = rag_response
 
             try:
                 borough = zipcode if zipcode else "New York, NY"
-                fsq_response, fsq_restaurants = foursquare_recommend(client, query, st.session_state.profile, borough=borough)
+                _, fsq_restaurants = foursquare_recommend(client, query, st.session_state.profile, borough=borough)
                 st.session_state.eat_fsq_results = fsq_restaurants
-                st.session_state.eat_fsq_response = fsq_response
-            except Exception as e:
+            except Exception:
                 st.session_state.eat_fsq_results = []
-                st.session_state.eat_fsq_response = f"Foursquare unavailable: {e}"
+
+            from src.recommend import combined_recommend
+            response = combined_recommend(client, query, st.session_state.profile, retrieved, st.session_state.eat_fsq_results or [])
+            st.session_state.eat_llm_response = response
 
     if st.session_state.eat_llm_response:
-        tab_csv, tab_fsq = st.tabs(["📊 From Dataset", "📍 Live NYC (Foursquare)"])
-
-        with tab_csv:
-            st.markdown(f'<div class="llm-response">{st.session_state.eat_llm_response}</div>', unsafe_allow_html=True)
-            st.markdown('<div class="section-label">Retrieved Results</div>', unsafe_allow_html=True)
-            for i, r in enumerate(st.session_state.eat_results or []):
-                render_restaurant_card(r, source="csv", idx=i)
-
-        with tab_fsq:
-            if st.session_state.eat_fsq_response:
-                st.markdown(f'<div class="llm-response">{st.session_state.eat_fsq_response}</div>', unsafe_allow_html=True)
-            st.markdown('<div class="section-label">Live Results</div>', unsafe_allow_html=True)
-            for i, r in enumerate(st.session_state.eat_fsq_results or []):
-                render_restaurant_card(r, source="fsq", idx=i)
+        st.markdown(f'<div class="llm-response">{st.session_state.eat_llm_response}</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-label">Results</div>', unsafe_allow_html=True)
+        for i, r in enumerate(st.session_state.eat_results or []):
+            render_restaurant_card(r, source="csv", idx=i)
+        for i, r in enumerate(st.session_state.eat_fsq_results or []):
+            render_restaurant_card(r, source="fsq", idx=i)
 
 
 def render_cook_tab(client):
