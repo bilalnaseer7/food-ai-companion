@@ -492,12 +492,6 @@ def render_restaurant_card(r, source="fsq", idx=0):
 def render_eat_out_tab(client, df):
     st.markdown('<div class="section-label">Eat Out / Order In</div>', unsafe_allow_html=True)
 
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        query = st.text_input("What are you craving?", placeholder="e.g. cozy ramen, cheap tacos, date night Italian", key="eat_query")
-    with col2:
-        zipcode = st.text_input("Zip Code", placeholder="10001", key="eat_zipcode")
-
     if st.button("Find Restaurants", key="eat_search"):
         if not query:
             st.warning("Enter a craving first.")
@@ -518,6 +512,32 @@ def render_eat_out_tab(client, df):
             from src.recommend import combined_recommend
             response = combined_recommend(client, query, st.session_state.profile, retrieved, st.session_state.eat_fsq_results or [])
             st.session_state.eat_llm_response = response
+
+    with st.form(key="eat_form", enter_to_submit=True):
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            query = st.text_input("What are you craving?", placeholder="e.g. cozy ramen, cheap tacos, date night Italian")
+        with col2:
+            zipcode = st.text_input("Zip Code", placeholder="10001")
+        run_search = st.form_submit_button("Find Restaurants")
+    
+    if run_search:
+        if not query:
+            st.warning("Enter a craving first.")
+        else:
+            with st.spinner("Searching..."):
+                _, retrieved = rag_recommend(client, query, st.session_state.profile, df, top_k=5)
+                st.session_state.eat_results = retrieved
+                try:
+                    borough = zipcode if zipcode else "New York, NY"
+                    _, fsq_restaurants = foursquare_recommend(client, query, st.session_state.profile, borough=borough)
+                    st.session_state.eat_fsq_results = fsq_restaurants
+                except Exception as e:
+                    st.session_state.eat_fsq_results = []
+                    st.error(f"Foursquare error: {e}")
+                from src.recommend import combined_recommend
+                response = combined_recommend(client, query, st.session_state.profile, retrieved, st.session_state.eat_fsq_results or [])
+                st.session_state.eat_llm_response = response
 
     if st.session_state.eat_llm_response:
         fsq_count = len(st.session_state.eat_fsq_results or [])
