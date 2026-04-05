@@ -111,8 +111,8 @@ def rag_recommend(client: OpenAI, query: str, user_profile: dict, df, top_k: int
     answer = _chat(client, system_prompt, user_prompt)
     return answer, retrieved
 
-def foursquare_recommend(client: OpenAI, query: str, user_profile: dict, borough: str = "manhattan") -> tuple[str, list]:
-    from src.foursquare_places import search_restaurants, format_for_prompt, price_sensitivity_to_tier
+def map_recommend(client: OpenAI, query: str, user_profile: dict, borough: str = "manhattan") -> tuple[str, list]:
+    from src.places import search_restaurants, format_for_prompt, price_sensitivity_to_tier
  
     price_tier = price_sensitivity_to_tier(user_profile.get("budget", "moderate"))
     restaurants = search_restaurants(
@@ -200,7 +200,7 @@ def combined_recommend(client: OpenAI, query: str, user_profile: dict, csv_resul
 
     system_prompt = (
         "You are a restaurant recommendation assistant for New York City. "
-        "You have two sources of restaurant data: a curated dataset and live Foursquare results. "
+        "You have two sources of restaurant data: a curated dataset and live Google Places results. "
         "Use both sources together to give the best recommendations. "
         "Do not invent restaurants outside the provided lists."
     )
@@ -209,7 +209,7 @@ def combined_recommend(client: OpenAI, query: str, user_profile: dict, csv_resul
         f"User request: {query}\n\n"
         f"User taste profile:\n{_profile_to_text(user_profile)}\n\n"
         f"Curated dataset results:\n{csv_block}\n\n"
-        f"Live Foursquare results:\n{fsq_block}\n\n"
+        f"Live Places results:\n{fsq_block}\n\n"
         "Pick the best 3-5 restaurants across both sources. "
         "For each, give the name, why it fits the request, and why it fits the taste profile. "
         "End with one sentence summarizing the best overall pick."
