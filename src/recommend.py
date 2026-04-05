@@ -211,10 +211,11 @@ def combined_recommend(client: OpenAI, query: str, user_profile: dict, csv_resul
         f"User taste profile:\n{_profile_to_text(user_profile)}\n\n"
         f"Curated dataset results:\n{csv_block}\n\n"
         f"Live Google Places results:\n{fsq_block}\n\n"
-        "Pick the best 5 restaurants from the live Google Places results above. "
-        "For each, explain in 1-2 sentences why it matches the request and taste profile. "
-        "End with one sentence naming the single best overall pick and why. "
-        "Use the exact restaurant names as they appear in the list above."
+        "Pick the best 5 restaurants from the live Google Places results. "
+        "For each, write exactly in this format:\n"
+        "RESTAURANT: <exact name>\nBLURB: <1-2 sentence explanation why it fits>\n\n"
+        "After all 5, add one sentence starting with BEST: naming the top pick and why. "
+        "Use exact restaurant names as they appear in the list."
     )
 
     answer = _chat(client, system_prompt, user_prompt)
