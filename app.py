@@ -461,7 +461,7 @@ def render_restaurant_card(r, source="fsq", idx=0):
 
     price_str = {1: "$", 2: "$$", 3: "$$$", 4: "$$$$"}.get(r.get("price"), "")
     rating = r.get("rating")
-    rating_str = f"{rating}/10" if rating else ""
+    rating_str = f"{rating} ⭐" if rating else ""
     cats = ", ".join(r.get("categories", [])[:2]) if r.get("categories") else r.get("category", "")
     name = r.get("name") or r.get("title", "")
     address = r.get("address", "")
