@@ -186,4 +186,34 @@ def recommend_cocktail(vibe: str, profile: dict) -> str:
     )
 
     return _chat(OpenAI(), system_prompt, user_prompt)
+
+def combined_recommend(client: OpenAI, query: str, user_profile: dict, csv_results: list, fsq_results: list) -> str:
+    csv_block = "\n".join([
+        f"- {r['title']} | {r['category']} | Popular: {r['popular_food']}"
+        for r in csv_results
+    ])
+
+    fsq_block = "\n".join([
+        f"- {r['name']} | {', '.join(r.get('categories', [])[:2])} | Rating: {r.get('rating', 'N/A')}/10"
+        for r in fsq_results
+    ]) if fsq_results else "No live results available."
+
+    system_prompt = (
+        "You are a restaurant recommendation assistant for New York City. "
+        "You have two sources of restaurant data: a curated dataset and live Foursquare results. "
+        "Use both sources together to give the best recommendations. "
+        "Do not invent restaurants outside the provided lists."
+    )
+
+    user_prompt = (
+        f"User request: {query}\n\n"
+        f"User taste profile:\n{_profile_to_text(user_profile)}\n\n"
+        f"Curated dataset results:\n{csv_block}\n\n"
+        f"Live Foursquare results:\n{fsq_block}\n\n"
+        "Pick the best 3-5 restaurants across both sources. "
+        "For each, give the name, why it fits the request, and why it fits the taste profile. "
+        "End with one sentence summarizing the best overall pick."
+    )
+
+    return _chat(client, system_prompt, user_prompt)
  
