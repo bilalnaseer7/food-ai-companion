@@ -47,7 +47,7 @@ def search_restaurants(
     limit: int = 8,
 ) -> list[dict]:
     body = {
-        "textQuery":    f"{query} restaurant in {borough}",
+        "textQuery":    f"{query} restaurant near {borough}",
         "pageSize":     min(limit, 20),
         "includedType": "restaurant",
         "languageCode": "en",
