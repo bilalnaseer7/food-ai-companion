@@ -492,27 +492,6 @@ def render_restaurant_card(r, source="fsq", idx=0):
 def render_eat_out_tab(client, df):
     st.markdown('<div class="section-label">Eat Out / Order In</div>', unsafe_allow_html=True)
 
-    if st.button("Find Restaurants", key="eat_search"):
-        if not query:
-            st.warning("Enter a craving first.")
-            return
-
-        with st.spinner("Searching..."):
-            _, retrieved = rag_recommend(client, query, st.session_state.profile, df, top_k=5)
-            st.session_state.eat_results = retrieved
-
-            try:
-                borough = zipcode if zipcode else "New York, NY"
-                _, fsq_restaurants = map_recommend(client, query, st.session_state.profile, borough=borough)
-                st.session_state.eat_fsq_results = fsq_restaurants
-            except Exception as e:
-                st.session_state.eat_fsq_results = []
-                st.error(f"Google Places error: {e}")
-
-            from src.recommend import combined_recommend
-            response = combined_recommend(client, query, st.session_state.profile, retrieved, st.session_state.eat_fsq_results or [])
-            st.session_state.eat_llm_response = response
-
     with st.form(key="eat_form", enter_to_submit=True):
         col1, col2 = st.columns([3, 1])
         with col1:
@@ -520,7 +499,7 @@ def render_eat_out_tab(client, df):
         with col2:
             zipcode = st.text_input("Zip Code", placeholder="10001")
         run_search = st.form_submit_button("Find Restaurants")
-    
+
     if run_search:
         if not query:
             st.warning("Enter a craving first.")
@@ -528,6 +507,7 @@ def render_eat_out_tab(client, df):
             with st.spinner("Searching..."):
                 _, retrieved = rag_recommend(client, query, st.session_state.profile, df, top_k=5)
                 st.session_state.eat_results = retrieved
+
                 try:
                     borough = zipcode if zipcode else "New York, NY"
                     _, fsq_restaurants = map_recommend(client, query, st.session_state.profile, borough=borough)
@@ -535,9 +515,15 @@ def render_eat_out_tab(client, df):
                 except Exception as e:
                     st.session_state.eat_fsq_results = []
                     st.error(f"Places error: {e}")
+
                 from src.recommend import combined_recommend
-                response = combined_recommend(client, query, st.session_state.profile, retrieved, st.session_state.eat_fsq_results or [])
+                response, selected = combined_recommend(
+                    client, query, st.session_state.profile,
+                    retrieved,
+                    st.session_state.eat_fsq_results or []
+                )
                 st.session_state.eat_llm_response = response
+                st.session_state.eat_fsq_results = selected
 
     if st.session_state.eat_llm_response:
         fsq_count = len(st.session_state.eat_fsq_results or [])
@@ -545,8 +531,6 @@ def render_eat_out_tab(client, df):
         st.caption(f"📊 {csv_count} from dataset · 📍 {fsq_count} live from Places")
         st.markdown(f'<div class="llm-response">{st.session_state.eat_llm_response}</div>', unsafe_allow_html=True)
         st.markdown('<div class="section-label">Results</div>', unsafe_allow_html=True)
-        for i, r in enumerate(st.session_state.eat_results or []):
-            render_restaurant_card(r, source="csv", idx=i)
         for i, r in enumerate(st.session_state.eat_fsq_results or []):
             render_restaurant_card(r, source="fsq", idx=i)
 
