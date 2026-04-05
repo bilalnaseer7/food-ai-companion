@@ -448,7 +448,7 @@ def handle_feedback(restaurant_name, accepted, cuisines=None, foods=None, key=No
         st.session_state.feedback_given.add(key)
 
 
-def render_restaurant_card(r, source="fsq", idx=0):
+def render_restaurant_card(r, source="fsq", idx=0, blurb=""):
     key = f"{source}_{r.get('name', idx)}_{idx}"
     already_accepted = r.get("name", "") in st.session_state.profile.get("accepted", [])
     already_rejected = r.get("name", "") in st.session_state.profile.get("rejected", [])
@@ -459,47 +459,43 @@ def render_restaurant_card(r, source="fsq", idx=0):
     elif already_rejected:
         card_class += " rejected"
 
-    price_str = {1: "$", 2: "$$", 3: "$$$", 4: "$$$$"}.get(r.get("price"), "")
-    rating = r.get("rating")
+    price_str  = PRICE_LABEL.get(r["price"], "")
     rating_str = f"{rating} ⭐" if rating else ""
-    cats = ", ".join(r.get("categories", [])[:2]) if r.get("categories") else r.get("category", "")
-    name = r.get("name") or r.get("title", "")
-    address = r.get("address", "")
+    open_str   = " · open now" if r["open_now"] else ""
+    cats       = ", ".join(r.get("categories", [])[:2]) if r.get("categories") else r.get("category", "")
+    name       = r.get("name") or r.get("title", "")
+    address    = r.get("address", "")
 
     meta_parts = [p for p in [cats, price_str, rating_str, address] if p]
-    meta_str = " · ".join(meta_parts)
+    meta_str   = " · ".join(meta_parts)
 
-    with st.container():
-        st.markdown(f'<div class="restaurant-name">{name}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="restaurant-meta">{meta_str}</div>', unsafe_allow_html=True)
+    blurb_html = f'<div class="restaurant-blurb">{blurb}</div>' if blurb else ""
+
+    st.markdown(
+        f'<div class="{card_class}"><div class="restaurant-name">{name}</div>'
+        f'<div class="restaurant-meta">{meta_str}</div>{blurb_html}</div>',
+        unsafe_allow_html=True
+    )
 
     if not already_accepted and not already_rejected:
         col1, col2, _ = st.columns([1, 1, 4])
         with col1:
             st.markdown('<div class="accept-btn">', unsafe_allow_html=True)
             if st.button("✓ Accept", key=f"accept_{key}"):
-                handle_feedback(
-                    name, accepted=True,
-                    cuisines=[cats.split(",")[0].strip()] if cats else None,
-                    key=f"fb_{key}"
-                )
+                handle_feedback(name, accepted=True, cuisines=[cats.split(",")[0].strip()] if cats else None, key=f"fb_{key}")
                 st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
         with col2:
             st.markdown('<div class="reject-btn">', unsafe_allow_html=True)
             if st.button("✗ Pass", key=f"reject_{key}"):
-                handle_feedback(
-                    name, accepted=False,
-                    cuisines=[cats.split(",")[0].strip()] if cats else None,
-                    key=f"fb_{key}"
-                )
+                handle_feedback(name, accepted=False, cuisines=[cats.split(",")[0].strip()] if cats else None, key=f"fb_{key}")
                 st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
     elif already_accepted:
         st.markdown('<span style="color:#00c851;font-size:0.8rem">✓ Accepted</span>', unsafe_allow_html=True)
     else:
         st.markdown('<span style="color:#eb123f;font-size:0.8rem">✗ Passed</span>', unsafe_allow_html=True)
-
+        
 def render_eat_out_tab(client, df):
     st.markdown('<div class="section-label">Eat Out / Order In</div>', unsafe_allow_html=True)
 
