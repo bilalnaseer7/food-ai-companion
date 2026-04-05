@@ -503,11 +503,11 @@ def render_eat_out_tab(client, df):
 
             try:
                 borough = zipcode if zipcode else "New York, NY"
-                _, fsq_restaurants = foursquare_recommend(client, query, st.session_state.profile, borough=borough)
+                _, fsq_restaurants = map_recommend(client, query, st.session_state.profile, borough=borough)
                 st.session_state.eat_fsq_results = fsq_restaurants
             except Exception as e:
                 st.session_state.eat_fsq_results = []
-                st.error(f"Foursquare error: {e}")
+                st.error(f"Google Places error: {e}")
 
             from src.recommend import combined_recommend
             response = combined_recommend(client, query, st.session_state.profile, retrieved, st.session_state.eat_fsq_results or [])
@@ -530,11 +530,11 @@ def render_eat_out_tab(client, df):
                 st.session_state.eat_results = retrieved
                 try:
                     borough = zipcode if zipcode else "New York, NY"
-                    _, fsq_restaurants = foursquare_recommend(client, query, st.session_state.profile, borough=borough)
+                    _, fsq_restaurants = map_recommend(client, query, st.session_state.profile, borough=borough)
                     st.session_state.eat_fsq_results = fsq_restaurants
                 except Exception as e:
                     st.session_state.eat_fsq_results = []
-                    st.error(f"Foursquare error: {e}")
+                    st.error(f"Places error: {e}")
                 from src.recommend import combined_recommend
                 response = combined_recommend(client, query, st.session_state.profile, retrieved, st.session_state.eat_fsq_results or [])
                 st.session_state.eat_llm_response = response
@@ -542,7 +542,7 @@ def render_eat_out_tab(client, df):
     if st.session_state.eat_llm_response:
         fsq_count = len(st.session_state.eat_fsq_results or [])
         csv_count = len(st.session_state.eat_results or [])
-        st.caption(f"📊 {csv_count} from dataset · 📍 {fsq_count} live from Foursquare")
+        st.caption(f"📊 {csv_count} from dataset · 📍 {fsq_count} live from Places")
         st.markdown(f'<div class="llm-response">{st.session_state.eat_llm_response}</div>', unsafe_allow_html=True)
         st.markdown('<div class="section-label">Results</div>', unsafe_allow_html=True)
         for i, r in enumerate(st.session_state.eat_results or []):
