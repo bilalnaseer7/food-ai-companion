@@ -1,5 +1,6 @@
 from openai import OpenAI
 from src.retrieval import retrieve_restaurants
+import re
 
 
 CHAT_MODEL = "gpt-4o-mini"
@@ -219,17 +220,27 @@ def combined_recommend(client: OpenAI, query: str, user_profile: dict, csv_resul
     )
 
     answer = _chat(client, system_prompt, user_prompt)
-
+    
+    blurbs = {}
+    for match in re.finditer(r'RESTAURANT:\s*(.+?)\nBLURB:\s*(.+?)(?=\nRESTAURANT:|\nBEST:|$)', answer, re.DOTALL):
+        name = match.group(1).strip()
+        blurb = match.group(2).strip()
+        blurbs[name] = blurb
+    
+    best_match = re.search(r'BEST:\s*(.+)', answer)
+    best_line = best_match.group(1).strip() if best_match else ""
+    
     selected = []
     seen = set()
     for r in fsq_results:
-        if r["name"] in answer and r["name"] not in seen:
+        if r["name"] in blurbs and r["name"] not in seen:
+            r["blurb"] = blurbs[r["name"]]
             selected.append(r)
             seen.add(r["name"])
         if len(selected) == 5:
             break
-
+    
     if not selected:
         selected = fsq_results[:5]
-
-    return answer, selected
+    
+    return best_line, selected
