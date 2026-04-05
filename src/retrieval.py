@@ -32,9 +32,11 @@ def _build_retrieval_query(query: str, user_profile: dict) -> str:
         f"Occasion: {occasion}."
     )
 
+
 def _dataset_signature(df) -> str:
     joined = "||".join(df["combined_text"].astype(str).tolist())
     return hashlib.md5(joined.encode("utf-8")).hexdigest()
+
 
 def build_or_load_embeddings(
     df,
@@ -109,6 +111,7 @@ def retrieve_restaurants(
     for idx, base_score in enumerate(cosine_scores):
         row = df.iloc[idx]
         score = float(base_score)
+        combined_text = row["combined_text"].lower()
 
         category = row["category"].lower()
         review_text = row["review_text"].lower()
