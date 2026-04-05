@@ -535,7 +535,7 @@ def render_eat_out_tab(client, df):
     if st.session_state.eat_llm_response:
         fsq_count = len(st.session_state.eat_fsq_results or [])
         csv_count = len(st.session_state.eat_results or [])
-        st.caption(f"Considered 📊 {csv_count} from dataset · 📍 {fsq_count} live from Places")
+        st.caption(f"📊 {csv_count} from dataset · 📍 {fsq_count} live from Places")
         st.markdown('<div class="section-label">Results</div>', unsafe_allow_html=True)
         for i, r in enumerate(st.session_state.eat_fsq_results or []):
             render_restaurant_card(r, source="fsq", idx=i)
