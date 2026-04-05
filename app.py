@@ -497,7 +497,7 @@ def render_eat_out_tab(client, df):
         with col1:
             query = st.text_input("What are you craving?", placeholder="e.g. cozy ramen, cheap tacos, date night Italian")
         with col2:
-            zipcode = st.text_input("Zip Code", placeholder="10001")
+            zipcode = st.text_input("Zip Code", placeholder="Searching All NYC")
         run_search = st.form_submit_button("Find Restaurants")
 
     if run_search:
