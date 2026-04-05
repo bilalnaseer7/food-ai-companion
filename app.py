@@ -548,7 +548,7 @@ def render_eat_out_tab(client, df):
         st.caption(f"📊 {csv_count} from dataset · 📍 {fsq_count} live from Places")
         st.markdown('<div class="results-label">Results</div>', unsafe_allow_html=True)
         for i, r in enumerate(st.session_state.eat_fsq_results or []):
-            render_restaurant_card(r, source="fsq", idx=i)
+            render_restaurant_card(r, source="fsq", idx=i, blurb=r.get("blurb", ""))
 
 
 def render_cook_tab(client):
