@@ -66,7 +66,7 @@ def search_restaurants(
     if price is not None:
         params["price"] = str(price)
 
-    response = requests.get(FSQ_SEARCH_URL, headers=_headers(), params=params, timeout=10)
+    response = requests.get(FSQ_SEARCH_URL, headers=_headers(), params=params, timeout=30)
     response.raise_for_status()
 
     results = response.json().get("results", [])
@@ -83,7 +83,7 @@ def get_tips(fsq_id: str, limit: int = 2) -> list[str]:
     params = {"limit": limit, "fields": "text,agree_count"}
 
     try:
-        response = requests.get(url, headers=_headers(), params=params, timeout=10)
+        response = requests.get(url, headers=_headers(), params=params, timeout=30)
         if response.status_code != 200:
             return []
         tips = response.json()
