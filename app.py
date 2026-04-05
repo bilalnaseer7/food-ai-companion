@@ -207,6 +207,16 @@ st.markdown("""
         color: var(--white-dim);
         margin-bottom: 0.4rem;
     }
+    
+    .results-label {
+        font-size: 0.9rem;
+        font-weight: 600;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--white-dim);
+        margin-bottom: 1rem;
+        margin-top: 0.5rem;
+    }
 
     .restaurant-tip {
         font-size: 0.82rem;
@@ -536,7 +546,7 @@ def render_eat_out_tab(client, df):
         fsq_count = len(st.session_state.eat_fsq_results or [])
         csv_count = len(st.session_state.eat_results or [])
         st.caption(f"📊 {csv_count} from dataset · 📍 {fsq_count} live from Places")
-        st.markdown('<div class="section-label">Results</div>', unsafe_allow_html=True)
+        st.markdown('<div class="results-label">Results</div>', unsafe_allow_html=True)
         for i, r in enumerate(st.session_state.eat_fsq_results or []):
             render_restaurant_card(r, source="fsq", idx=i)
 
