@@ -194,43 +194,41 @@ def combined_recommend(client: OpenAI, query: str, user_profile: dict, csv_resul
     ])
 
     fsq_block = "\n".join([
-        f"[{i}] {r['name']} | {', '.join(r.get('categories', [])[:2])} | "
+        f"- {r['name']} | {', '.join(r.get('categories', [])[:2])} | "
         f"Rating: {r.get('rating', 'N/A')}/5 | {r.get('address', '')}"
-        for i, r in enumerate(fsq_results)
+        for r in fsq_results
     ]) if fsq_results else "No live results available."
 
     system_prompt = (
         "You are a restaurant recommendation assistant for New York City. "
         "You have two sources of restaurant data: a curated dataset and live Google Places results. "
-        "Use both sources together with the user's taste profile to select the best 5 restaurants. "
-        "Do not invent restaurants outside the provided lists."
+        "Use both sources together with the user's taste profile to select and rank the best 5 restaurants. "
+        "Only recommend restaurants from the provided lists. Do not invent any."
     )
 
     user_prompt = (
         f"User request: {query}\n\n"
         f"User taste profile:\n{_profile_to_text(user_profile)}\n\n"
         f"Curated dataset results:\n{csv_block}\n\n"
-        f"Live Google Places results (indexed):\n{fsq_block}\n\n"
-        "Select the best 5 restaurants from the live results above that best match the request and taste profile. "
-        "Return your answer in two parts:\n"
-        "1. A JSON array of the indices of your top 5 picks from the live results, in order of preference. "
-        "Format: SELECTED_INDICES: [0, 2, 4, 5, 7]\n"
-        "2. For each selected restaurant, explain why it matches the request and taste profile in 1-2 sentences.\n"
-        "End with one sentence naming the single best overall pick and why."
+        f"Live Google Places results:\n{fsq_block}\n\n"
+        "Pick the best 5 restaurants from the live Google Places results above. "
+        "For each, explain in 1-2 sentences why it matches the request and taste profile. "
+        "End with one sentence naming the single best overall pick and why. "
+        "Use the exact restaurant names as they appear in the list above."
     )
 
     answer = _chat(client, system_prompt, user_prompt)
 
-    selected = fsq_results
-    try:
-        import re
-        match = re.search(r'SELECTED_INDICES:\s*\[([0-9,\s]+)\]', answer)
-        if match:
-            indices = [int(x.strip()) for x in match.group(1).split(',')]
-            selected = [fsq_results[i] for i in indices if i < len(fsq_results)][:5]
-            answer = re.sub(r'SELECTED_INDICES:\s*\[[0-9,\s]+\]', '', answer).strip()
-        answer = re.sub(r'```[\w]*\n?', '', answer).strip()
-    except Exception:
+    selected = []
+    seen = set()
+    for r in fsq_results:
+        if r["name"] in answer and r["name"] not in seen:
+            selected.append(r)
+            seen.add(r["name"])
+        if len(selected) == 5:
+            break
+
+    if not selected:
         selected = fsq_results[:5]
 
     return answer, selected
