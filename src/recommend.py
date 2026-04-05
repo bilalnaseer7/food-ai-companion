@@ -229,6 +229,7 @@ def combined_recommend(client: OpenAI, query: str, user_profile: dict, csv_resul
             indices = [int(x.strip()) for x in match.group(1).split(',')]
             selected = [fsq_results[i] for i in indices if i < len(fsq_results)][:5]
             answer = re.sub(r'SELECTED_INDICES:\s*\[[0-9,\s]+\]', '', answer).strip()
+        answer = re.sub(r'```[\w]*\n?', '', answer).strip()
     except Exception:
         selected = fsq_results[:5]
 
