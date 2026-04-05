@@ -29,16 +29,15 @@ SEARCH_FIELD_MASK = ",".join([
 
 REVIEW_FIELD_MASK = "reviews,rating"
 
-
 def _api_key() -> str:
-    if not GOOGLE_API_KEY:
+    key = os.getenv("GOOGLE_PLACES_API_KEY")
+    if not key:
         raise EnvironmentError(
             "GOOGLE_PLACES_API_KEY not set. "
             "Enable billing at https://console.cloud.google.com and get a key."
         )
-    return GOOGLE_API_KEY
-
-
+    return key
+    
 def search_restaurants(
     query: str,
     borough: str = "New York, NY",
