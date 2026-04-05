@@ -213,34 +213,46 @@ def combined_recommend(client: OpenAI, query: str, user_profile: dict, csv_resul
         f"Curated dataset results:\n{csv_block}\n\n"
         f"Live Google Places results:\n{fsq_block}\n\n"
         "Pick the best 5 restaurants from the live Google Places results. "
-        "For each, write exactly in this format:\n"
+        "For each, write exactly in this format with no numbering or extra text:\n"
         "RESTAURANT: <exact name>\nBLURB: <1-2 sentence explanation why it fits>\n\n"
         "After all 5, add one sentence starting with BEST: naming the top pick and why. "
-        "Use exact restaurant names as they appear in the list."
+        "Use exact restaurant names as they appear in the list. Do not number the entries."
     )
 
     answer = _chat(client, system_prompt, user_prompt)
-    
+
     blurbs = {}
-    for match in re.finditer(r'RESTAURANT:\s*(.+?)\nBLURB:\s*(.+?)(?=\nRESTAURANT:|\nBEST:|$)', answer, re.DOTALL):
-        name = match.group(1).strip()
+    for match in re.finditer(
+        r'RESTAURANT:\s*(.+?)\nBLURB:\s*(.+?)(?=\n\s*RESTAURANT:|\nBEST:|\Z)',
+        answer, re.DOTALL
+    ):
+        name = match.group(1).strip().lstrip('0123456789. ')
         blurb = match.group(2).strip()
         blurbs[name] = blurb
-    
+
     best_match = re.search(r'BEST:\s*(.+)', answer)
     best_line = best_match.group(1).strip() if best_match else ""
-    
+
+    def normalize(s):
+        return re.sub(r"[^a-z0-9]", "", s.lower())
+
+    normalized_blurbs = {normalize(k): v for k, v in blurbs.items()}
+
     selected = []
     seen = set()
     for r in fsq_results:
-        if r["name"] in blurbs and r["name"] not in seen:
-            r["blurb"] = blurbs[r["name"]]
+        norm = normalize(r["name"])
+        if norm in normalized_blurbs and norm not in seen:
+            r["blurb"] = normalized_blurbs[norm]
             selected.append(r)
-            seen.add(r["name"])
+            seen.add(norm)
         if len(selected) == 5:
             break
-    
+
     if not selected:
-        selected = fsq_results[:5]
-    
+        blurb_list = list(blurbs.values())
+        for i, r in enumerate(fsq_results[:5]):
+            r["blurb"] = blurb_list[i] if i < len(blurb_list) else ""
+            selected.append(r)
+
     return best_line, selected
