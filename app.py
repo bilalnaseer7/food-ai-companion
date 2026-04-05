@@ -252,6 +252,17 @@ st.markdown("""
         margin: 2px;
     }
 
+    .llm-response {
+        background: var(--light-blue-2);
+        border: 1px solid var(--light-blue-3);
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin: 1rem 0;
+        font-size: 0.9rem;
+        line-height: 1.6;
+        white-space: pre-wrap;
+    }
+
     .profile-tag.dislike {
         background: var(--accent-red-2);
         border-color: var(--accent-red-3);
