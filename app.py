@@ -5,7 +5,7 @@ from openai import OpenAI
 import html
 
 from src.data_loader import load_reviews
-from src.recommend import baseline_recommend, rag_recommend, foursquare_recommend
+from src.recommend import baseline_recommend, rag_recommend, map_recommend
 from src.taste_profile import load_profile, save_profile, update_profile, profile_summary
 
 load_dotenv()
