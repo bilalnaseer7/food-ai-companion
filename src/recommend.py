@@ -222,6 +222,7 @@ def combined_recommend(client: OpenAI, query: str, user_profile: dict, csv_resul
         "RESTAURANT: <exact name>\nBLURB: <1-2 sentence explanation why it fits>\n\n"
         "After all 5, add one sentence starting with BEST: naming the top pick and why. "
         "Use exact restaurant names as they appear in the list. Do not number the entries."
+        "Do not mention exact ratings in the blurbs as this information will be included separately. Focus only on atmosphere, food, and fit with the request."
     )
 
     answer = _chat(client, system_prompt, user_prompt)
