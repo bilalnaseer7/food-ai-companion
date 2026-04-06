@@ -1,5 +1,6 @@
 from openai import OpenAI
 from src.retrieval import retrieve_restaurants
+import re
 
 
 CHAT_MODEL = "gpt-4o-mini"
