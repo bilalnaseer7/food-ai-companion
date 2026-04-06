@@ -2,3 +2,5 @@ pandas
 numpy
 openai
 python-dotenv
+requests
+streamlit
