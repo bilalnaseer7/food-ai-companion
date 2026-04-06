@@ -179,7 +179,7 @@ The Milestone 2 pipeline evaluates multiple sample queries across four settings 
 
 - integrated Google Places API as a fourth pipeline mode with live NYC restaurant data
 - implemented `combined_recommend` which uses the LLM to select and rank the best results across static and live sources, with per-restaurant descriptions
-- built persistent taste profile system (`taste_profile.py`) with JSON persistence and incremental updates from user feedback
+- built persistent taste profile (`taste_profile.py`) with JSON persistence and incremental updates from user feedback
 - implemented `map_recommend`, `recommend_recipe`, and `recommend_cocktail` in `recommend.py`
 - built Streamlit application (`app.py`) containing the Eat Out Mode prototype and outline for Cook at Home and Cocktail modes
 ## Limitations
