@@ -115,3 +115,148 @@ def rag_recommend(client: OpenAI, query: str, user_profile: dict, df, top_k: int
 
     answer = _chat(client, system_prompt, user_prompt)
     return answer, retrieved
+
+def map_recommend(client: OpenAI, query: str, user_profile: dict, borough: str = "manhattan") -> tuple[str, list]:
+    from src.places import search_restaurants, format_for_prompt, price_sensitivity_to_tier
+ 
+    price_tier = price_sensitivity_to_tier(user_profile.get("budget", "moderate"))
+    restaurants = search_restaurants(
+        query=query,
+        borough=borough,
+        price=price_tier,
+        limit=8,
+    )
+ 
+    restaurant_block = format_for_prompt(restaurants, fetch_tips=True)
+ 
+    system_prompt = (
+        "You are a restaurant recommendation assistant for New York City. "
+        "You must recommend only from the live restaurant data provided below. "
+        "Use the user's taste profile and the retrieved evidence together. "
+        "Do not invent restaurants outside the retrieved list."
+    )
+ 
+    user_prompt = (
+        f"User request: {query}\n\n"
+        f"User taste profile:\n{_profile_to_text(user_profile)}\n\n"
+        f"{restaurant_block}\n\n"
+        "Pick the best 3 restaurants from the list above. "
+        "For each recommendation, provide:\n"
+        "1. Restaurant name\n"
+        "2. Why it matches the user's request\n"
+        "3. Why it matches the taste profile\n"
+        "4. One short detail from the user tips if available\n\n"
+        "Then include one short overall summary comparing why the top choice is strongest."
+    )
+ 
+    answer = _chat(client, system_prompt, user_prompt)
+    return answer, restaurants
+
+def recommend_recipe(craving: str, profile: dict) -> str:
+    pantry = profile.get("pantry", [])
+    if not pantry:
+        return "Your pantry is empty. Add some ingredients in the Cook tab."
+
+    system_prompt = (
+        "You are a creative home cooking assistant. "
+        "Generate a recipe using primarily the user's available ingredients. "
+        "If key ingredients are missing, suggest a specific substitution with a brief flavor explanation. "
+        f"The user likes: {', '.join(profile.get('liked_foods', []) or ['varied flavors'])}. "
+        f"Dislikes: {', '.join(profile.get('disliked_foods', []) or ['nothing noted'])}."
+    )
+
+    user_prompt = (
+        f"Craving: {craving}\n"
+        f"Available ingredients: {', '.join(pantry)}\n\n"
+        "Generate a recipe that matches the craving, flags missing ingredients with substitutions, and gives clear steps."
+    )
+
+    return _chat(OpenAI(), system_prompt, user_prompt)
+
+
+def recommend_cocktail(vibe: str, profile: dict) -> str:
+    bar = profile.get("bar_inventory", [])
+    if not bar:
+        return "Your bar is empty. Add some spirits and mixers in the Cocktails tab."
+
+    system_prompt = (
+        "You are a creative bartender. Generate a cocktail from the user's available spirits and mixers. "
+        "If a classic ingredient is missing, find a lateral substitute and explain the flavor logic briefly."
+    )
+
+    user_prompt = (
+        f"Vibe: {vibe}\n"
+        f"Available: {', '.join(bar)}\n\n"
+        "Create a drink with exact measurements, substitution rationale if needed, and an optional garnish."
+    )
+
+    return _chat(OpenAI(), system_prompt, user_prompt)
+
+def combined_recommend(client: OpenAI, query: str, user_profile: dict, csv_results: list, fsq_results: list) -> tuple[str, list]:
+    csv_block = "\n".join([
+        f"- {r['title']} | {r['category']} | Popular: {r['popular_food']}"
+        for r in csv_results
+    ])
+
+    fsq_block = "\n".join([
+        f"- {r['name']} | {', '.join(r.get('categories', [])[:2])} | "
+        f"Rating: {r.get('rating', 'N/A')}/5 | {r.get('address', '')}"
+        for r in fsq_results
+    ]) if fsq_results else "No live results available."
+
+    system_prompt = (
+        "You are a restaurant recommendation assistant for New York City. "
+        "You have two sources of restaurant data: a curated dataset and live Google Places results. "
+        "Use both sources together with the user's taste profile to select and rank the best 5 restaurants. "
+        "Only recommend restaurants from the provided lists. Do not invent any."
+    )
+
+    user_prompt = (
+        f"User request: {query}\n\n"
+        f"User taste profile:\n{_profile_to_text(user_profile)}\n\n"
+        f"Curated dataset results:\n{csv_block}\n\n"
+        f"Live Google Places results:\n{fsq_block}\n\n"
+        "Pick the best 5 restaurants from the live Google Places results. "
+        "For each, write exactly in this format with no numbering or extra text:\n"
+        "RESTAURANT: <exact name>\nBLURB: <1-2 sentence explanation why it fits>\n\n"
+        "After all 5, add one sentence starting with BEST: naming the top pick and why. "
+        "Use exact restaurant names as they appear in the list. Do not number the entries."
+    )
+
+    answer = _chat(client, system_prompt, user_prompt)
+
+    blurbs = {}
+    for match in re.finditer(
+        r'RESTAURANT:\s*(.+?)\nBLURB:\s*(.+?)(?=\n\s*RESTAURANT:|\nBEST:|\Z)',
+        answer, re.DOTALL
+    ):
+        name = match.group(1).strip().lstrip('0123456789. ')
+        blurb = match.group(2).strip()
+        blurbs[name] = blurb
+
+    best_match = re.search(r'BEST:\s*(.+)', answer)
+    best_line = best_match.group(1).strip() if best_match else ""
+
+    def normalize(s):
+        return re.sub(r"[^a-z0-9]", "", s.lower())
+
+    normalized_blurbs = {normalize(k): v for k, v in blurbs.items()}
+
+    selected = []
+    seen = set()
+    for r in fsq_results:
+        norm = normalize(r["name"])
+        if norm in normalized_blurbs and norm not in seen:
+            r["blurb"] = normalized_blurbs[norm]
+            selected.append(r)
+            seen.add(norm)
+        if len(selected) == 5:
+            break
+
+    if not selected:
+        blurb_list = list(blurbs.values())
+        for i, r in enumerate(fsq_results[:5]):
+            r["blurb"] = blurb_list[i] if i < len(blurb_list) else ""
+            selected.append(r)
+
+    return best_line, selected
