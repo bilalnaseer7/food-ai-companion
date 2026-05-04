@@ -1,5 +1,6 @@
 import os
 import math
+import hashlib
 import html as html_module
 from urllib.parse import quote
 import streamlit as st
@@ -21,6 +22,13 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+st.html("<style>[data-testid='stHeaderActionElements'] {display: none;}</style>")
+
+import datetime
+now = datetime.datetime.now()
+day = now.strftime("%a")
+hour = now.hour
+time_now = "morning" if hour < 12 and hour >= 4 else "afternoon" if hour < 18 and hour >= 12 else "evening" if hour < 23 and hour >= 18 else "late"
 
 CUISINE_GRADIENTS = {
     "italian": "warm-amber", "pizza": "wine-rust",
@@ -50,7 +58,7 @@ EMPTY_COPY = {
     "eat": {
         "glyph": "✦",
         "title": "Where shall we eat?",
-        "body": "Tell us what you're craving — be vague, be specific, anything goes. We'll narrow it from your taste profile.",
+        "body": "Tell me what you're craving. Be vague, be specific, anything goes. I'll help you narrow it down.",
     },
     "cook": {
         "glyph": "◐",
@@ -71,7 +79,7 @@ THINKING_MSG = {
 }
 
 TAB_HEADING = {
-    "eat": "Tonight, near you",
+    "eat": "Tonight, near you" if time_now == "evening" or time_now == "late" else "Right here, right now", 
     "cook": "In your kitchen",
     "drink": "On the bar cart",
 }
@@ -116,6 +124,8 @@ st.markdown("""
     --shadow-pop: 0 1px 0 rgba(26,26,26,0.02), 0 12px 32px rgba(60,40,20,0.10), 0 32px 80px -40px rgba(60,40,20,0.18);
     --shadow-input: inset 0 0 0 1px rgba(26,26,26,0.06);
     --radius-sm: 8px; --radius: 14px; --radius-lg: 20px; --radius-pill: 999px;
+    --result-card-height: 300px;
+    --result-card-action-height: 150px;
     --serif: 'DM Serif Display', Georgia, serif;
     --sans: 'DM Sans', system-ui, sans-serif;
     --mono: 'IBM Plex Mono', ui-monospace, monospace;
@@ -178,23 +188,12 @@ a:hover { text-decoration: none; }
     border-right: 1px solid var(--line) !important;
 }
 [data-testid="stSidebar"][aria-expanded="true"] {
-    width: 320px !important;
-    min-width: 320px !important;
-    max-width: 320px !important;
+    width: 350px !important;
+    min-width: 350px !important;
+    max-width: 350px !important;
 }
-[data-testid="stSidebar"][aria-expanded="false"] {
-    width: 0 !important;
-    min-width: 0 !important;
-    max-width: 0 !important;
-    border-right: none !important;
-    overflow: visible !important;
-}
-[data-testid="stSidebar"] > div { padding: 28px 24px !important; }
-[data-testid="stSidebar"][aria-expanded="false"] > div { padding: 0 !important; }
+[data-testid="stSidebar"] > div { padding: 24px 20px !important; }
 [data-testid="stSidebar"] * { color: var(--ink) !important; }
-[data-testid="collapsedControl"], [data-testid="collapsedControl"] button, [data-testid="collapsedControl"] svg {
-    display: block !important; visibility: visible !important; opacity: 1 !important; pointer-events: auto !important;
-}
 
 /* ── Brand ── */
 .brand { display: flex; align-items: center; gap: 10px; margin-top: -12px; padding-bottom: 18px; }
@@ -379,9 +378,15 @@ a:hover { text-decoration: none; }
 /* ── Tabs ── */
 [data-testid="stTabs"] [role="tablist"] {
     background: transparent !important;
-    border-bottom: 1px solid var(--line) !important;
+    border-bottom: none !important;
     border-radius: 0 !important; padding: 0 !important; gap: 0 !important;
-    margin-bottom: 28px !important;
+    margin-bottom: 0 px !important;
+}
+[data-testid="stTabs"] [role="tabpanel"],
+[data-testid="stTabs"] [data-baseweb="tab-panel"],
+[data-testid="stTabs"] [role="tabpanel"] > div {
+    border-top: none !important;
+    box-shadow: none !important;
 }
 [data-testid="stTabs"] [role="tab"] {
     color: var(--ink-2) !important;
@@ -506,15 +511,15 @@ div[class*="block-container"] {
     box-shadow: 0 6px 18px rgba(201,106,58,0.36) !important;
 }
 
-/* Fix blue color on HTML anchor chips (empty state) */
 .suggest-chip { color: var(--ink-2) !important; }
 
 /* ── Recently saved strip ── */
 .recent {
     display: flex; align-items: center; gap: 12px;
     padding: 12px 16px; background: var(--bg-deep);
-    border-radius: var(--radius); margin-bottom: 24px;
+    border-radius: var(--radius); margin-bottom: 12px;
     font-size: 13px; color: var(--ink-2);
+    margin-bottom: 20px;
     overflow: hidden;
 }
 .recent-label {
@@ -554,7 +559,7 @@ div[class*="block-container"] {
     transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.25s ease;
     margin-bottom: 16px;
 }
-.card:hover { transform: translateY(-2px); box-shadow: var(--shadow-pop); }
+.card:hover {box-shadow: var(--shadow-pop); }
 .card.accepted { border-color: rgba(122,158,126,0.5); }
 .card.rejected { opacity: 0.5; }
 
@@ -643,10 +648,11 @@ div[class*="block-container"] {
     display: flex; gap: 8px; margin-top: 14px;
     padding-top: 14px; border-top: 1px solid var(--line);
     align-items: center;
+    justify-content: space-between;
 }
 .card-extra {
     display: flex; align-items: center; gap: 8px;
-    margin-right: auto; font-size: 12px;
+    margin-right: 0; font-size: 12px;
     color: var(--sage-2); font-family: var(--mono); letter-spacing: 0.04em;
 }
 .card-extra .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sage); }
@@ -666,10 +672,163 @@ div[class*="block-container"] {
 .btn-reject:hover { background: var(--terracotta); color: #fff; border-color: var(--terracotta); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(201,106,58,0.30); }
 .btn-accept .glyph, .btn-reject .glyph { font-family: var(--mono); font-size: 11px; font-weight: 600; }
 
+.card.combo {
+    height: var(--result-card-height) !important;
+    min-height: var(--result-card-height) !important;
+    margin-bottom: 16px !important;
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    border-right: none !important;
+}
+
+.card.combo .card-img {
+    min-height: var(--result-card-height) !important;
+}
+
+.card.combo .card-body {
+    overflow: hidden !important;
+}
+
+.card.combo .card-blurb {
+    display: -webkit-box !important;
+    -webkit-line-clamp: 3 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+}
+
+[class*="st-key-card_rail_"] {
+    background: var(--card) !important;
+    border: 1px solid var(--line) !important;
+    border-left: none !important;
+    border-radius: 0 var(--radius-lg) var(--radius-lg) 0 !important;
+    box-shadow: var(--shadow-card) !important;
+    overflow: hidden !important;
+    height: var(--result-card-height) !important;
+    min-height: var(--result-card-height) !important;
+    margin: 0 0 16px !important;
+}
+
+[class*="st-key-card_rail_"] > div,
+[class*="st-key-card_rail_"] [data-testid="stVerticalBlock"],
+[class*="st-key-card_rail_"] [data-testid="stVerticalBlockBorderWrapper"] {
+    height: var(--result-card-height) !important;
+    min-height: var(--result-card-height) !important;
+}
+
+[class*="st-key-card_rail_"] [data-testid="stVerticalBlock"] {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    align-items: stretch !important;
+}
+
+[class*="st-key-card_rail_"] [data-testid="stElementContainer"] {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+[class*="st-key-card_rail_"] [class*="st-key-card_pass_"],
+[class*="st-key-card_rail_"] [class*="st-key-card_save_"],
+[class*="st-key-card_rail_"] [class*="st-key-card_undo_"],
+[class*="st-key-card_rail_"] [data-testid="stButton"] {
+    flex: 0 0 var(--result-card-action-height) !important;
+    width: 100% !important;
+    height: var(--result-card-action-height) !important;
+    min-height: var(--result-card-action-height) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+[class*="st-key-card_rail_"] [data-testid="stButton"] button {
+    width: 100% !important;
+    height: var(--result-card-action-height) !important;
+    min-height: var(--result-card-action-height) !important;
+    max-height: var(--result-card-action-height) !important;
+    border-radius: 0 !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    box-shadow: none !important;
+    outline: none !important;
+    border: 0 !important;
+    background: transparent !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+[class*="st-key-card_rail_"] [data-testid="stButton"] button,
+[class*="st-key-card_rail_"] [data-testid="stButton"] button > div,
+[class*="st-key-card_rail_"] [data-testid="stButton"] button p {
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+[class*="st-key-card_pass_"] button {
+    color: var(--terracotta-2) !important;
+    background: transparent !important;
+    border-top-right-radius: var(--radius-lg) !important;
+}
+
+[class*="st-key-card_pass_"] {
+    border-bottom: 1px solid var(--line) !important;
+}
+
+[class*="st-key-card_pass_"] button:hover {
+    background: var(--terracotta) !important;
+    border-color: var(--terracotta) !important;
+    color: #fff !important;
+}
+
+[class*="st-key-card_save_"] button {
+    color: var(--sage-2) !important;
+    background: transparent !important;
+    border-bottom-right-radius: var(--radius-lg) !important;
+}
+
+[class*="st-key-card_save_"] button:hover {
+    background: var(--sage) !important;
+    border-color: var(--sage) !important;
+    color: #fff !important;
+}
+
+[class*="st-key-card_rail_"] [class*="st-key-card_undo_"],
+[class*="st-key-card_rail_"] [class*="st-key-card_undo_"] [data-testid="stButton"],
+[class*="st-key-card_rail_"] [class*="st-key-card_undo_"] button,
+[class*="st-key-card_rail_"] [data-testid="stButton"][class*="st-key-card_undo_"],
+[class*="st-key-card_rail_"] [data-testid="stButton"][class*="st-key-card_undo_"] button {
+    flex-basis: var(--result-card-height) !important;
+    height: var(--result-card-height) !important;
+    min-height: var(--result-card-height) !important;
+    max-height: var(--result-card-height) !important;
+}
+
+[class*="st-key-card_rail_"] [class*="st-key-card_undo_"] button,
+[class*="st-key-card_rail_"] [data-testid="stButton"][class*="st-key-card_undo_"] button {
+    color: var(--ink-2) !important;
+    background: transparent !important;
+    border-color: var(--line) !important;
+    border-top-right-radius: var(--radius-lg) !important;
+    border-bottom-right-radius: var(--radius-lg) !important;
+}
+
+[class*="st-key-card_undo_accept_"] button:hover {
+    background: var(--sage) !important;
+    color: #fff !important;
+}
+
+[class*="st-key-card_undo_reject_"] button:hover {
+    background: var(--terracotta) !important;
+    color: #fff !important;
+}
+
 .card-feedback-done {
-    margin: 14px 0 0; padding-top: 14px;
-    border-top: 1px solid var(--line);
-    font-family: var(--mono); font-size: 11px;
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-left: auto;
+    text-align: right;
+    justify-content: flex-end;
+    font-family: var(--mono); font-size: 12px;
     letter-spacing: 0.08em; text-transform: uppercase;
 }
 .card-feedback-done.acc { color: var(--sage-2); }
@@ -736,7 +895,8 @@ div[class*="block-container"] {
     border-radius: var(--radius-lg) !important;
     padding: 22px 24px 20px !important;
     box-shadow: var(--shadow-card) !important;
-    margin-bottom: 28px !important;
+    margin-bottom: 12px !important;
+    margin-top: 12px !important;
 }
 [data-testid="stForm"] [data-testid="stVerticalBlock"],
 [data-testid="stForm"] [data-testid="stHorizontalBlock"] {
@@ -750,6 +910,7 @@ div[class*="block-container"] {
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 def get_gradient_class(categories):
     if not categories:
         return "amber-gold"
@@ -763,10 +924,14 @@ def get_gradient_class(categories):
 def stars_html(rating):
     if not rating:
         return ""
-    full = int(rating)
-    half = (rating - full) >= 0.5
-    empty = 5 - full - (1 if half else 0)
-    return "★" * full + ("⯨" if half else "") + "☆" * empty
+    full = max(0, min(5, round(float(rating))))
+    empty = 5 - full
+    return "★" * full + "☆" * empty
+
+
+def stable_widget_key(*parts):
+    raw = "::".join(str(part or "") for part in parts)
+    return hashlib.md5(raw.encode("utf-8")).hexdigest()[:10]
 
 
 def donut_svg(eat, cook, drink, total):
@@ -822,6 +987,43 @@ def reset_taste_profile():
     st.session_state.eat_llm_response = None
     st.session_state.cook_response = None
     st.session_state.cocktail_response = None
+
+
+def apply_card_feedback(name, accepted, cuisines=None, tab="eat"):
+    opposite_bucket = "rejected" if accepted else "accepted"
+    if name in st.session_state.profile.get(opposite_bucket, []):
+        st.session_state.profile[opposite_bucket].remove(name)
+    st.session_state.profile = update_profile(
+        st.session_state.profile,
+        restaurant_name=name,
+        accepted=accepted,
+        cuisines=cuisines or None,
+    )
+    save_profile(st.session_state.profile)
+    st.session_state.history.append({"name": name, "kind": "acc" if accepted else "rej", "tab": tab})
+    st.session_state.tab_counts[tab] = st.session_state.tab_counts.get(tab, 0) + 1
+
+
+def undo_card_feedback(name, was_accepted, cuisines=None, tab="eat"):
+    bucket = "accepted" if was_accepted else "rejected"
+    kind = "acc" if was_accepted else "rej"
+    if name in st.session_state.profile.get(bucket, []):
+        st.session_state.profile[bucket].remove(name)
+
+    delta = -0.15 if was_accepted else 0.15
+    for cuisine in cuisines or []:
+        current = st.session_state.profile.get("cuisine_scores", {}).get(cuisine, 0.0)
+        st.session_state.profile["cuisine_scores"][cuisine] = round(max(-1.0, min(1.0, current + delta)), 3)
+
+    st.session_state.profile["preferred_cuisines"] = [
+        k for k, v in st.session_state.profile.get("cuisine_scores", {}).items() if v > 0.2
+    ]
+    st.session_state.history = [
+        h for h in st.session_state.history
+        if not (h.get("name") == name and h.get("kind") == kind and h.get("tab") == tab)
+    ]
+    st.session_state.tab_counts[tab] = max(0, st.session_state.tab_counts.get(tab, 0) - 1)
+    save_profile(st.session_state.profile)
 
 
 def render_reset_button():
@@ -920,8 +1122,6 @@ def handle_query_params():
             reset_taste_profile()
 
         st.query_params.clear()
-        if action != "prefill":
-            st.rerun()
 
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
@@ -1054,21 +1254,17 @@ def render_sidebar():
 
 
 # ── Greeting + hint + tabs ────────────────────────────────────────────────────
+
 def render_greeting():
-    import datetime
-    now = datetime.datetime.now()
-    day = now.strftime("%a")
-    hour = now.hour
-    greeting = "Good morning" if hour < 12 and hour >= 4 else "Good afternoon" if hour < 18 and hour >= 12 else "Good evening" if hour < 23 and hour >= 18 else "Up for a midnight snack?"
+    greeting = "Good morning" if time_now == "morning" else "Good afternoon" if time_now == "afternoon" else "Good evening" if time_now == "evening" else "Up for a midnight snack?"
     friend = "" if hour < 4 else ", early bird" if hour < 12 else ", friend"
     time_str = now.strftime("%-I:%M %p")
-    meta = f"{day} · {time_str}"
 
     st.markdown(
         f'<div class="greeting">'
         f'<div class="greeting-title">{greeting}<em>{friend}</em></div>'
         f'</div>'
-        f'<p class="subline">A few warm suggestions, narrowed by what you\'ve liked before. Save what you like, pass on what you don\'t — your taste sharpens either way.</p>',
+        f'<p class="subline">A few warm suggestions, narrowed by what you\'ve liked before.</p>',
         unsafe_allow_html=True
     )
 
@@ -1076,16 +1272,89 @@ def render_greeting():
 def render_hint():
     if st.session_state.hint_dismissed:
         return
-    st.markdown(
-        '<div class="hint">'
-        '<span class="glyph">✦</span>'
-        '<div class="body">'
-        '<b>Your taste profile learns as you go.</b>'
-        '<p>Accept or pass on recommendations — every decision updates your cuisine scores and personalises future results.</p>'
-        '</div>'
-        '<a href="?action=dismiss_hint" class="x" target="_self">×</a>'
-        '</div>',
-        unsafe_allow_html=True
+    components.html(
+        """
+        <style>
+            html, body {
+                margin: 0;
+                background: transparent;
+                font-family: 'DM Sans', system-ui, sans-serif;
+                color: #1A1A1A;
+            }
+            .hint {
+                position: relative;
+                display: flex;
+                gap: 14px;
+                align-items: flex-start;
+                padding: 14px 16px 14px 18px;
+                background: linear-gradient(180deg, #FFFBF5 0%, #FAF3E8 100%);
+                border: 1px solid rgba(201, 162, 39, 0.25);
+                border-radius: 14px;
+                box-sizing: border-box;
+            }
+            .glyph {
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                background: rgba(201,162,39,0.16);
+                color: #8C7016;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-family: Georgia, serif;
+                font-size: 16px;
+                flex-shrink: 0;
+            }
+            .body { flex: 1; font-size: 13.5px; }
+            .body b { font-weight: 600; }
+            .body p { margin: 2px 0 0; color: #6B6B6B; font-size: 13px; }
+            button {
+                width: 22px;
+                height: 22px;
+                border: 0;
+                border-radius: 6px;
+                background: transparent;
+                color: #9A968D;
+                font-size: 14px;
+                line-height: 1;
+                cursor: pointer;
+            }
+            button:hover { background: rgba(0,0,0,0.05); color: #1A1A1A; }
+        </style>
+        <div class="hint">
+            <span class="glyph">✦</span>
+            <div class="body">
+                <b>Your taste profile learns as you go.</b>
+                <p>Accept or pass on recommendations — every decision updates your cuisine scores and personalises future results.</p>
+            </div>
+            <button type="button" aria-label="Dismiss">×</button>
+        </div>
+        <script>
+            const hide = () => {
+                const parentDoc = window.parent && window.parent.document;
+                if (parentDoc) {
+                    parentDoc.body.classList.add("food-ai-hint-gone");
+                    if (!parentDoc.getElementById("food-ai-hint-gap-fix")) {
+                        const style = parentDoc.createElement("style");
+                        style.id = "food-ai-hint-gap-fix";
+                        style.textContent = `
+                            body.food-ai-hint-gone [data-testid="stTabs"] {
+                                margin-top: -80px !important;
+                            }
+                        `;
+                        parentDoc.head.appendChild(style);
+                    }
+                }
+                if (window.frameElement) window.frameElement.style.display = "none";
+                document.documentElement.style.display = "none";
+            };
+            document.querySelector("button").addEventListener("click", () => {
+                hide();
+            });
+        </script>
+        """,
+        height=74,
+        scrolling=False,
     )
 
 
@@ -1121,7 +1390,7 @@ def render_card(r, tab="eat", blurb=""):
 
     accepted = name in st.session_state.profile.get("accepted", [])
     rejected = name in st.session_state.profile.get("rejected", [])
-    card_class = "card"
+    card_class = "card combo"
     if accepted: card_class += " accepted"
     elif rejected: card_class += " rejected"
 
@@ -1156,21 +1425,20 @@ def render_card(r, tab="eat", blurb=""):
     ])
 
     # Actions
+    open_html = (
+        f'<span class="card-extra"><span class="dot"></span>Open now</span>'
+        if r.get("open_now") else ''
+    )
+    feedback_html = ""
     if accepted:
-        actions = '<div class="card-feedback-done acc">✓ Saved</div>'
+        feedback_html = '<span class="card-feedback-done acc">✓ Saved</span>'
     elif rejected:
-        actions = '<div class="card-feedback-done rej">✕ Passed</div>'
-    else:
-        cuisine_for_url = quote(cats[0]) if cats else ""
-        accept_url = f"?action=accept&name={quote(name)}&tab={tab}&cuisine={cuisine_for_url}"
-        reject_url = f"?action=reject&name={quote(name)}&tab={tab}&cuisine={cuisine_for_url}"
-        actions = (
-            f'<div class="card-actions">'
-            + (f'<span class="card-extra"><span class="dot"></span>Open now</span>' if r.get("open_now") else '')
-            + f'<a href="{reject_url}" class="btn-reject" target="_self"><span class="glyph">✕</span>Pass</a>'
-            + f'<a href="{accept_url}" class="btn-accept" target="_self"><span class="glyph">✓</span>Save</a>'
-            + '</div>'
-        )
+        feedback_html = '<span class="card-feedback-done rej">✕ Passed</span>'
+
+    actions = (
+        f'<div class="card-actions">{open_html}{feedback_html}</div>'
+        if open_html or feedback_html else ''
+    )
 
     html_block = (
         f'<article class="{card_class}">'
@@ -1190,7 +1458,49 @@ def render_card(r, tab="eat", blurb=""):
         + actions
         + '</div></article>'
     )
-    st.markdown(html_block, unsafe_allow_html=True)
+    card_id = stable_widget_key(tab, name, address, r.get("id") or r.get("place_id") or r.get("fsq_id"))
+    rail_key = f"card_rail_{card_id}"
+    pass_key = f"card_pass_{card_id}"
+    save_key = f"card_save_{card_id}"
+    undo_state = "accept" if accepted else "reject"
+    undo_key = f"card_undo_{undo_state}_{card_id}"
+    card_col, action_col = st.columns([8, 1.05], gap=None)
+    cuisines = [cats[0]] if cats else None
+    with card_col:
+        st.markdown(html_block, unsafe_allow_html=True)
+    with action_col:
+        with st.container(key=rail_key, height=300, border=False, gap=None):
+            if accepted:
+                st.button(
+                    "Undo Save",
+                    key=undo_key,
+                    on_click=undo_card_feedback,
+                    args=(name, True, cuisines, tab),
+                    use_container_width=True,
+                )
+            elif rejected:
+                st.button(
+                    "Undo Pass",
+                    key=undo_key,
+                    on_click=undo_card_feedback,
+                    args=(name, False, cuisines, tab),
+                    use_container_width=True,
+                )
+            else:
+                st.button(
+                    "Pass",
+                    key=pass_key,
+                    on_click=apply_card_feedback,
+                    args=(name, False, cuisines, tab),
+                    use_container_width=True,
+                )
+                st.button(
+                    "Save",
+                    key=save_key,
+                    on_click=apply_card_feedback,
+                    args=(name, True, cuisines, tab),
+                    use_container_width=True,
+                )
 
 
 # ── Skeleton ──────────────────────────────────────────────────────────────────
@@ -1402,9 +1712,13 @@ def render_eat_tab(client, df):
 
     if run_search and query:
         st.markdown(f'<div class="results-head"><h2>{TAB_HEADING["eat"]}</h2><span class="count">{THINKING_MSG["eat"]}</span></div>', unsafe_allow_html=True)
-        skel_placeholder = st.empty()
-        with skel_placeholder.container():
-            render_skeletons(5)
+        
+        # Only show skeletons if there's no existing output
+        skel_placeholder = None
+        if not st.session_state.eat_llm_response:
+            skel_placeholder = st.empty()
+            with skel_placeholder.container():
+                render_skeletons(5)
 
         search_notes = []
         try:
@@ -1447,7 +1761,8 @@ def render_eat_tab(client, df):
         st.session_state.eat_llm_response = response
         st.session_state.eat_fsq_results = selected
 
-        skel_placeholder.empty()
+        if skel_placeholder:
+            skel_placeholder.empty()
         st.rerun()
 
     if st.session_state.eat_llm_response:
@@ -1472,16 +1787,20 @@ def render_cook_tab(client):
     with st.form(key="cook_form", enter_to_submit=True, border=False):
         st.markdown('<div class="field-label">Tonight you want</div>', unsafe_allow_html=True)
         craving = st.text_input("craving", value=prefill, placeholder="something fast, something cozy, something to impress…", label_visibility="collapsed")
-        render_suggest_chips("cook")
         st.markdown('<div class="field-label" style="margin-top:10px">In the pantry</div>', unsafe_allow_html=True)
         pantry_input = st.text_area(
             "pantry",
             value=", ".join(st.session_state.profile.get("pantry", [])),
-            placeholder="comma-separated, or just dump it all here",
+            placeholder="just dump it all here",
             label_visibility="collapsed",
             height=88,
         )
-        run_cook = st.form_submit_button("Suggest recipes  →", type="primary", use_container_width=True)
+        
+        col1, col2 = st.columns([3, 1.2])
+        with col1:
+            render_suggest_chips("cook")
+        with col2:
+            run_cook = st.form_submit_button("Suggest recipes  →", type="primary", use_container_width=True)
 
     render_recent_strip()
 
@@ -1491,9 +1810,13 @@ def render_cook_tab(client):
         save_profile(st.session_state.profile)
 
         st.markdown(f'<div class="results-head"><h2>{TAB_HEADING["cook"]}</h2><span class="count">{THINKING_MSG["cook"]}</span></div>', unsafe_allow_html=True)
-        skel_placeholder = st.empty()
-        with skel_placeholder.container():
-            render_skeletons(1)
+        
+        # Only show skeletons if there's no existing output
+        skel_placeholder = None
+        if not st.session_state.cook_response:
+            skel_placeholder = st.empty()
+            with skel_placeholder.container():
+                render_skeletons(1)
 
         from src.recommend import recommend_recipe
         with st.spinner(""):
@@ -1501,7 +1824,8 @@ def render_cook_tab(client):
             st.session_state.cook_response = response
             st.session_state.tab_counts["cook"] += 1
 
-        skel_placeholder.empty()
+        if skel_placeholder:
+            skel_placeholder.empty()
         st.rerun()
 
     if st.session_state.cook_response:
@@ -1536,14 +1860,16 @@ def render_cocktail_tab(client):
         bar_input = st.text_area(
             "bar",
             value=", ".join(st.session_state.profile.get("bar_inventory", [])),
-            placeholder="bottles, mixers, fresh stuff — no need to be tidy",
+            placeholder="bottles, mixers, fresh stuff",
             label_visibility="collapsed",
             height=88,
         )
-        mocktail = st.checkbox("Mocktail only")
-        render_suggest_chips("drink")
-
-        run_cocktail = st.form_submit_button("Suggest cocktails  →", type="primary", use_container_width=True)
+        col1, col2 = st.columns([3, 1.2])
+        
+        with col1:
+            render_suggest_chips("drink")
+        with col2:
+            run_cocktail = st.form_submit_button("Suggest cocktails  →", type="primary", use_container_width=True)
 
     render_recent_strip()
 
@@ -1553,9 +1879,13 @@ def render_cocktail_tab(client):
         save_profile(st.session_state.profile)
 
         st.markdown(f'<div class="results-head"><h2>{TAB_HEADING["drink"]}</h2><span class="count">{THINKING_MSG["drink"]}</span></div>', unsafe_allow_html=True)
-        skel_placeholder = st.empty()
-        with skel_placeholder.container():
-            render_skeletons(1)
+        
+        # Only show skeletons if there's no existing output
+        skel_placeholder = None
+        if not st.session_state.cocktail_response:
+            skel_placeholder = st.empty()
+            with skel_placeholder.container():
+                render_skeletons(1)
 
         from src.recommend import recommend_cocktail
         full_vibe = vibe + (" (mocktail, no alcohol)" if mocktail else "")
@@ -1564,7 +1894,8 @@ def render_cocktail_tab(client):
             st.session_state.cocktail_response = response
             st.session_state.tab_counts["drink"] += 1
 
-        skel_placeholder.empty()
+        if skel_placeholder:
+            skel_placeholder.empty()
         st.rerun()
 
     if st.session_state.cocktail_response:
