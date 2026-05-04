@@ -1,6 +1,7 @@
 import os
 import math
 import html as html_module
+from urllib.parse import quote
 import streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -19,10 +20,76 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── Design system ──────────────────────────────────────────────────────────────
+
+CUISINE_GRADIENTS = {
+    "italian": "warm-amber", "pizza": "wine-rust",
+    "japanese": "scallion-jade", "ramen": "broth-green",
+    "korean": "bean-paprika", "chinese": "smoke-olive",
+    "mexican": "char-orange", "american": "rice-gold",
+    "seafood": "salmon-glaze", "mediterranean": "garden-jade",
+    "cocktail": "spritz-rust", "bar": "rye-sage",
+    "breakfast": "pepper-cream", "thai": "broth-green",
+    "indian": "amber-gold", "french": "pepper-cream",
+    "greek": "garden-jade", "vietnamese": "scallion-jade",
+}
+
+BUDGET_LABELS = {1: "Cheap", 2: "Smart", 3: "Treat", 4: "Splurge"}
+BUDGET_MAP = {"budget": 1, "moderate": 2, "premium": 3, "premium+": 4}
+BUDGET_REVERSE = {1: "budget", 2: "moderate", 3: "premium", 4: "premium+"}
+
+QUICK_STARTS = {
+    "eat":  ["something cozy", "date night", "wood-fired anything", "walking distance"],
+    "cook": ["25 min weeknight", "use up the salmon", "one-pot", "something to impress"],
+    "drink": ["rainy night", "pre-dinner aperitivo", "smoky and bitter", "low-ABV refresher"],
+}
+
+EMPTY_COPY = {
+    "eat": {
+        "glyph": "✦",
+        "title": "Where shall we eat?",
+        "body": "Tell us what you're craving — be vague, be specific, anything goes. We'll narrow it from your taste profile.",
+    },
+    "cook": {
+        "glyph": "◐",
+        "title": "What's in the kitchen tonight?",
+        "body": "Drop your craving and what's actually in the fridge. We'll work backward from there.",
+    },
+    "drink": {
+        "glyph": "◑",
+        "title": "Pick a vibe.",
+        "body": "A mood, a season, a song — we'll match it to what you have on the bar cart.",
+    },
+}
+
+THINKING_MSG = {
+    "eat": "Reading the room…",
+    "cook": "Browsing your shelf…",
+    "drink": "Mixing ideas…",
+}
+
+TAB_HEADING = {
+    "eat": "Tonight, near you",
+    "cook": "In your kitchen",
+    "drink": "On the bar cart",
+}
+
+TAB_ICON = {"eat": "◖", "cook": "◐", "drink": "◗"}
+
+
+# ── Cached resources ──────────────────────────────────────────────────────────
+@st.cache_resource
+def get_client():
+    return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+
+@st.cache_data
+def get_df():
+    return load_reviews(path="data/restaurants.csv", max_rows=3000)
+
+
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Mono:wght@400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 :root {
     --bg: #FAF7F2;
@@ -44,147 +111,376 @@ st.markdown("""
     --tag-ink: rgba(26,26,26,0.05);
     --shadow-card: 0 1px 0 rgba(26,26,26,0.02), 0 6px 18px rgba(60,40,20,0.06), 0 24px 60px -30px rgba(60,40,20,0.12);
     --shadow-pop: 0 1px 0 rgba(26,26,26,0.02), 0 12px 32px rgba(60,40,20,0.10), 0 32px 80px -40px rgba(60,40,20,0.18);
+    --shadow-input: inset 0 0 0 1px rgba(26,26,26,0.06);
     --radius-sm: 8px; --radius: 14px; --radius-lg: 20px; --radius-pill: 999px;
     --serif: 'DM Serif Display', Georgia, serif;
     --sans: 'DM Sans', system-ui, sans-serif;
     --mono: 'IBM Plex Mono', ui-monospace, monospace;
 }
 
-html, body, .stApp { background-color: var(--bg) !important; color: var(--ink) !important; font-family: var(--sans) !important; font-weight: 350 !important; }
-[data-testid="stAppViewContainer"] { background-color: var(--bg) !important; }
-.main .block-container { background: transparent !important; padding-top: 1.5rem !important; padding-bottom: 6rem !important; max-width: 1060px !important; }
-html, body { overscroll-behavior: none !important; }
-.stApp { overscroll-behavior: none !important; }
+* { box-sizing: border-box; }
 
-/* Sidebar */
-[data-testid="stSidebar"] { background-color: var(--bg) !important; border-right: 1px solid var(--line) !important; }
+html, body, .stApp {
+    background: var(--bg) !important;
+    color: var(--ink) !important;
+    font-family: var(--sans) !important;
+    font-weight: 350 !important;
+    font-size: 15px !important;
+    line-height: 1.55 !important;
+    overscroll-behavior: none !important;
+}
+
+[data-testid="stAppViewContainer"] { background: var(--bg) !important; }
+[data-testid="stHeader"] { background: transparent !important; }
+.main .block-container { background: transparent !important; padding: 36px 48px 80px !important; max-width: 1100px !important; }
+
+#MainMenu, footer, header { visibility: hidden; }
+
+a { color: inherit; text-decoration: none; }
+a:hover { text-decoration: none; }
+
+/* ── Sidebar (target Streamlit's sidebar to match design's 320px column) ── */
+[data-testid="stSidebar"] {
+    background: var(--bg) !important;
+    border-right: 1px solid var(--line) !important;
+    width: 320px !important;
+    min-width: 320px !important;
+    max-width: 320px !important;
+}
+[data-testid="stSidebar"] > div { padding: 28px 24px !important; }
 [data-testid="stSidebar"] * { color: var(--ink) !important; }
-[data-testid="collapsedControl"], [data-testid="collapsedControl"] button, [data-testid="collapsedControl"] svg { display: block !important; visibility: visible !important; opacity: 1 !important; pointer-events: auto !important; }
+[data-testid="collapsedControl"], [data-testid="collapsedControl"] button, [data-testid="collapsedControl"] svg {
+    display: block !important; visibility: visible !important; opacity: 1 !important; pointer-events: auto !important;
+}
 
-/* Brand */
-.brand-wrap { display: flex; align-items: center; gap: 10px; padding-bottom: 2px; }
-.brand-mark { width: 28px; height: 28px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #E89766 0%, var(--terracotta) 55%, #8A4521 100%); box-shadow: inset -2px -3px 6px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.08); flex-shrink: 0; }
-.brand-name { font-family: var(--serif); font-size: 1.35rem; font-weight: 400; color: var(--ink); letter-spacing: -0.01em; }
-.brand-name em { color: var(--terracotta); font-style: italic; }
+/* ── Brand ── */
+.brand { display: flex; align-items: center; gap: 10px; padding-bottom: 4px; }
+.brand-mark {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #E89766 0%, var(--terracotta) 55%, #8A4521 100%);
+    box-shadow: inset -2px -3px 6px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.08);
+    flex-shrink: 0;
+}
+.brand-name { font-family: var(--serif); font-size: 22px; letter-spacing: -0.01em; }
+.brand-name em { font-style: italic; color: var(--terracotta); }
 
-/* Section labels */
-.side-label { font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+/* ── Side sections ── */
+.side-section { margin-bottom: 24px; }
+.side-label {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-3);
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px;
+}
 .side-label .count { font-variant-numeric: tabular-nums; }
 
-/* Cuisine bars */
-.cuisine-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
-.cuisine-row { display: grid; grid-template-columns: 72px 1fr 28px; align-items: center; gap: 8px; font-size: 12.5px; }
-.cuisine-bar { height: 5px; background: var(--bg-deep); border-radius: var(--radius-pill); overflow: hidden; }
-.cuisine-fill { display: block; height: 100%; background: linear-gradient(90deg, var(--terracotta) 0%, #E08A5D 100%); border-radius: inherit; transition: width 0.6s cubic-bezier(.2,.8,.2,1); }
-.cuisine-pct { font-family: var(--mono); font-size: 10px; color: var(--ink-3); text-align: right; }
+/* Cuisine pulse */
+.cuisine-list { display: flex; flex-direction: column; gap: 8px; }
+.cuisine-row {
+    display: grid; grid-template-columns: 80px 1fr 28px;
+    align-items: center; gap: 10px; font-size: 13px;
+}
+.cuisine-row .name { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cuisine-row .pct { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); text-align: right; }
+.cuisine-bar { height: 6px; background: var(--bg-deep); border-radius: var(--radius-pill); overflow: hidden; }
+.cuisine-bar > i {
+    display: block; height: 100%;
+    background: linear-gradient(90deg, var(--terracotta) 0%, #E08A5D 100%);
+    border-radius: inherit;
+    transition: width 0.6s cubic-bezier(.2,.8,.2,1);
+}
 
-/* Removable pills */
-.remove-pill > button { background: var(--tag-sage) !important; color: var(--sage-2) !important; border: none !important; border-radius: var(--radius-pill) !important; padding: 3px 10px !important; font-size: 0.73rem !important; font-weight: 400 !important; box-shadow: none !important; transition: all 0.14s ease !important; min-height: 0 !important; height: auto !important; }
-.remove-pill > button:hover { background: var(--sage) !important; color: #fff !important; transform: none !important; }
-.remove-pill-dis > button { background: var(--tag-terracotta) !important; color: var(--terracotta-2) !important; border: none !important; border-radius: var(--radius-pill) !important; padding: 3px 10px !important; font-size: 0.73rem !important; font-weight: 400 !important; box-shadow: none !important; min-height: 0 !important; height: auto !important; }
-.remove-pill-dis > button:hover { background: var(--terracotta) !important; color: #fff !important; transform: none !important; }
-.pill-row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
+/* ── Pills ── */
+.tag-cluster { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 11px; border-radius: var(--radius-pill);
+    font-size: 12.5px; font-weight: 400;
+    background: var(--tag-ink); color: var(--ink);
+    border: 1px solid transparent;
+    transition: all 0.14s ease;
+}
+.pill:hover { transform: translateY(-1px); }
+.pill.terracotta { background: var(--tag-terracotta); color: var(--terracotta-2); }
+.pill.sage { background: var(--tag-sage); color: var(--sage-2); }
+.pill.outline { background: transparent; border-color: var(--line-2); color: var(--ink-2); }
+.pill .pill-bar { width: 4px; height: 4px; border-radius: 50%; background: currentColor; opacity: 0.5; }
+.pill .x { font-size: 11px; opacity: 0.5; margin-left: 2px; }
+.pill .x:hover { opacity: 1; }
 
-/* Budget dots */
-.budget-row { display: flex; align-items: center; gap: 6px; }
-.budget-dot-active > button { background: var(--gold) !important; color: transparent !important; border: none !important; border-radius: var(--radius-pill) !important; width: 28px !important; height: 6px !important; min-height: 0 !important; padding: 0 !important; box-shadow: none !important; font-size: 0 !important; }
-.budget-dot > button { background: var(--bg-deep) !important; color: transparent !important; border: none !important; border-radius: var(--radius-pill) !important; width: 28px !important; height: 6px !important; min-height: 0 !important; padding: 0 !important; box-shadow: none !important; font-size: 0 !important; }
-.budget-dot > button:hover, .budget-dot-active > button:hover { background: rgba(201,162,39,0.5) !important; transform: none !important; }
-.budget-label { font-family: var(--mono); font-size: 10px; color: var(--ink-3); margin-left: 2px; }
+/* ── Budget ── */
+.budget { display: flex; gap: 4px; align-items: center; }
+.budget .dot {
+    width: 28px; height: 6px; border-radius: var(--radius-pill);
+    background: var(--bg-deep);
+    transition: background 0.15s ease;
+    display: inline-block;
+}
+.budget .dot.on { background: var(--gold); }
+.budget .dot:hover { background: rgba(201, 162, 39, 0.5); }
+.budget-label { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); margin-left: 4px; }
 
-/* Insights / donut */
-.insights-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 4px; }
-.insights-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
-.insights-title { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
-.insights-pct { font-size: 10.5px; color: var(--sage-2); font-family: var(--mono); }
-.donut-wrap { display: flex; align-items: center; gap: 12px; }
+/* ── Insights / donut ── */
+.insights {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 12px 14px;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius);
+}
+.insights-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-3);
+}
+.insights-head .pct { font-size: 10.5px; color: var(--sage-2); }
+.donut-wrap { display: flex; align-items: center; gap: 12px; padding: 4px 0 2px; }
+.donut { width: 64px; height: 64px; flex-shrink: 0; }
+.donut-text { font-family: var(--serif); font-size: 18px; fill: var(--ink); }
 .legend { flex: 1; display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; }
-.legend-row { display: flex; justify-content: space-between; align-items: center; }
-.legend-lbl { display: flex; align-items: center; gap: 5px; color: var(--ink-2); }
-.legend-sw { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
-.legend-num { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); }
+.legend-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.legend-row .lbl { display: flex; align-items: center; gap: 6px; color: var(--ink-2); }
+.legend-row .lbl .sw { width: 8px; height: 8px; border-radius: 2px; }
+.legend-row .num { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); }
 
-/* History */
-.history-list { display: flex; flex-direction: column; gap: 4px; }
-.history-row { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 3px 0; }
-.history-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-.history-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-size: 12px; }
-.history-src { font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+/* ── History ── */
+.history { display: flex; flex-direction: column; gap: 4px; }
+.history-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 4px 0; color: var(--ink-2); }
+.history-row .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.history-row.acc .dot { background: var(--sage); }
+.history-row.rej .dot { background: var(--terracotta); }
+.history-row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+.history-row .src { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.history-empty { color: var(--ink-3); font-style: italic; font-size: 12.5px; padding: 4px 0; }
 
-/* Reset button */
-.reset-wrap > button { background: transparent !important; border: 1px solid var(--line-2) !important; border-radius: var(--radius) !important; color: var(--ink-2) !important; font-size: 0.8rem !important; font-weight: 400 !important; box-shadow: none !important; width: 100% !important; }
-.reset-wrap > button:hover { color: var(--ink) !important; border-color: var(--ink) !important; background: var(--card) !important; transform: none !important; }
+/* ── Reset link ── */
+.reset-link {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 12px; background: transparent;
+    border: 1px solid var(--line-2); border-radius: var(--radius);
+    color: var(--ink-2); font-size: 13px;
+    transition: all 0.15s ease;
+    cursor: pointer;
+}
+.reset-link:hover { color: var(--ink); border-color: var(--ink); background: var(--card); }
+.reset-link .glyph { font-family: var(--mono); font-size: 11px; opacity: 0.6; }
 
-/* Main header */
-.foodai-header { font-family: var(--serif); font-size: 2.2rem; font-weight: 400; color: var(--ink); letter-spacing: -0.015em; margin-bottom: 0.2rem; line-height: 1.1; }
-.foodai-header em { color: var(--terracotta); font-style: italic; }
-.foodai-subtitle { color: var(--ink-2); font-size: 0.92rem; font-weight: 350; margin-bottom: 0.5rem; }
+/* ── Greeting ── */
+.greeting {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 24px; margin-bottom: 8px;
+}
+.greeting h1 {
+    font-family: var(--serif); font-size: 38px; font-weight: 400;
+    letter-spacing: -0.015em; margin: 0; line-height: 1.1;
+}
+.greeting h1 em { color: var(--terracotta); font-style: italic; }
+.greeting .meta {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+    color: var(--ink-3); text-transform: uppercase;
+}
+.subline {
+    color: var(--ink-2); font-size: 15px; margin: 0 0 28px;
+    max-width: 56ch;
+}
 
-/* Onboarding hint */
-.hint-box { display: flex; gap: 14px; align-items: flex-start; padding: 14px 16px; background: linear-gradient(180deg, #FFFBF5 0%, #FAF3E8 100%); border: 1px solid rgba(201,162,39,0.25); border-radius: var(--radius); margin-bottom: 18px; }
-.hint-glyph { width: 30px; height: 30px; border-radius: 50%; background: var(--tag-gold); color: #8C7016; display: flex; align-items: center; justify-content: center; font-family: var(--serif); font-size: 15px; flex-shrink: 0; }
-.hint-body { flex: 1; font-size: 13px; line-height: 1.5; }
-.hint-body b { font-weight: 500; }
-.hint-body p { margin: 3px 0 0; color: var(--ink-2); font-size: 12.5px; }
-.hint-dismiss > button { background: transparent !important; border: none !important; color: var(--ink-3) !important; font-size: 1rem !important; box-shadow: none !important; padding: 0 !important; min-height: 0 !important; height: 22px !important; width: 22px !important; }
+/* ── Hint ── */
+.hint {
+    position: relative; display: flex; gap: 14px; align-items: flex-start;
+    padding: 14px 16px 14px 18px;
+    background: linear-gradient(180deg, #FFFBF5 0%, #FAF3E8 100%);
+    border: 1px solid rgba(201, 162, 39, 0.25);
+    border-radius: var(--radius);
+    margin-bottom: 24px;
+}
+.hint .glyph {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--tag-gold); color: #8C7016;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--serif); font-size: 16px; flex-shrink: 0;
+}
+.hint .body { flex: 1; font-size: 13.5px; }
+.hint .body b { font-weight: 500; }
+.hint .body p { margin: 2px 0 0; color: var(--ink-2); font-size: 13px; }
+.hint .x {
+    width: 22px; height: 22px; border-radius: 6px;
+    color: var(--ink-3); font-size: 14px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+}
+.hint .x:hover { background: rgba(0,0,0,0.05); color: var(--ink); }
 
-/* Recently saved strip */
-.saved-strip { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--bg-deep); border-radius: var(--radius); margin-bottom: 18px; overflow: hidden; }
-.saved-label { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); flex-shrink: 0; }
-.saved-track { display: flex; gap: 6px; flex-wrap: nowrap; overflow: hidden; flex: 1; }
-.saved-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; background: var(--card); border-radius: var(--radius-pill); font-size: 11.5px; white-space: nowrap; border: 1px solid var(--line); color: var(--ink); }
-.saved-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--sage); display: inline-block; }
+/* ── Tabs ── */
+[data-testid="stTabs"] [role="tablist"] {
+    background: transparent !important;
+    border-bottom: 1px solid var(--line) !important;
+    border-radius: 0 !important; padding: 0 !important; gap: 0 !important;
+    margin-bottom: 28px !important;
+}
+[data-testid="stTabs"] [role="tab"] {
+    color: var(--ink-2) !important;
+    font-family: var(--sans) !important;
+    font-size: 14.5px !important;
+    font-weight: 400 !important;
+    border-radius: 0 !important;
+    padding: 14px 20px 16px !important;
+    background: transparent !important;
+    border-bottom: 2px solid transparent !important;
+    margin: 0 !important;
+}
+[data-testid="stTabs"] [role="tab"][aria-selected="true"] {
+    color: var(--ink) !important;
+    font-weight: 500 !important;
+    border-bottom: 2px solid var(--terracotta) !important;
+}
 
-/* Tabs */
-[data-testid="stTabs"] [role="tablist"] { background: transparent !important; border-bottom: 1px solid var(--line) !important; border-radius: 0 !important; padding: 0 !important; }
-[data-testid="stTabs"] [role="tab"] { color: var(--ink-2) !important; font-family: var(--sans) !important; font-weight: 400 !important; font-size: 0.88rem !important; border-radius: 0 !important; padding: 0.7rem 1.2rem !important; background: transparent !important; border-bottom: 2px solid transparent !important; }
-[data-testid="stTabs"] [role="tab"][aria-selected="true"] { color: var(--ink) !important; font-weight: 500 !important; border-bottom: 2px solid var(--terracotta) !important; background: transparent !important; }
+/* ── Search card ── */
+.search-card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius-lg); padding: 22px 24px 20px;
+    box-shadow: var(--shadow-card); margin-bottom: 28px;
+}
+.search-grid { display: grid; gap: 14px 16px; margin-bottom: 16px; }
+.search-grid.eat { grid-template-columns: 1fr 200px; }
+.search-grid.cook, .search-grid.drink { grid-template-columns: 1fr; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field-label {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-3);
+}
 
-/* Inputs */
-.stTextInput > div > div, .stTextArea > div > div, .stSelectbox > div > div { background-color: var(--bg) !important; border: 1px solid var(--line-2) !important; border-radius: var(--radius-sm) !important; color: var(--ink) !important; font-family: var(--sans) !important; }
-.stTextInput input, .stTextArea textarea { color: var(--ink) !important; background: var(--bg) !important; font-family: var(--sans) !important; font-size: 0.9rem !important; }
+/* Streamlit input overrides */
+.stTextInput > div > div, .stTextArea > div > div, .stSelectbox > div > div {
+    background: var(--bg) !important;
+    border: 1px solid transparent !important;
+    border-radius: var(--radius) !important;
+    box-shadow: var(--shadow-input) !important;
+}
+.stTextInput input, .stTextArea textarea {
+    color: var(--ink) !important;
+    background: var(--bg) !important;
+    font-family: var(--sans) !important;
+    font-size: 14.5px !important;
+    border: none !important;
+    padding: 12px 14px !important;
+}
 .stTextInput input::placeholder, .stTextArea textarea::placeholder { color: var(--ink-3) !important; }
+.stTextInput input:focus, .stTextArea textarea:focus {
+    background: var(--card) !important;
+}
+.stTextInput > div > div:focus-within, .stTextArea > div > div:focus-within {
+    border-color: var(--terracotta) !important;
+    box-shadow: 0 0 0 3px rgba(201, 106, 58, 0.12) !important;
+}
 
-/* Suggest chips */
-.suggest-chip-btn > button { background: transparent !important; border: 1px dashed var(--line-2) !important; border-radius: var(--radius-pill) !important; color: var(--ink-2) !important; font-size: 0.78rem !important; padding: 3px 10px !important; box-shadow: none !important; font-weight: 400 !important; min-height: 0 !important; }
-.suggest-chip-btn > button:hover { border-color: var(--terracotta) !important; color: var(--terracotta-2) !important; border-style: solid !important; transform: none !important; }
+/* Streamlit form labels — hide them, we use custom .field-label HTML */
+.stTextInput label, .stTextArea label, .stSelectbox label, .stCheckbox label {
+    display: none !important;
+}
 
-/* Submit / primary button */
-.stFormSubmitButton > button, .primary-btn > button { background: var(--terracotta) !important; color: #fff !important; border: none !important; border-radius: var(--radius-sm) !important; font-family: var(--sans) !important; font-weight: 500 !important; font-size: 0.875rem !important; box-shadow: 0 4px 14px rgba(201,106,58,0.30) !important; transition: all 0.15s ease !important; }
-.stFormSubmitButton > button:hover, .primary-btn > button:hover { background: var(--terracotta-2) !important; transform: translateY(-1px) !important; box-shadow: 0 6px 18px rgba(201,106,58,0.36) !important; }
+/* ── Suggest chips (anchor links) ── */
+.suggest-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.suggest-chip {
+    display: inline-block;
+    background: transparent; border: 1px dashed var(--line-2);
+    border-radius: var(--radius-pill); padding: 4px 10px;
+    font-size: 12px; color: var(--ink-2);
+    transition: all 0.14s ease;
+    cursor: pointer;
+}
+.suggest-chip:hover {
+    border-color: var(--terracotta); color: var(--terracotta-2); border-style: solid;
+}
 
-/* Match indicator */
-.match-good { font-size: 12px; color: var(--sage-2); font-family: var(--mono); }
-.match-warn { font-size: 12px; color: var(--gold); font-family: var(--mono); }
+/* ── Submit button ── */
+.search-actions {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 14px;
+}
+.stFormSubmitButton > button {
+    background: var(--terracotta) !important; color: #fff !important;
+    border: none !important; border-radius: var(--radius) !important;
+    padding: 12px 22px !important;
+    font-family: var(--sans) !important; font-weight: 500 !important;
+    font-size: 14px !important;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.2) inset, 0 4px 14px rgba(201,106,58,0.30) !important;
+    transition: all 0.12s ease !important;
+}
+.stFormSubmitButton > button:hover {
+    background: var(--terracotta-2) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 18px rgba(201,106,58,0.36) !important;
+}
 
-/* Skeleton */
-.skeleton { background: var(--card); border-radius: var(--radius-lg); border: 1px solid var(--line); display: grid; grid-template-columns: 140px 1fr; overflow: hidden; min-height: 160px; margin-bottom: 14px; }
-.skel-img { background: linear-gradient(90deg, var(--bg-deep) 0%, #EFE8DA 50%, var(--bg-deep) 100%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
-.skel-body { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
-.skel-bar { height: 11px; border-radius: 4px; background: linear-gradient(90deg, var(--bg-deep) 0%, #EFE8DA 50%, var(--bg-deep) 100%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
-.skel-bar.title { height: 20px; width: 55%; }
-.skel-bar.short { width: 35%; }
-.skel-bar.medium { width: 70%; }
-@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+/* ── Recently saved strip ── */
+.recent {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; background: var(--bg-deep);
+    border-radius: var(--radius); margin-bottom: 24px;
+    font-size: 13px; color: var(--ink-2);
+    overflow: hidden;
+}
+.recent-label {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-3); flex-shrink: 0;
+}
+.recent-track { display: flex; gap: 6px; flex-wrap: nowrap; overflow: hidden; flex: 1; }
+.recent-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; background: var(--card);
+    border-radius: var(--radius-pill); font-size: 12px;
+    white-space: nowrap; border: 1px solid var(--line); color: var(--ink);
+}
+.recent-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sage); }
 
-/* Thinking label */
-.thinking-label { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 12px; }
+/* ── Results head ── */
+.results-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 16px;
+}
+.results-head h2 {
+    font-family: var(--serif); font-weight: 400; font-size: 22px;
+    letter-spacing: -0.01em; margin: 0;
+}
+.results-head .count {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--ink-3);
+}
 
-/* Results header */
-.results-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; margin-top: 6px; }
-.results-head h3 { font-family: var(--serif); font-weight: 400; font-size: 1.3rem; letter-spacing: -0.01em; margin: 0; }
-.results-count { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+/* ── Cards ── */
+.cards { display: flex; flex-direction: column; gap: 16px; }
+.card {
+    background: var(--card); border-radius: var(--radius-lg);
+    border: 1px solid var(--line); box-shadow: var(--shadow-card);
+    display: grid; grid-template-columns: 168px 1fr;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.25s ease;
+    margin-bottom: 16px;
+}
+.card:hover { transform: translateY(-2px); box-shadow: var(--shadow-pop); }
+.card.accepted { border-color: rgba(122,158,126,0.5); }
+.card.rejected { opacity: 0.5; }
 
-/* Cards */
-.restaurant-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); display: grid; grid-template-columns: 140px 1fr; overflow: hidden; margin-bottom: 14px; transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.25s ease; }
-.restaurant-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-pop); }
-.restaurant-card.accepted { border-color: rgba(122,158,126,0.5) !important; }
-.restaurant-card.rejected { opacity: 0.45; }
-.card-img { position: relative; min-height: 160px; overflow: hidden; }
-.card-img-inner { position: absolute; inset: 0; display: flex; align-items: flex-end; padding: 8px; }
-.card-img::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(45deg, rgba(255,255,255,0.04) 0 8px, transparent 8px 16px); pointer-events: none; }
-.card-img-label { background: rgba(255,255,255,0.88); backdrop-filter: blur(8px); padding: 3px 8px; border-radius: var(--radius-pill); font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.08em; color: var(--ink); text-transform: uppercase; position: relative; z-index: 1; }
-.ph-warm-amber { background: linear-gradient(135deg, #E8B07A 0%, #C97A3D 100%); }
+.card-img { position: relative; min-height: 180px; overflow: hidden; }
+.card-img::after {
+    content: ""; position: absolute; inset: 0;
+    background: repeating-linear-gradient(45deg, rgba(255,255,255,0.04) 0 8px, transparent 8px 16px);
+    pointer-events: none;
+}
+.card-img .ph {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em;
+    color: rgba(0,0,0,0.35); text-transform: uppercase;
+}
+.card-img .label {
+    position: absolute; bottom: 10px; left: 10px;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(8px);
+    padding: 4px 9px; border-radius: var(--radius-pill);
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.08em; color: var(--ink); text-transform: uppercase;
+}
+
+.ph-warm-amber  { background: linear-gradient(135deg, #E8B07A 0%, #C97A3D 100%); }
 .ph-smoke-olive { background: linear-gradient(135deg, #B5A77E 0%, #6E7A56 100%); }
 .ph-rice-gold   { background: linear-gradient(135deg, #F0DDA0 0%, #C9A227 100%); }
 .ph-wine-rust   { background: linear-gradient(135deg, #B05546 0%, #6A2A2C 100%); }
@@ -192,110 +488,147 @@ html, body { overscroll-behavior: none !important; }
 .ph-pepper-cream{ background: linear-gradient(135deg, #F2EAD6 0%, #C9B07A 100%); }
 .ph-char-orange { background: linear-gradient(135deg, #E89868 0%, #A14826 100%); }
 .ph-salmon-glaze{ background: linear-gradient(135deg, #F0A788 0%, #B05A3F 100%); }
-.ph-bean-paprika { background: linear-gradient(135deg, #E0C290 0%, #A85F30 100%); }
+.ph-bean-paprika{ background: linear-gradient(135deg, #E0C290 0%, #A85F30 100%); }
 .ph-scallion-jade{ background: linear-gradient(135deg, #C4D6A8 0%, #5F8268 100%); }
 .ph-amber-gold  { background: linear-gradient(135deg, #E8B870 0%, #A6722A 100%); }
 .ph-garden-jade { background: linear-gradient(135deg, #B8CFA0 0%, #6A8E70 100%); }
 .ph-spritz-rust { background: linear-gradient(135deg, #E89570 0%, #B0552E 100%); }
 .ph-rye-sage    { background: linear-gradient(135deg, #C4B580 0%, #6E7E55 100%); }
-.card-body { padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.card-meta-top { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
-.card-title { font-family: var(--serif); font-weight: 400; font-size: 1.2rem; line-height: 1.15; letter-spacing: -0.01em; margin: 0; color: var(--ink); }
-.card-rating { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink); }
-.card-stars { color: var(--gold); font-size: 11px; letter-spacing: -1px; }
-.card-rating-num { font-variant-numeric: tabular-nums; }
-.card-rating-sep { color: var(--ink-3); }
-.card-address { color: var(--ink-3); font-size: 11.5px; }
-.card-blurb { font-size: 13.5px; line-height: 1.55; color: var(--ink-2); margin: 3px 0 4px; }
-.card-tags { display: flex; flex-wrap: wrap; gap: 4px; }
-.card-tag { display: inline-block; background: var(--tag-ink); border-radius: var(--radius-pill); padding: 2px 9px; font-size: 11.5px; color: var(--ink-2); }
-.card-actions { display: flex; gap: 7px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); align-items: center; }
-.card-feedback-done { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); padding-top: 10px; margin-top: 6px; border-top: 1px solid var(--line); }
 
-/* Accept/reject card buttons */
-.accept-btn > button { background: var(--card) !important; color: var(--sage-2) !important; border: 1px solid rgba(122,158,126,0.4) !important; border-radius: var(--radius-sm) !important; padding: 7px 13px !important; font-size: 0.8rem !important; font-weight: 500 !important; box-shadow: none !important; }
-.accept-btn > button:hover { background: var(--sage) !important; color: #fff !important; border-color: var(--sage) !important; transform: translateY(-1px) !important; box-shadow: 0 4px 12px rgba(122,158,126,0.30) !important; }
-.reject-btn > button { background: var(--card) !important; color: var(--terracotta-2) !important; border: 1px solid rgba(201,106,58,0.4) !important; border-radius: var(--radius-sm) !important; padding: 7px 13px !important; font-size: 0.8rem !important; font-weight: 500 !important; box-shadow: none !important; }
-.reject-btn > button:hover { background: var(--terracotta) !important; color: #fff !important; border-color: var(--terracotta) !important; transform: translateY(-1px) !important; box-shadow: 0 4px 12px rgba(201,106,58,0.30) !important; }
+.card-body { padding: 18px 20px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.card-meta-top {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--ink-3);
+}
+.card-meta-top .sep { opacity: 0.4; }
+.card-meta-top .open { color: var(--sage-2); }
 
-/* LLM response */
-.llm-response { background: linear-gradient(180deg, #FFFBF5 0%, #FAF3E8 100%); border: 1px solid rgba(201,162,39,0.2); border-radius: var(--radius); padding: 1.1rem 1.3rem; margin: 0.75rem 0 1.25rem; font-size: 0.875rem; line-height: 1.65; color: var(--ink); white-space: pre-wrap; }
+.card-title {
+    font-family: var(--serif); font-weight: 400; font-size: 22px;
+    line-height: 1.15; letter-spacing: -0.01em;
+    margin: 0; color: var(--ink);
+}
+.card-rating {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--ink); flex-wrap: wrap;
+}
+.card-rating .stars { color: var(--gold); letter-spacing: -1px; font-size: 13px; }
+.card-rating .num { font-variant-numeric: tabular-nums; }
+.card-rating .sep { color: var(--ink-3); }
+.card-rating .reviews { color: var(--ink-3); font-size: 12.5px; }
 
-/* Empty state */
-.empty-state { background: var(--card); border: 1px dashed var(--line-2); border-radius: var(--radius-lg); padding: 48px 32px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.empty-glyph { width: 52px; height: 52px; border-radius: 50%; background: var(--tag-terracotta); display: flex; align-items: center; justify-content: center; color: var(--terracotta); font-family: var(--serif); font-size: 26px; margin-bottom: 4px; }
-.empty-title { font-family: var(--serif); font-weight: 400; font-size: 1.3rem; letter-spacing: -0.01em; margin: 0; }
-.empty-body { color: var(--ink-2); font-size: 13.5px; max-width: 38ch; margin: 0; line-height: 1.5; }
-.empty-chips { display: flex; gap: 7px; flex-wrap: wrap; justify-content: center; margin-top: 6px; }
+.card-blurb {
+    font-size: 14px; line-height: 1.55; color: var(--ink);
+    margin: 4px 0 6px; max-width: 60ch;
+}
+.card-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
 
-/* Misc */
-label, .stSelectbox label, .stTextInput label, .stTextArea label { color: var(--ink-3) !important; font-size: 0.7rem !important; font-weight: 400 !important; font-family: var(--mono) !important; letter-spacing: 0.1em !important; text-transform: uppercase !important; }
-[data-testid="stMetric"] { background: var(--card) !important; border: 1px solid var(--line) !important; border-radius: var(--radius-sm) !important; padding: 0.75rem !important; box-shadow: var(--shadow-card) !important; }
-[data-testid="stMetricValue"] { color: var(--terracotta) !important; font-family: var(--serif) !important; font-size: 1.4rem !important; }
-[data-testid="stMetricLabel"] { color: var(--ink-3) !important; font-size: 0.68rem !important; font-family: var(--mono) !important; letter-spacing: 0.08em !important; text-transform: uppercase !important; }
-hr { border-color: var(--line) !important; margin: 1rem 0 !important; }
+.card-actions {
+    display: flex; gap: 8px; margin-top: 14px;
+    padding-top: 14px; border-top: 1px solid var(--line);
+    align-items: center;
+}
+.card-extra {
+    display: flex; align-items: center; gap: 8px;
+    margin-right: auto; font-size: 12px;
+    color: var(--sage-2); font-family: var(--mono); letter-spacing: 0.04em;
+}
+.card-extra .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sage); }
+.card-extra.warn { color: var(--gold); }
+.card-extra.warn .dot { background: var(--gold); }
+
+.btn-accept, .btn-reject {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid; background: var(--card);
+    padding: 8px 14px; border-radius: var(--radius);
+    font-size: 13px; font-weight: 500;
+    transition: all 0.15s ease; cursor: pointer;
+}
+.btn-accept { color: var(--sage-2); border-color: rgba(122,158,126,0.4); }
+.btn-accept:hover { background: var(--sage); color: #fff; border-color: var(--sage); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(122,158,126,0.30); }
+.btn-reject { color: var(--terracotta-2); border-color: rgba(201,106,58,0.4); }
+.btn-reject:hover { background: var(--terracotta); color: #fff; border-color: var(--terracotta); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(201,106,58,0.30); }
+.btn-accept .glyph, .btn-reject .glyph { font-family: var(--mono); font-size: 11px; font-weight: 600; }
+
+.card-feedback-done {
+    margin: 14px 0 0; padding-top: 14px;
+    border-top: 1px solid var(--line);
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.08em; text-transform: uppercase;
+}
+.card-feedback-done.acc { color: var(--sage-2); }
+.card-feedback-done.rej { color: var(--terracotta); }
+
+/* ── Empty state ── */
+.empty {
+    background: var(--card); border: 1px dashed var(--line-2);
+    border-radius: var(--radius-lg); padding: 48px 32px;
+    text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+.empty .glyph {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: var(--tag-terracotta); color: var(--terracotta);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--serif); font-size: 28px; margin-bottom: 4px;
+}
+.empty h3 {
+    font-family: var(--serif); font-weight: 400; font-size: 22px;
+    letter-spacing: -0.01em; margin: 0;
+}
+.empty p { color: var(--ink-2); margin: 0; max-width: 38ch; font-size: 14px; }
+.empty .quick-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 6px; }
+
+/* ── Skeleton ── */
+.skeleton {
+    background: var(--card); border-radius: var(--radius-lg);
+    border: 1px solid var(--line);
+    display: grid; grid-template-columns: 168px 1fr;
+    overflow: hidden; min-height: 180px; margin-bottom: 16px;
+}
+.skeleton .img {
+    background: linear-gradient(90deg, var(--bg-deep) 0%, #EFE8DA 50%, var(--bg-deep) 100%);
+    background-size: 200% 100%; animation: shimmer 1.4s linear infinite;
+}
+.skeleton .body { padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+.skeleton .bar {
+    height: 12px; border-radius: 4px;
+    background: linear-gradient(90deg, var(--bg-deep) 0%, #EFE8DA 50%, var(--bg-deep) 100%);
+    background-size: 200% 100%; animation: shimmer 1.4s linear infinite;
+}
+.skeleton .bar.title { height: 22px; width: 60%; }
+.skeleton .bar.short { width: 40%; }
+.skeleton .bar.medium { width: 75%; }
+@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+
+/* ── LLM response ── */
+.llm-response {
+    background: linear-gradient(180deg, #FFFBF5 0%, #FAF3E8 100%);
+    border: 1px solid rgba(201,162,39,0.2);
+    border-radius: var(--radius); padding: 18px 22px;
+    margin: 8px 0 20px;
+    font-size: 14.5px; line-height: 1.65; color: var(--ink);
+    white-space: pre-wrap;
+}
+
 .stSpinner > div { border-top-color: var(--terracotta) !important; }
-.stCheckbox label { color: var(--ink-2) !important; font-size: 0.875rem !important; font-family: var(--sans) !important; letter-spacing: 0 !important; text-transform: none !important; }
-#MainMenu, footer { visibility: hidden; }
+
+/* Hide form submit's default appearance when used as a chip */
+.stForm [data-testid="stFormSubmitButton"] { background: transparent !important; padding: 0 !important; border: none !important; box-shadow: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
 
-# ── Cuisine → gradient class mapping ─────────────────────────────────────────
-CUISINE_GRADIENTS = {
-    "italian": "ph-warm-amber", "pizza": "ph-wine-rust",
-    "japanese": "ph-scallion-jade", "ramen": "ph-broth-green",
-    "korean": "ph-bean-paprika", "chinese": "ph-smoke-olive",
-    "mexican": "ph-char-orange", "american": "ph-rice-gold",
-    "seafood": "ph-salmon-glaze", "mediterranean": "ph-garden-jade",
-    "cocktail": "ph-spritz-rust", "bar": "ph-rye-sage",
-    "breakfast": "ph-pepper-cream", "thai": "ph-broth-green",
-    "indian": "ph-amber-gold", "french": "ph-pepper-cream",
-    "greek": "ph-garden-jade", "vietnamese": "ph-scallion-jade",
-}
-
-BUDGET_LABELS = {1: "Cheap", 2: "Smart", 3: "Treat", 4: "Splurge"}
-BUDGET_MAP = {"budget": 1, "moderate": 2, "premium": 3, "premium+": 4}
-BUDGET_REVERSE = {1: "budget", 2: "moderate", 3: "premium", 4: "premium+"}
-
-QUICK_STARTS = {
-    "eat":  ["something cozy", "date night Italian", "wood-fired anything", "big portions"],
-    "cook": ["quick weeknight", "use up the pasta", "something to impress", "one-pot"],
-    "drink": ["rainy night in", "pre-dinner aperitivo", "something bitter", "low ABV"],
-}
-
-EMPTY_COPY = {
-    "eat":   {"glyph": "✦", "title": "Where shall we eat?", "body": "Tell us what you're craving — vague or specific, anything goes."},
-    "cook":  {"glyph": "◐", "title": "What's in the kitchen?", "body": "Drop your craving and what's in the fridge. We'll work backward from there."},
-    "drink": {"glyph": "◑", "title": "Pick a vibe.", "body": "A mood, a season — we'll match it to your bar cart."},
-}
-
-THINKING_MSG = {
-    "eat":   "Reading the room…",
-    "cook":  "Browsing your shelf…",
-    "drink": "Mixing ideas…",
-}
-
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
-@st.cache_resource
-def get_client():
-    return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-
-@st.cache_data
-def get_df():
-    return load_reviews(path="data/restaurants.csv", max_rows=3000)
-
-
-def get_gradient(categories):
+def get_gradient_class(categories):
     if not categories:
-        return "ph-amber-gold"
+        return "amber-gold"
     for cat in categories[:2]:
         for key, grad in CUISINE_GRADIENTS.items():
             if key in cat.lower():
                 return grad
-    return "ph-amber-gold"
+    return "amber-gold"
 
 
 def stars_html(rating):
@@ -304,46 +637,46 @@ def stars_html(rating):
     full = int(rating)
     half = (rating - full) >= 0.5
     empty = 5 - full - (1 if half else 0)
-    return "★" * full + ("½" if half else "") + "☆" * empty
+    return "★" * full + ("⯨" if half else "") + "☆" * empty
 
 
 def donut_svg(eat, cook, drink, total):
     if total == 0:
-        return '<svg viewBox="0 0 64 64" width="64" height="64"><circle cx="32" cy="32" r="24" fill="none" stroke="#F2EDE3" stroke-width="8"/><text x="32" y="37" text-anchor="middle" font-family="DM Serif Display,serif" font-size="16" fill="#1A1A1A">0</text></svg>'
-
-    r = 24
+        return '<svg class="donut" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="none" stroke="#F2EDE3" stroke-width="8"/><text x="32" y="36" text-anchor="middle" class="donut-text">0</text></svg>'
+    r = 28
     C = 2 * math.pi * r
     s = max(eat + cook + drink, 1)
     el = C * eat / s
     cl = C * cook / s
     dl = C * drink / s
 
-    def arc(color, dashlen, offset):
-        return f'<circle cx="32" cy="32" r="{r}" fill="none" stroke="{color}" stroke-width="8" stroke-dasharray="{dashlen:.1f} {C - dashlen:.1f}" stroke-dashoffset="{-offset:.1f}" transform="rotate(-90 32 32)"/>'
+    def arc(color, dl_arc, offset):
+        return f'<circle cx="32" cy="32" r="{r}" fill="none" stroke="{color}" stroke-width="8" stroke-dasharray="{dl_arc:.1f} {C - dl_arc:.1f}" stroke-dashoffset="{-offset:.1f}"/>'
 
-    return f'''<svg viewBox="0 0 64 64" width="64" height="64">
-  <circle cx="32" cy="32" r="{r}" fill="none" stroke="#F2EDE3" stroke-width="8"/>
-  {arc("#C96A3A", el, 0)}
-  {arc("#7A9E7E", cl, el)}
-  {arc("#C9A227", dl, el + cl)}
-  <text x="32" y="37" text-anchor="middle" font-family="DM Serif Display,serif" font-size="16" fill="#1A1A1A">{total}</text>
+    return f'''<svg class="donut" viewBox="0 0 64 64">
+<circle cx="32" cy="32" r="{r}" fill="none" stroke="#F2EDE3" stroke-width="8"/>
+<g transform="rotate(-90 32 32)">
+{arc("#C96A3A", el, 0)}
+{arc("#7A9E7E", cl, el)}
+{arc("#C9A227", dl, el + cl)}
+</g>
+<text x="32" y="36" text-anchor="middle" class="donut-text">{total}</text>
 </svg>'''
 
 
 def match_indicator(inventory, response_text):
     if not inventory or not response_text:
-        return None
-    matched = [item for item in inventory if item.lower() in response_text.lower()]
+        return None, None
+    matched = sum(1 for item in inventory if item.lower() in response_text.lower())
     total = len(inventory)
-    count = len(matched)
-    if count == total:
-        return f"✓ all {total} items on hand", "match-good"
-    elif count > 0:
-        return f"⚠ {count} / {total} items on hand", "match-warn"
+    if matched == total:
+        return f"All {total} items on hand", "good"
+    elif matched > 0:
+        return f"{matched} of {total} items on hand", "warn"
     return None, None
 
 
-# ── Session state init ────────────────────────────────────────────────────────
+# ── Session state ─────────────────────────────────────────────────────────────
 def init_session():
     if "profile" not in st.session_state:
         profile = load_profile()
@@ -355,384 +688,426 @@ def init_session():
                 "budget": "moderate",
                 "online_order": "Yes",
                 "occasion": "casual dinner",
+                "cuisine_scores": {"Italian": 0.8, "Japanese": 0.6, "Mediterranean": 0.45, "American": 0.3},
+                "food_scores": {"pasta": 0.7, "pizza": 0.6, "seafood": -0.5},
             })
             save_profile(profile)
         st.session_state.profile = profile
 
     defaults = {
-        "eat_results": None, "eat_fsq_results": None,
-        "eat_llm_response": None, "cook_response": None,
-        "cocktail_response": None, "feedback_given": set(),
+        "eat_results": None, "eat_fsq_results": None, "eat_llm_response": None,
+        "cook_response": None, "cocktail_response": None,
+        "feedback_given": set(),
         "hint_dismissed": False,
         "tab_counts": {"eat": 0, "cook": 0, "drink": 0},
         "history": [],
         "eat_prefill": "", "cook_prefill": "", "drink_prefill": "",
+        "active_tab": "eat",
     }
     for k, v in defaults.items():
         if k not in st.session_state:
             st.session_state[k] = v
 
 
-# ── Sidebar ───────────────────────────────────────────────────────────────────
-def render_sidebar():
-    with st.sidebar:
-        st.markdown(
-            '<div class="brand-wrap">'
-            '<div class="brand-mark"></div>'
-            '<div class="brand-name">Food <em>AI</em></div>'
-            '</div>',
-            unsafe_allow_html=True
-        )
-        st.markdown("---")
+# ── Query param handler ───────────────────────────────────────────────────────
+def handle_query_params():
+    qp = st.query_params
 
-        profile = st.session_state.profile
+    if "action" in qp:
+        action = qp["action"]
+        name = qp.get("name", "")
+        tab = qp.get("tab", "eat")
+        cuisine = qp.get("cuisine", "")
 
-        # Cuisine pulse bars
-        cuisine_scores = profile.get("cuisine_scores", {})
-        if cuisine_scores:
-            sorted_c = sorted(cuisine_scores.items(), key=lambda x: -x[1])[:5]
-            max_score = max(v for _, v in sorted_c) if sorted_c else 1
-            st.markdown(
-                f'<div class="side-label"><span>Cuisine pulse</span><span class="count">top {len(sorted_c)}</span></div>',
-                unsafe_allow_html=True
+        if action in ("accept", "reject") and name:
+            accepted = action == "accept"
+            cuisines = [cuisine] if cuisine else None
+            st.session_state.profile = update_profile(
+                st.session_state.profile, restaurant_name=name,
+                accepted=accepted, cuisines=cuisines,
             )
-            bars_html = '<div class="cuisine-list">'
-            for name, score in sorted_c:
-                pct = max(0, min(100, int((score / max(max_score, 0.01)) * 100)))
-                bars_html += (
-                    f'<div class="cuisine-row">'
-                    f'<span style="font-size:12px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{name}</span>'
-                    f'<span class="cuisine-bar"><span class="cuisine-fill" style="width:{pct}%"></span></span>'
-                    f'<span class="cuisine-pct">{pct}</span>'
-                    f'</div>'
-                )
-            bars_html += '</div>'
-            st.markdown(bars_html, unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
+            save_profile(st.session_state.profile)
+            st.session_state.history.append({"name": name, "kind": "acc" if accepted else "rej", "tab": tab})
+            st.session_state.tab_counts[tab] = st.session_state.tab_counts.get(tab, 0) + 1
 
-        # Removable likes
-        liked = profile.get("liked_foods", [])
-        if liked:
-            st.markdown(
-                f'<div class="side-label"><span>You like</span><span class="count">{len(liked)}</span></div>',
-                unsafe_allow_html=True
-            )
-            pill_cols = st.columns(len(liked) if len(liked) <= 4 else 4)
-            for i, food in enumerate(liked):
-                with pill_cols[i % 4]:
-                    st.markdown('<div class="remove-pill">', unsafe_allow_html=True)
-                    if st.button(f"✕ {food}", key=f"rm_like_{food}"):
-                        profile["liked_foods"].remove(food)
-                        profile["food_scores"].pop(food, None)
-                        save_profile(profile)
-                        st.session_state.profile = profile
-                        st.rerun()
-                    st.markdown('</div>', unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
+        elif action == "rm_like":
+            food = qp.get("food", "")
+            if food in st.session_state.profile.get("liked_foods", []):
+                st.session_state.profile["liked_foods"].remove(food)
+                st.session_state.profile.get("food_scores", {}).pop(food, None)
+                save_profile(st.session_state.profile)
 
-        # Removable dislikes
-        disliked = profile.get("disliked_foods", [])
-        if disliked:
-            st.markdown(
-                f'<div class="side-label"><span>Not for you</span><span class="count">{len(disliked)}</span></div>',
-                unsafe_allow_html=True
-            )
-            d_cols = st.columns(len(disliked) if len(disliked) <= 4 else 4)
-            for i, food in enumerate(disliked):
-                with d_cols[i % 4]:
-                    st.markdown('<div class="remove-pill-dis">', unsafe_allow_html=True)
-                    if st.button(f"✕ {food}", key=f"rm_dis_{food}"):
-                        profile["disliked_foods"].remove(food)
-                        profile["food_scores"].pop(food, None)
-                        save_profile(profile)
-                        st.session_state.profile = profile
-                        st.rerun()
-                    st.markdown('</div>', unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
+        elif action == "rm_dis":
+            food = qp.get("food", "")
+            if food in st.session_state.profile.get("disliked_foods", []):
+                st.session_state.profile["disliked_foods"].remove(food)
+                st.session_state.profile.get("food_scores", {}).pop(food, None)
+                save_profile(st.session_state.profile)
 
-        # Budget dots
-        current_budget_level = BUDGET_MAP.get(profile.get("budget", "moderate"), 2)
-        st.markdown(
-            f'<div class="side-label"><span>Budget comfort</span><span class="count">{"$" * current_budget_level}</span></div>',
-            unsafe_allow_html=True
-        )
-        b_cols = st.columns([1, 1, 1, 1, 2])
-        for i in range(4):
-            level = i + 1
-            active = level <= current_budget_level
-            css_class = "budget-dot-active" if active else "budget-dot"
-            with b_cols[i]:
-                st.markdown(f'<div class="{css_class}">', unsafe_allow_html=True)
-                if st.button(" ", key=f"bdgt_{level}"):
-                    profile["budget"] = BUDGET_REVERSE[level]
-                    save_profile(profile)
-                    st.session_state.profile = profile
-                    st.rerun()
-                st.markdown('</div>', unsafe_allow_html=True)
-        with b_cols[4]:
-            st.markdown(
-                f'<span class="budget-label">{BUDGET_LABELS[current_budget_level]}</span>',
-                unsafe_allow_html=True
-            )
-        st.markdown("<br>", unsafe_allow_html=True)
+        elif action == "budget":
+            level = int(qp.get("level", "2"))
+            st.session_state.profile["budget"] = BUDGET_REVERSE.get(level, "moderate")
+            save_profile(st.session_state.profile)
 
-        # Donut insights
-        tc = st.session_state.tab_counts
-        total = tc["eat"] + tc["cook"] + tc["drink"]
-        accepted = len(profile.get("accepted", []))
-        rejected = len(profile.get("rejected", []))
-        all_decisions = accepted + rejected
-        pct = round((accepted / all_decisions) * 100) if all_decisions > 0 else 0
+        elif action == "prefill":
+            target = qp.get("tab", "eat")
+            text = qp.get("text", "")
+            st.session_state[f"{target}_prefill"] = text
 
-        donut = donut_svg(tc["eat"], tc["cook"], tc["drink"], total)
-        legend = (
-            '<div class="legend">'
-            f'<div class="legend-row"><span class="legend-lbl"><span class="legend-sw" style="background:var(--terracotta)"></span>Eat out</span><span class="legend-num">{tc["eat"]}</span></div>'
-            f'<div class="legend-row"><span class="legend-lbl"><span class="legend-sw" style="background:var(--sage)"></span>Cook</span><span class="legend-num">{tc["cook"]}</span></div>'
-            f'<div class="legend-row"><span class="legend-lbl"><span class="legend-sw" style="background:var(--gold)"></span>Cocktails</span><span class="legend-num">{tc["drink"]}</span></div>'
-            '</div>'
-        )
-        st.markdown(
-            f'<div class="insights-card">'
-            f'<div class="insights-head"><span class="insights-title">Profile insights</span><span class="insights-pct">{pct}% positive</span></div>'
-            f'<div class="donut-wrap">{donut}{legend}</div>'
-            f'</div>',
-            unsafe_allow_html=True
-        )
-        st.markdown("<br>", unsafe_allow_html=True)
+        elif action == "dismiss_hint":
+            st.session_state.hint_dismissed = True
 
-        # Recent decisions
-        history = st.session_state.history[-6:][::-1]
-        st.markdown(
-            f'<div class="side-label"><span>Recent decisions</span><span class="count">{all_decisions}</span></div>',
-            unsafe_allow_html=True
-        )
-        if not history:
-            st.markdown('<div style="font-size:12px;color:var(--ink-3);font-style:italic;padding:4px 0">No history yet</div>', unsafe_allow_html=True)
-        else:
-            rows = '<div class="history-list">'
-            for h in history:
-                color = "var(--sage)" if h["kind"] == "acc" else "var(--terracotta)"
-                src = {"eat": "EAT", "cook": "COOK", "drink": "BAR"}.get(h.get("tab", "eat"), "EAT")
-                rows += (
-                    f'<div class="history-row">'
-                    f'<span class="history-dot" style="background:{color}"></span>'
-                    f'<span class="history-name">{html_module.escape(h["name"])}</span>'
-                    f'<span class="history-src">{src}</span>'
-                    f'</div>'
-                )
-            rows += '</div>'
-            st.markdown(rows, unsafe_allow_html=True)
-
-        st.markdown("---")
-        st.markdown('<div class="reset-wrap">', unsafe_allow_html=True)
-        if st.button("↺  Reset taste profile", key="reset_profile"):
+        elif action == "reset":
             if os.path.exists("data/taste_profile.json"):
                 os.remove("data/taste_profile.json")
             st.session_state.profile = load_profile()
             st.session_state.history = []
             st.session_state.tab_counts = {"eat": 0, "cook": 0, "drink": 0}
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+
+        st.query_params.clear()
+        st.rerun()
 
 
-# ── Feedback helper ───────────────────────────────────────────────────────────
-def handle_feedback(restaurant_name, accepted, cuisines=None, foods=None, key=None, tab="eat"):
-    if key and key in st.session_state.feedback_given:
-        return
-    st.session_state.profile = update_profile(
-        st.session_state.profile,
-        restaurant_name=restaurant_name,
-        accepted=accepted,
-        cuisines=cuisines,
-        foods=foods,
-    )
-    save_profile(st.session_state.profile)
-    if key:
-        st.session_state.feedback_given.add(key)
-    st.session_state.history.append({"name": restaurant_name, "kind": "acc" if accepted else "rej", "tab": tab})
-    st.session_state.tab_counts[tab] += 1
+# ── Sidebar ───────────────────────────────────────────────────────────────────
+def render_sidebar():
+    profile = st.session_state.profile
 
+    # Brand
+    sidebar_html = '<div class="brand"><div class="brand-mark"></div><div class="brand-name">Food <em>AI</em></div></div>'
 
-# ── Skeleton loader ───────────────────────────────────────────────────────────
-def render_skeletons(n=3):
-    html_out = ""
-    for _ in range(n):
-        html_out += (
-            '<div class="skeleton">'
-            '<div class="skel-img"></div>'
-            '<div class="skel-body">'
-            '<div class="skel-bar short"></div>'
-            '<div class="skel-bar title"></div>'
-            '<div class="skel-bar medium"></div>'
-            '<div class="skel-bar short"></div>'
-            '</div></div>'
+    # Cuisine pulse
+    cs = profile.get("cuisine_scores", {})
+    if cs:
+        sorted_c = sorted(cs.items(), key=lambda x: -x[1])[:5]
+        max_score = max(v for _, v in sorted_c) if sorted_c else 1
+        rows = ""
+        for name, score in sorted_c:
+            pct = max(0, min(100, int((score / max(max_score, 0.01)) * 100)))
+            rows += (
+                f'<div class="cuisine-row">'
+                f'<span class="name">{html_module.escape(name)}</span>'
+                f'<span class="cuisine-bar"><i style="width:{pct}%"></i></span>'
+                f'<span class="pct">{pct}</span>'
+                f'</div>'
+            )
+        sidebar_html += (
+            f'<div class="side-section">'
+            f'<div class="side-label"><span>Cuisine pulse</span><span class="count">Top {len(sorted_c)}</span></div>'
+            f'<div class="cuisine-list">{rows}</div>'
+            f'</div>'
         )
-    st.markdown(html_out, unsafe_allow_html=True)
 
+    # Likes
+    liked = profile.get("liked_foods", [])
+    if liked:
+        pills = "".join([
+            f'<a href="?action=rm_like&food={quote(f)}" class="pill sage" target="_self">'
+            f'<span class="pill-bar"></span>{html_module.escape(f)}<span class="x">×</span>'
+            f'</a>'
+            for f in liked
+        ])
+        sidebar_html += (
+            f'<div class="side-section">'
+            f'<div class="side-label"><span>You like</span><span class="count">{len(liked)}</span></div>'
+            f'<div class="tag-cluster">{pills}</div>'
+            f'</div>'
+        )
 
-# ── Empty state ───────────────────────────────────────────────────────────────
-def render_empty_state(tab, on_suggest_key):
-    copy = EMPTY_COPY[tab]
-    chips = QUICK_STARTS[tab]
+    # Dislikes
+    disliked = profile.get("disliked_foods", [])
+    if disliked:
+        pills = "".join([
+            f'<a href="?action=rm_dis&food={quote(f)}" class="pill terracotta" target="_self">'
+            f'<span class="pill-bar"></span>{html_module.escape(f)}<span class="x">×</span>'
+            f'</a>'
+            for f in disliked
+        ])
+        sidebar_html += (
+            f'<div class="side-section">'
+            f'<div class="side-label"><span>Not for you</span><span class="count">{len(disliked)}</span></div>'
+            f'<div class="tag-cluster">{pills}</div>'
+            f'</div>'
+        )
 
-    st.markdown(
-        f'<div class="empty-state">'
-        f'<div class="empty-glyph">{copy["glyph"]}</div>'
-        f'<div class="empty-title">{copy["title"]}</div>'
-        f'<div class="empty-body">{copy["body"]}</div>'
-        f'</div>',
-        unsafe_allow_html=True
-    )
-    st.markdown('<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center">', unsafe_allow_html=True)
-    chip_cols = st.columns(len(chips))
-    for i, chip in enumerate(chips):
-        with chip_cols[i]:
-            st.markdown('<div class="suggest-chip-btn">', unsafe_allow_html=True)
-            if st.button(chip, key=f"chip_{tab}_{i}"):
-                st.session_state[on_suggest_key] = chip
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-
-# ── Restaurant card ───────────────────────────────────────────────────────────
-def render_restaurant_card(r, source="fsq", idx=0, blurb="", tab="eat"):
-    key = f"{source}_{html_module.escape(str(r.get('name', idx)))}_{idx}"
-    already_accepted = r.get("name", "") in st.session_state.profile.get("accepted", [])
-    already_rejected = r.get("name", "") in st.session_state.profile.get("rejected", [])
-
-    card_class = "restaurant-card"
-    if already_accepted:
-        card_class += " accepted"
-    elif already_rejected:
-        card_class += " rejected"
-
-    price_str = PRICE_LABEL.get(r.get("price"), "")
-    rating = r.get("rating")
-    cats = ", ".join(r.get("categories", [])[:2]) if r.get("categories") else r.get("category", "")
-    name = r.get("name") or r.get("title", "")
-    address = r.get("address", "")
-    gradient = get_gradient(r.get("categories", []))
-
-    # Stars
-    stars = f'<span class="card-stars">{stars_html(rating)}</span> <span class="card-rating-num">{rating}</span>' if rating else ""
-    rating_html = (
-        f'<div class="card-rating">{stars}'
-        + (f'<span class="card-rating-sep">·</span><span class="card-address">{html_module.escape(address)}</span>' if address else "")
-        + '</div>'
-    ) if (rating or address) else ""
-
-    # Tags
-    tag_list = [t for t in r.get("categories", [])[:3] if t]
-    if price_str:
-        tag_list.insert(0, price_str)
-    tags_html = "".join([f'<span class="card-tag">{html_module.escape(t)}</span>' for t in tag_list])
-
-    blurb_html = f'<div class="card-blurb">{html_module.escape(blurb)}</div>' if blurb else ""
-
-    st.markdown(
-        f'<div class="{card_class}">'
-        f'<div class="card-img {gradient}">'
-        f'<div class="card-img-inner"><span class="card-img-label">{html_module.escape(cats[:20]) if cats else "restaurant"}</span></div>'
+    # Budget
+    current_budget = BUDGET_MAP.get(profile.get("budget", "moderate"), 2)
+    dots = "".join([
+        f'<a href="?action=budget&level={n}" class="dot{" on" if n <= current_budget else ""}" target="_self"></a>'
+        for n in [1, 2, 3, 4]
+    ])
+    sidebar_html += (
+        f'<div class="side-section">'
+        f'<div class="side-label"><span>Budget comfort</span><span class="count">{"$" * current_budget}</span></div>'
+        f'<div class="budget">{dots}<span class="budget-label">{BUDGET_LABELS[current_budget]}</span></div>'
         f'</div>'
-        f'<div class="card-body">'
-        f'<div class="card-meta-top">{html_module.escape(cats)}</div>'
-        f'<h3 class="card-title">{html_module.escape(name)}</h3>'
-        f'{rating_html}'
-        f'{blurb_html}'
-        f'<div class="card-tags">{tags_html}</div>'
-        f'</div></div>',
+    )
+
+    # Insights donut
+    tc = st.session_state.tab_counts
+    total = tc["eat"] + tc["cook"] + tc["drink"]
+    accepted = len(profile.get("accepted", []))
+    rejected = len(profile.get("rejected", []))
+    all_dec = accepted + rejected
+    pct = round((accepted / all_dec) * 100) if all_dec > 0 else 0
+
+    legend = (
+        '<div class="legend">'
+        f'<div class="legend-row"><span class="lbl"><span class="sw" style="background:var(--terracotta)"></span>Eat out</span><span class="num">{tc["eat"]}</span></div>'
+        f'<div class="legend-row"><span class="lbl"><span class="sw" style="background:var(--sage)"></span>Cook</span><span class="num">{tc["cook"]}</span></div>'
+        f'<div class="legend-row"><span class="lbl"><span class="sw" style="background:var(--gold)"></span>Cocktails</span><span class="num">{tc["drink"]}</span></div>'
+        '</div>'
+    )
+    sidebar_html += (
+        f'<div class="side-section">'
+        f'<div class="insights">'
+        f'<div class="insights-head"><span>Profile insights</span><span class="pct">{pct}% positive</span></div>'
+        f'<div class="donut-wrap">{donut_svg(tc["eat"], tc["cook"], tc["drink"], total)}{legend}</div>'
+        f'</div></div>'
+    )
+
+    # History
+    history = st.session_state.history[-6:][::-1]
+    if not history:
+        history_html = '<div class="history-empty">No history yet</div>'
+    else:
+        history_html = '<div class="history">'
+        for h in history:
+            src = {"eat": "EAT", "cook": "COOK", "drink": "BAR"}.get(h.get("tab", "eat"), "EAT")
+            history_html += (
+                f'<div class="history-row {h["kind"]}">'
+                f'<span class="dot"></span>'
+                f'<span class="name">{html_module.escape(h["name"])}</span>'
+                f'<span class="src">{src}</span>'
+                f'</div>'
+            )
+        history_html += '</div>'
+    sidebar_html += (
+        f'<div class="side-section">'
+        f'<div class="side-label"><span>Recent decisions</span><span class="count">{all_dec}</span></div>'
+        f'{history_html}'
+        f'</div>'
+    )
+
+    # Reset
+    sidebar_html += (
+        '<a href="?action=reset" class="reset-link" target="_self">'
+        '<span>Reset taste profile</span>'
+        '<span class="glyph">↺</span>'
+        '</a>'
+    )
+
+    with st.sidebar:
+        st.markdown(sidebar_html, unsafe_allow_html=True)
+
+
+# ── Greeting + hint + tabs ────────────────────────────────────────────────────
+def render_greeting():
+    import datetime
+    now = datetime.datetime.now()
+    day = now.strftime("%a")
+    hour = now.hour
+    greeting = "Good morning" if hour < 12 and hour >= 4 else "Good afternoon" if hour < 18 and hour >= 12 else "Good evening" if hour < 23 and hour >= 18 else "Up for a midnight snack?"
+    friend = "" if hour < 4 else ", early bird" if hour < 12 else ", friend"
+    time_str = now.strftime("%-I:%M %p")
+    meta = f"{day} · {time_str}"
+
+    st.markdown(
+        f'<div class="greeting">'
+        f'<h1>{greeting}<em>{friend}</em></h1>'
+        f'</div>'
+        f'<p class="subline">A few warm suggestions, narrowed by what you\'ve liked before. Save what you like, pass on what you don\'t — your taste sharpens either way.</p>',
         unsafe_allow_html=True
     )
 
-    if not already_accepted and not already_rejected:
-        col1, col2, _ = st.columns([1, 1, 5])
-        with col1:
-            st.markdown('<div class="accept-btn">', unsafe_allow_html=True)
-            if st.button("✓ Save", key=f"accept_{key}"):
-                handle_feedback(name, accepted=True, cuisines=[cats.split(",")[0].strip()] if cats else None, key=f"fb_{key}", tab=tab)
-                st.toast(f"Saved {name}", icon="✓")
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-        with col2:
-            st.markdown('<div class="reject-btn">', unsafe_allow_html=True)
-            if st.button("✕ Pass", key=f"reject_{key}"):
-                handle_feedback(name, accepted=False, cuisines=[cats.split(",")[0].strip()] if cats else None, key=f"fb_{key}", tab=tab)
-                st.toast(f"Passed on {name}", icon="✕")
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-    elif already_accepted:
-        st.markdown('<div class="card-feedback-done" style="color:var(--sage-2)">✓ saved</div>', unsafe_allow_html=True)
-    else:
-        st.markdown('<div class="card-feedback-done" style="color:var(--terracotta)">✕ passed</div>', unsafe_allow_html=True)
 
-
-# ── Onboarding hint ───────────────────────────────────────────────────────────
 def render_hint():
     if st.session_state.hint_dismissed:
         return
-    col1, col2 = st.columns([10, 1])
-    with col1:
-        st.markdown(
-            '<div class="hint-box">'
-            '<div class="hint-glyph">✦</div>'
-            '<div class="hint-body">'
-            '<b>Your taste profile learns as you go.</b>'
-            '<p>Accept or pass on recommendations — every decision updates your cuisine scores and personalises future results.</p>'
-            '</div></div>',
-            unsafe_allow_html=True
-        )
-    with col2:
-        st.markdown('<div class="hint-dismiss">', unsafe_allow_html=True)
-        if st.button("×", key="dismiss_hint"):
-            st.session_state.hint_dismissed = True
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="hint">'
+        '<span class="glyph">✦</span>'
+        '<div class="body">'
+        '<b>Your taste profile learns as you go.</b>'
+        '<p>Accept or pass on recommendations — every decision updates your cuisine scores and personalises future results.</p>'
+        '</div>'
+        '<a href="?action=dismiss_hint" class="x" target="_self">×</a>'
+        '</div>',
+        unsafe_allow_html=True
+    )
 
 
-# ── Recently saved strip ──────────────────────────────────────────────────────
-def render_saved_strip():
+def render_recent_strip():
     accepted = st.session_state.profile.get("accepted", [])
     if not accepted:
         return
     chips = "".join([
-        f'<span class="saved-chip"><span class="saved-dot"></span>{html_module.escape(n)}</span>'
-        for n in accepted[-5:]
+        f'<span class="recent-chip"><span class="dot"></span>{html_module.escape(n)}</span>'
+        for n in accepted[-5:][::-1]
     ])
     st.markdown(
-        f'<div class="saved-strip">'
-        f'<span class="saved-label">Saved</span>'
-        f'<div class="saved-track">{chips}</div>'
+        f'<div class="recent">'
+        f'<span class="recent-label">Recently saved</span>'
+        f'<div class="recent-track">{chips}</div>'
         f'</div>',
         unsafe_allow_html=True
     )
 
 
-# ── Eat Out tab ───────────────────────────────────────────────────────────────
-def render_eat_out_tab(client, df):
-    with st.form(key="eat_form", enter_to_submit=True):
-        col1, col2 = st.columns([3, 1])
+# ── Cards ─────────────────────────────────────────────────────────────────────
+def render_card(r, tab="eat", blurb=""):
+    name = r.get("name") or r.get("title", "")
+    address = r.get("address", "")
+    rating = r.get("rating")
+    review_count = r.get("total_tips", 0)
+    price_str = PRICE_LABEL.get(r.get("price"), "")
+    cats = r.get("categories", []) or ([r.get("category")] if r.get("category") else [])
+    cat_str = " · ".join(cats[:2]) if cats else ""
+    gradient = get_gradient_class(cats)
+
+    accepted = name in st.session_state.profile.get("accepted", [])
+    rejected = name in st.session_state.profile.get("rejected", [])
+    card_class = "card"
+    if accepted: card_class += " accepted"
+    elif rejected: card_class += " rejected"
+
+    # Build card HTML
+    img_label = price_str if price_str else (cats[0] if cats else "restaurant")
+    rating_html = ""
+    if rating:
+        rating_html = (
+            f'<div class="card-rating">'
+            f'<span class="stars">{stars_html(rating)}</span>'
+            f'<span class="num">{rating}</span>'
+            + (f'<span class="sep">·</span><span class="reviews">{review_count} reviews</span>' if review_count else "")
+            + (f'<span class="sep">·</span><span class="reviews">{html_module.escape(address)}</span>' if address else "")
+            + '</div>'
+        )
+    elif address:
+        rating_html = f'<div class="card-rating"><span class="reviews">{html_module.escape(address)}</span></div>'
+
+    blurb_html = f'<p class="card-blurb">{html_module.escape(blurb)}</p>' if blurb else ""
+
+    tag_list = []
+    for c in cats[:3]:
+        if c: tag_list.append(c)
+    tags_html = "".join([
+        f'<span class="pill outline">{html_module.escape(t)}</span>'
+        for t in tag_list
+    ])
+
+    # Actions
+    if accepted:
+        actions = '<div class="card-feedback-done acc">✓ Saved</div>'
+    elif rejected:
+        actions = '<div class="card-feedback-done rej">✕ Passed</div>'
+    else:
+        cuisine_for_url = quote(cats[0]) if cats else ""
+        accept_url = f"?action=accept&name={quote(name)}&tab={tab}&cuisine={cuisine_for_url}"
+        reject_url = f"?action=reject&name={quote(name)}&tab={tab}&cuisine={cuisine_for_url}"
+        actions = (
+            f'<div class="card-actions">'
+            + (f'<span class="card-extra"><span class="dot"></span>Open now</span>' if r.get("open_now") else '')
+            + f'<a href="{reject_url}" class="btn-reject" target="_self"><span class="glyph">✕</span>Pass</a>'
+            + f'<a href="{accept_url}" class="btn-accept" target="_self"><span class="glyph">✓</span>Save</a>'
+            + '</div>'
+        )
+
+    html_block = (
+        f'<article class="{card_class}">'
+        f'<div class="card-img ph-{gradient}">'
+        f'<span class="ph">{html_module.escape((cats[0] if cats else "").lower().replace(" ", " / "))}</span>'
+        f'<span class="label">{html_module.escape(img_label)}</span>'
+        f'</div>'
+        f'<div class="card-body">'
+        f'<div class="card-meta-top"><span>{html_module.escape(cat_str)}</span>'
+        + (f'<span class="sep">·</span><span class="open">Open now</span>' if r.get("open_now") else '')
+        + f'</div>'
+        f'<h3 class="card-title">{html_module.escape(name)}</h3>'
+        f'{rating_html}'
+        f'{blurb_html}'
+        + (f'<div class="card-tags">{tags_html}</div>' if tags_html else "")
+        + actions
+        + '</div></article>'
+    )
+    st.markdown(html_block, unsafe_allow_html=True)
+
+
+# ── Skeleton ──────────────────────────────────────────────────────────────────
+def render_skeletons(n=3):
+    blocks = "".join([
+        '<div class="skeleton">'
+        '<div class="img"></div>'
+        '<div class="body">'
+        '<div class="bar short"></div>'
+        '<div class="bar title"></div>'
+        '<div class="bar"></div>'
+        '<div class="bar medium"></div>'
+        '<div class="bar short"></div>'
+        '</div></div>'
+        for _ in range(n)
+    ])
+    st.markdown(f'<div class="cards">{blocks}</div>', unsafe_allow_html=True)
+
+
+# ── Empty state ───────────────────────────────────────────────────────────────
+def render_empty(tab):
+    copy = EMPTY_COPY[tab]
+    chips = "".join([
+        f'<a href="?action=prefill&tab={tab}&text={quote(c)}" class="suggest-chip" target="_self">{html_module.escape(c)}</a>'
+        for c in QUICK_STARTS[tab]
+    ])
+    st.markdown(
+        f'<div class="empty">'
+        f'<div class="glyph">{copy["glyph"]}</div>'
+        f'<h3>{copy["title"]}</h3>'
+        f'<p>{copy["body"]}</p>'
+        f'<div class="quick-row">{chips}</div>'
+        f'</div>',
+        unsafe_allow_html=True
+    )
+
+
+# ── Suggest chips above the search button ────────────────────────────────────
+def render_suggest_chips(tab):
+    chips = "".join([
+        f'<a href="?action=prefill&tab={tab}&text={quote(c)}" class="suggest-chip" target="_self">{html_module.escape(c)}</a>'
+        for c in QUICK_STARTS[tab]
+    ])
+    return f'<div class="suggest-row">{chips}</div>'
+
+
+# ── Tabs ──────────────────────────────────────────────────────────────────────
+def render_eat_tab(client, df):
+    prefill = st.session_state.eat_prefill or ""
+    st.session_state.eat_prefill = ""
+
+    st.markdown('<div class="search-card">', unsafe_allow_html=True)
+    st.markdown('<div class="search-grid eat">', unsafe_allow_html=True)
+    st.markdown('<div class="field"><div class="field-label">What are you craving</div>', unsafe_allow_html=True)
+
+    with st.form(key="eat_form", enter_to_submit=True, border=False):
+        col1, col2 = st.columns([3, 1.2])
         with col1:
-            prefill = st.session_state.pop("eat_prefill", "") if st.session_state.get("eat_prefill") else ""
-            query = st.text_input("What are you craving?", value=prefill, placeholder="hand-rolled pasta, candlelit, walking distance…")
+            query = st.text_input("craving", value=prefill, placeholder="hand-rolled pasta, candlelit, walking distance…", label_visibility="collapsed")
         with col2:
-            zipcode = st.text_input("Near", placeholder="ZIP code")
+            zipcode = st.text_input("zip", placeholder="ZIP code", label_visibility="collapsed")
 
-        # Suggest chips inside form
-        chip_cols = st.columns(4)
-        for i, chip in enumerate(QUICK_STARTS["eat"]):
-            with chip_cols[i]:
-                st.markdown('<div class="suggest-chip-btn">', unsafe_allow_html=True)
-                st.form_submit_button(chip, on_click=lambda c=chip: st.session_state.update({"eat_prefill": c}))
-                st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown(
+            f'<div class="search-actions" style="margin-top:14px">'
+            f'{render_suggest_chips("eat")}'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+        run_search = st.form_submit_button("Find restaurants  →")
 
-        run_search = st.form_submit_button("Find restaurants →")
+    st.markdown('</div></div></div>', unsafe_allow_html=True)
+
+    render_recent_strip()
 
     if run_search and query:
-        placeholder = st.empty()
-        with placeholder.container():
-            st.markdown(f'<div class="thinking-label">{THINKING_MSG["eat"]}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="results-head"><h2>{TAB_HEADING["eat"]}</h2><span class="count">{THINKING_MSG["eat"]}</span></div>', unsafe_allow_html=True)
+        skel_placeholder = st.empty()
+        with skel_placeholder.container():
             render_skeletons(3)
 
         with st.spinner(""):
@@ -742,7 +1117,7 @@ def render_eat_out_tab(client, df):
                 borough = zipcode if zipcode else "New York, NY"
                 _, fsq_restaurants = map_recommend(client, query, st.session_state.profile, borough=borough)
                 st.session_state.eat_fsq_results = fsq_restaurants
-            except Exception as e:
+            except Exception:
                 st.session_state.eat_fsq_results = []
 
             from src.recommend import combined_recommend
@@ -753,52 +1128,62 @@ def render_eat_out_tab(client, df):
             st.session_state.eat_llm_response = response
             st.session_state.eat_fsq_results = selected
 
-        placeholder.empty()
+        skel_placeholder.empty()
+        st.rerun()
 
     if st.session_state.eat_llm_response:
         results = st.session_state.eat_fsq_results or []
         st.markdown(
             f'<div class="results-head">'
-            f'<h3>Top picks for you</h3>'
-            f'<span class="results-count">{len(results)} recommendations</span>'
+            f'<h2>{TAB_HEADING["eat"]}</h2>'
+            f'<span class="count">{len(results)} {"pick" if len(results)==1 else "picks"} for you</span>'
             f'</div>',
             unsafe_allow_html=True
         )
-        for i, r in enumerate(results):
-            render_restaurant_card(r, source="fsq", idx=i, blurb=r.get("blurb", ""), tab="eat")
-    elif not st.session_state.eat_llm_response:
-        render_empty_state("eat", "eat_prefill")
+        for r in results:
+            render_card(r, tab="eat", blurb=r.get("blurb", ""))
+    else:
+        render_empty("eat")
 
 
-# ── Cook tab ──────────────────────────────────────────────────────────────────
 def render_cook_tab(client):
-    with st.form(key="cook_form", enter_to_submit=True):
-        prefill = st.session_state.pop("cook_prefill", "") if st.session_state.get("cook_prefill") else ""
-        craving = st.text_input("Tonight you want", value=prefill, placeholder="something fast, something cozy, something to impress…")
+    prefill = st.session_state.cook_prefill or ""
+    st.session_state.cook_prefill = ""
+
+    st.markdown('<div class="search-card">', unsafe_allow_html=True)
+    st.markdown('<div class="search-grid cook">', unsafe_allow_html=True)
+    st.markdown('<div class="field"><div class="field-label">Tonight you want</div>', unsafe_allow_html=True)
+
+    with st.form(key="cook_form", enter_to_submit=True, border=False):
+        craving = st.text_input("craving", value=prefill, placeholder="something fast, something cozy, something to impress…", label_visibility="collapsed")
+        st.markdown('</div><div class="field pantry"><div class="field-label">In the pantry</div>', unsafe_allow_html=True)
         pantry_input = st.text_area(
-            "In the pantry",
-            value=", ".join(st.session_state.profile.get("pantry", [])) if st.session_state.profile.get("pantry") else "",
-            placeholder="comma-separated — eggs, pasta, garlic, lemon, olive oil…",
+            "pantry",
+            value=", ".join(st.session_state.profile.get("pantry", [])),
+            placeholder="comma-separated, or just dump it all here",
+            label_visibility="collapsed",
             height=88,
         )
+        st.markdown(
+            f'<div class="search-actions" style="margin-top:14px">'
+            f'{render_suggest_chips("cook")}'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+        run_cook = st.form_submit_button("Suggest recipes  →")
 
-        chip_cols = st.columns(4)
-        for i, chip in enumerate(QUICK_STARTS["cook"]):
-            with chip_cols[i]:
-                st.markdown('<div class="suggest-chip-btn">', unsafe_allow_html=True)
-                st.form_submit_button(chip, on_click=lambda c=chip: st.session_state.update({"cook_prefill": c}))
-                st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div></div></div>', unsafe_allow_html=True)
 
-        run_cook = st.form_submit_button("Suggest recipes →")
+    render_recent_strip()
 
     if run_cook and craving:
         pantry = [p.strip() for p in pantry_input.split(",") if p.strip()]
         st.session_state.profile["pantry"] = pantry
         save_profile(st.session_state.profile)
 
-        placeholder = st.empty()
-        with placeholder.container():
-            st.markdown(f'<div class="thinking-label">{THINKING_MSG["cook"]}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="results-head"><h2>{TAB_HEADING["cook"]}</h2><span class="count">{THINKING_MSG["cook"]}</span></div>', unsafe_allow_html=True)
+        skel_placeholder = st.empty()
+        with skel_placeholder.container():
             render_skeletons(1)
 
         from src.recommend import recommend_recipe
@@ -807,52 +1192,69 @@ def render_cook_tab(client):
             st.session_state.cook_response = response
             st.session_state.tab_counts["cook"] += 1
 
-        placeholder.empty()
+        skel_placeholder.empty()
+        st.rerun()
 
     if st.session_state.cook_response:
         pantry = st.session_state.profile.get("pantry", [])
-        match_text, match_class = match_indicator(pantry, st.session_state.cook_response)
+        match_text, match_kind = match_indicator(pantry, st.session_state.cook_response)
+        match_html = ""
         if match_text:
-            st.markdown(f'<div class="{match_class}" style="margin-bottom:8px">● {match_text}</div>', unsafe_allow_html=True)
+            match_html = f'<span class="card-extra{" warn" if match_kind == "warn" else ""}"><span class="dot"></span>{match_text}</span>'
+
         st.markdown(
-            '<div class="results-head"><h3>Your recipe</h3></div>',
+            f'<div class="results-head">'
+            f'<h2>{TAB_HEADING["cook"]}</h2>'
+            f'<span class="count">Your recipe</span>'
+            f'</div>',
             unsafe_allow_html=True
         )
+        if match_html:
+            st.markdown(f'<div style="margin-bottom:12px">{match_html}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="llm-response">{html_module.escape(st.session_state.cook_response)}</div>', unsafe_allow_html=True)
     else:
-        render_empty_state("cook", "cook_prefill")
+        render_empty("cook")
 
 
-# ── Cocktail tab ──────────────────────────────────────────────────────────────
 def render_cocktail_tab(client):
-    with st.form(key="cocktail_form", enter_to_submit=True):
-        prefill = st.session_state.pop("drink_prefill", "") if st.session_state.get("drink_prefill") else ""
-        vibe = st.text_input("The vibe", value=prefill, placeholder="rainy night, pre-dinner, after a long week…")
+    prefill = st.session_state.drink_prefill or ""
+    st.session_state.drink_prefill = ""
+
+    st.markdown('<div class="search-card">', unsafe_allow_html=True)
+    st.markdown('<div class="search-grid drink">', unsafe_allow_html=True)
+    st.markdown('<div class="field"><div class="field-label">The vibe</div>', unsafe_allow_html=True)
+
+    with st.form(key="cocktail_form", enter_to_submit=True, border=False):
+        vibe = st.text_input("vibe", value=prefill, placeholder="rainy night, pre-dinner, after a long week…", label_visibility="collapsed")
+        st.markdown('</div><div class="field bar"><div class="field-label">Bar inventory</div>', unsafe_allow_html=True)
         bar_input = st.text_area(
-            "Bar inventory",
-            value=", ".join(st.session_state.profile.get("bar_inventory", [])) if st.session_state.profile.get("bar_inventory") else "",
-            placeholder="bottles, mixers, fresh stuff — rye, gin, lime, ginger, honey…",
+            "bar",
+            value=", ".join(st.session_state.profile.get("bar_inventory", [])),
+            placeholder="bottles, mixers, fresh stuff — no need to be tidy",
+            label_visibility="collapsed",
             height=88,
         )
         mocktail = st.checkbox("Mocktail only")
+        st.markdown(
+            f'<div class="search-actions" style="margin-top:14px">'
+            f'{render_suggest_chips("drink")}'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+        run_cocktail = st.form_submit_button("Suggest cocktails  →")
 
-        chip_cols = st.columns(4)
-        for i, chip in enumerate(QUICK_STARTS["drink"]):
-            with chip_cols[i]:
-                st.markdown('<div class="suggest-chip-btn">', unsafe_allow_html=True)
-                st.form_submit_button(chip, on_click=lambda c=chip: st.session_state.update({"drink_prefill": c}))
-                st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div></div></div>', unsafe_allow_html=True)
 
-        run_cocktail = st.form_submit_button("Mix something →")
+    render_recent_strip()
 
     if run_cocktail and vibe:
         bar = [b.strip() for b in bar_input.split(",") if b.strip()]
         st.session_state.profile["bar_inventory"] = bar
         save_profile(st.session_state.profile)
 
-        placeholder = st.empty()
-        with placeholder.container():
-            st.markdown(f'<div class="thinking-label">{THINKING_MSG["drink"]}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="results-head"><h2>{TAB_HEADING["drink"]}</h2><span class="count">{THINKING_MSG["drink"]}</span></div>', unsafe_allow_html=True)
+        skel_placeholder = st.empty()
+        with skel_placeholder.container():
             render_skeletons(1)
 
         from src.recommend import recommend_cocktail
@@ -862,51 +1264,51 @@ def render_cocktail_tab(client):
             st.session_state.cocktail_response = response
             st.session_state.tab_counts["drink"] += 1
 
-        placeholder.empty()
+        skel_placeholder.empty()
+        st.rerun()
 
     if st.session_state.cocktail_response:
         bar = st.session_state.profile.get("bar_inventory", [])
-        match_text, match_class = match_indicator(bar, st.session_state.cocktail_response)
+        match_text, match_kind = match_indicator(bar, st.session_state.cocktail_response)
+        match_html = ""
         if match_text:
-            st.markdown(f'<div class="{match_class}" style="margin-bottom:8px">● {match_text}</div>', unsafe_allow_html=True)
+            match_html = f'<span class="card-extra{" warn" if match_kind == "warn" else ""}"><span class="dot"></span>{match_text}</span>'
+
         st.markdown(
-            '<div class="results-head"><h3>Your drink</h3></div>',
+            f'<div class="results-head">'
+            f'<h2>{TAB_HEADING["drink"]}</h2>'
+            f'<span class="count">Your drink</span>'
+            f'</div>',
             unsafe_allow_html=True
         )
+        if match_html:
+            st.markdown(f'<div style="margin-bottom:12px">{match_html}</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="llm-response">{html_module.escape(st.session_state.cocktail_response)}</div>', unsafe_allow_html=True)
     else:
-        render_empty_state("drink", "drink_prefill")
+        render_empty("drink")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main():
     init_session()
+    handle_query_params()
     render_sidebar()
 
-    st.markdown(
-        '<div class="foodai-header">What are you <em>hungry</em> for?</div>',
-        unsafe_allow_html=True
-    )
-    st.markdown(
-        '<div class="foodai-subtitle">Tell me what you want. I\'ll figure out the rest.</div>',
-        unsafe_allow_html=True
-    )
-
+    render_greeting()
     render_hint()
-    render_saved_strip()
 
     client = get_client()
     df = get_df()
 
-    tab_eat, tab_cook, tab_cocktail = st.tabs(["🍜  Eat Out", "🍳  Cook", "🍹  Cocktails"])
+    tab_eat, tab_cook, tab_drink = st.tabs(["◖  Eat Out", "◐  Cook", "◗  Cocktails"])
 
     with tab_eat:
-        render_eat_out_tab(client, df)
+        render_eat_tab(client, df)
 
     with tab_cook:
         render_cook_tab(client)
 
-    with tab_cocktail:
+    with tab_drink:
         render_cocktail_tab(client)
 
 
