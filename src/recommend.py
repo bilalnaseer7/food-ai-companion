@@ -118,13 +118,12 @@ def rag_recommend(client: OpenAI, query: str, user_profile: dict, df, top_k: int
     return answer, retrieved
 
 def map_recommend(client: OpenAI, query: str, user_profile: dict, borough: str = "manhattan") -> tuple[str, list]:
-    from src.places import search_restaurants, format_for_prompt, price_sensitivity_to_tier
+    from src.places import search_restaurants, format_for_prompt
  
-    price_tier = price_sensitivity_to_tier(user_profile.get("budget", "moderate"))
     restaurants = search_restaurants(
         query=query,
         borough=borough,
-        price=price_tier,
+        price=None,
         limit=8,
     )
  
@@ -134,6 +133,7 @@ def map_recommend(client: OpenAI, query: str, user_profile: dict, borough: str =
         "You are a restaurant recommendation assistant for New York City. "
         "You must recommend only from the live restaurant data provided below. "
         "Use the user's taste profile and the retrieved evidence together. "
+        "Treat budget as a soft preference, not a hard requirement; a nearby, strong match is better than a weak match that only fits budget. "
         "Do not invent restaurants outside the retrieved list."
     )
  
@@ -147,6 +147,7 @@ def map_recommend(client: OpenAI, query: str, user_profile: dict, borough: str =
         "2. Why it matches the user's request\n"
         "3. Why it matches the taste profile\n"
         "4. One short detail from the user tips if available\n\n"
+        "Use budget to break close ties, but do not exclude an otherwise better place solely because it is one price tier away.\n\n"
         "Then include one short overall summary comparing why the top choice is strongest."
     )
  
@@ -209,6 +210,7 @@ def combined_recommend(client: OpenAI, query: str, user_profile: dict, csv_resul
         "You are a restaurant recommendation assistant for New York City. "
         "You have two sources of restaurant data: a curated dataset and live Google Places results. "
         "Use both sources together with the user's taste profile to select and rank the best 5 restaurants. "
+        "Treat budget as a soft preference, not a hard requirement; prioritize location and request fit over exact price tier. "
         "Only recommend restaurants from the provided lists. Do not invent any."
     )
 
@@ -222,7 +224,8 @@ def combined_recommend(client: OpenAI, query: str, user_profile: dict, csv_resul
         "RESTAURANT: <exact name>\nBLURB: <1-2 sentence explanation why it fits>\n\n"
         "After all 5, add one sentence starting with BEST: naming the top pick and why. "
         "Use exact restaurant names as they appear in the list. Do not number the entries."
-        "Do not mention exact ratings in the blurbs as this information will be included separately. Focus only on atmosphere, food, and fit with the request."
+        "Do not mention exact ratings in the blurbs as this information will be included separately. Focus only on atmosphere, food, and fit with the request. "
+        "Use budget to break close ties, but do not exclude an otherwise better place solely because it is one price tier away."
     )
 
     answer = _chat(client, system_prompt, user_prompt)

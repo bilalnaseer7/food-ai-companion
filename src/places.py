@@ -5,6 +5,7 @@ from typing import Optional
 GOOGLE_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY")
 SEARCH_URL  = "https://places.googleapis.com/v1/places:searchText"
 DETAILS_URL = "https://places.googleapis.com/v1/places/{place_id}"
+PHOTO_URL   = "https://places.googleapis.com/v1/{photo_name}/media"
 
 PRICE_LABEL = {1: "$", 2: "$$", 3: "$$$", 4: "$$$$"}
 
@@ -12,7 +13,18 @@ PRICE_SENSITIVITY_MAP = {
     "budget":   1,
     "moderate": 2,
     "premium":  3,
+    "premium+": 4,
 }
+
+NYC_CENTER = {"latitude": 40.7128, "longitude": -74.0060}
+NYC_RADIUS_METERS = 32000.0
+NYC_ADDRESS_HINTS = (
+    ", New York, NY",
+    ", Brooklyn, NY",
+    ", Queens, NY",
+    ", Bronx, NY",
+    ", Staten Island, NY",
+)
 
 SEARCH_FIELD_MASK = ",".join([
     "places.id",
@@ -25,6 +37,7 @@ SEARCH_FIELD_MASK = ",".join([
     "places.priceLevel",
     "places.regularOpeningHours.openNow",
     "places.businessStatus",
+    "places.photos",
 ])
 
 REVIEW_FIELD_MASK = "reviews,rating"
@@ -46,34 +59,20 @@ def search_restaurants(
     limit: int = 8,
 ) -> list[dict]:
     body = {
-        "textQuery":    f"{query} restaurant near {borough}",
+        "textQuery":    f"{query} restaurant near {borough}, New York City",
         "pageSize":     min(limit, 20),
         "includedType": "restaurant",
         "languageCode": "en",
-    }
-
-    if borough == "New York, NY":
-        body["locationBias"] = {
+        "locationRestriction": {
             "circle": {
-                "center": {"latitude": 40.7128, "longitude": -74.0060},
-                "radius": 20000.0
+                "center": NYC_CENTER,
+                "radius": NYC_RADIUS_METERS,
             }
-        }
-    else:
-        body["textQuery"] = f"{query} restaurant near {borough} New York"
+        },
+    }
 
     if open_now:
         body["openNow"] = True
-
-    if price is not None:
-        price_map = {
-            1: "PRICE_LEVEL_INEXPENSIVE",
-            2: "PRICE_LEVEL_MODERATE",
-            3: "PRICE_LEVEL_EXPENSIVE",
-            4: "PRICE_LEVEL_VERY_EXPENSIVE",
-        }
-        if price in price_map:
-            body["priceLevels"] = [price_map[price]]
 
     headers = {
         "Content-Type":     "application/json",
@@ -84,7 +83,11 @@ def search_restaurants(
     try:
         r = requests.post(SEARCH_URL, json=body, headers=headers, timeout=15)
         r.raise_for_status()
-        return [_parse_place(p) for p in r.json().get("places", [])]
+        places = [
+            place for place in (_parse_place(p) for p in r.json().get("places", []))
+            if _looks_like_nyc(place.get("address", ""))
+        ]
+        return places[:limit]
     except Exception as e:
         print(f"Google Places search error: {e}")
         return []
@@ -115,6 +118,33 @@ def get_reviews(place_id: str, limit: int = 3) -> list[str]:
         return []
 
 
+def get_photo_uri(photo_name: str, max_width: int = 640) -> str:
+    if not photo_name:
+        return ""
+
+    try:
+        r = requests.get(
+            PHOTO_URL.format(photo_name=photo_name),
+            params={
+                "key": _api_key(),
+                "maxWidthPx": max_width,
+                "skipHttpRedirect": "true",
+            },
+            timeout=8,
+        )
+        if r.status_code != 200:
+            return ""
+        return r.json().get("photoUri", "")
+    except Exception:
+        return ""
+
+
+def _looks_like_nyc(address: str) -> bool:
+    if not address:
+        return True
+    return any(hint in address for hint in NYC_ADDRESS_HINTS)
+
+
 def _parse_place(raw: dict) -> dict:
     price_map = {
         "PRICE_LEVEL_FREE":           0,
@@ -134,6 +164,14 @@ def _parse_place(raw: dict) -> dict:
              if t not in ("establishment", "food", "point_of_interest")]
 
     categories = [primary] if primary else types[:2]
+    photo = (raw.get("photos") or [{}])[0]
+    photo_name = photo.get("name", "")
+    photo_url = get_photo_uri(photo_name)
+    photo_attribution = ", ".join(
+        attr.get("displayName", "")
+        for attr in photo.get("authorAttributions", [])
+        if attr.get("displayName")
+    )
 
     return {
         "fsq_id":     raw.get("id", ""),
@@ -144,6 +182,8 @@ def _parse_place(raw: dict) -> dict:
         "rating":     raw.get("rating"),
         "open_now":   open_now,
         "total_tips": raw.get("userRatingCount", 0),
+        "photo_url":   photo_url,
+        "photo_attribution": photo_attribution,
     }
 
 
@@ -178,5 +218,3 @@ def format_for_prompt(restaurants: list[dict], fetch_tips: bool = True) -> str:
 
 def price_sensitivity_to_tier(sensitivity: str) -> Optional[int]:
     return PRICE_SENSITIVITY_MAP.get(sensitivity)
-
-
