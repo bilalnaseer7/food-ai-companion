@@ -1893,9 +1893,8 @@ def render_cocktail_tab(client):
                 render_skeletons(1)
 
         from src.recommend import recommend_cocktail
-        full_vibe = vibe + (" (mocktail, no alcohol)" if mocktail else "")
         with st.spinner(""):
-            response = recommend_cocktail(full_vibe, st.session_state.profile)
+            response = recommend_cocktail(vibe, st.session_state.profile)
             st.session_state.cocktail_response = response
             st.session_state.tab_counts["drink"] += 1
 
