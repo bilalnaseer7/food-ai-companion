@@ -1300,7 +1300,7 @@ def main():
     client = get_client()
     df = get_df()
 
-    tab_eat, tab_cook, tab_drink = st.tabs(["◖  Eat Out", "◐  Cook", "◗  Cocktails"])
+    tab_eat, tab_cook, tab_drink = st.tabs(["🍽️  Eat Out", "🍳  Cook", "🍸  Cocktails"])
 
     with tab_eat:
         render_eat_tab(client, df)
