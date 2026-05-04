@@ -3,6 +3,7 @@ import math
 import html as html_module
 from urllib.parse import quote
 import streamlit as st
+import streamlit.components.v1 as components
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -36,6 +37,8 @@ CUISINE_GRADIENTS = {
 BUDGET_LABELS = {1: "Cheap", 2: "Smart", 3: "Treat", 4: "Splurge"}
 BUDGET_MAP = {"budget": 1, "moderate": 2, "premium": 3, "premium+": 4}
 BUDGET_REVERSE = {1: "budget", 2: "moderate", 3: "premium", 4: "premium+"}
+PROFILE_PATH = "data/taste_profile.json"
+PROFILE_RESET_MARKER = "data/.profile_reset"
 
 QUICK_STARTS = {
     "eat":  ["something cozy", "date night", "wood-fired anything", "walking distance"],
@@ -116,6 +119,9 @@ st.markdown("""
     --serif: 'DM Serif Display', Georgia, serif;
     --sans: 'DM Sans', system-ui, sans-serif;
     --mono: 'IBM Plex Mono', ui-monospace, monospace;
+    /* Override Streamlit's internal theme variables so its own component CSS uses our colors */
+    --background-color: #FAF7F2;
+    --secondary-background-color: #F2EDE3;
 }
 
 * { box-sizing: border-box; }
@@ -130,11 +136,38 @@ html, body, .stApp {
     overscroll-behavior: none !important;
 }
 
-[data-testid="stAppViewContainer"] { background: var(--bg) !important; }
-[data-testid="stHeader"] { background: transparent !important; }
-.main .block-container { background: transparent !important; padding: 36px 48px 80px !important; max-width: 1100px !important; }
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"],
+[data-testid="stMainBlockContainer"],
+[data-testid="stVerticalBlock"] { background: #FAF7F2 !important; }
+[data-testid="stHeader"] {
+    background: var(--bg) !important;
+    box-shadow: none !important;
+    display: block !important;
+    visibility: visible !important;
+}
+[data-testid="stMain"] {
+    margin-left: 0 !important;
+    width: 100% !important;
+}
+.main .block-container,
+[data-testid="stMainBlockContainer"],
+div[class*="block-container"] {
+    background: transparent !important;
+    width: 100% !important;
+    max-width: 1120px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding: 36px 48px 80px !important;
+    box-sizing: border-box !important;
+}
 
-#MainMenu, footer, header { visibility: hidden; }
+#MainMenu, footer { visibility: hidden; }
+[data-testid="stToolbar"] {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
 
 a { color: inherit; text-decoration: none; }
 a:hover { text-decoration: none; }
@@ -143,25 +176,38 @@ a:hover { text-decoration: none; }
 [data-testid="stSidebar"] {
     background: var(--bg) !important;
     border-right: 1px solid var(--line) !important;
+}
+[data-testid="stSidebar"][aria-expanded="true"] {
     width: 320px !important;
     min-width: 320px !important;
     max-width: 320px !important;
 }
+[data-testid="stSidebar"][aria-expanded="false"] {
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    border-right: none !important;
+    overflow: visible !important;
+}
 [data-testid="stSidebar"] > div { padding: 28px 24px !important; }
+[data-testid="stSidebar"][aria-expanded="false"] > div { padding: 0 !important; }
 [data-testid="stSidebar"] * { color: var(--ink) !important; }
 [data-testid="collapsedControl"], [data-testid="collapsedControl"] button, [data-testid="collapsedControl"] svg {
     display: block !important; visibility: visible !important; opacity: 1 !important; pointer-events: auto !important;
 }
 
 /* ── Brand ── */
-.brand { display: flex; align-items: center; gap: 10px; padding-bottom: 4px; }
+.brand { display: flex; align-items: center; gap: 10px; margin-top: -12px; padding-bottom: 18px; }
 .brand-mark {
-    width: 28px; height: 28px; border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, #E89766 0%, var(--terracotta) 55%, #8A4521 100%);
-    box-shadow: inset -2px -3px 6px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.08);
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #FFD8A8;
+    box-shadow:
+        0 0 0 3px rgba(201,106,58,0.10),
+        0 0 12px 4px rgba(201,106,58,0.32),
+        0 0 24px 8px rgba(255,216,168,0.20);
     flex-shrink: 0;
 }
-.brand-name { font-family: var(--serif); font-size: 22px; letter-spacing: -0.01em; }
+.brand-name { font-family: var(--serif); font-size: 32px; letter-spacing: -0.01em; margin-left: 10px; }
 .brand-name em { font-style: italic; color: var(--terracotta); }
 
 /* ── Side sections ── */
@@ -219,6 +265,23 @@ a:hover { text-decoration: none; }
 .budget .dot.on { background: var(--gold); }
 .budget .dot:hover { background: rgba(201, 162, 39, 0.5); }
 .budget-label { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); margin-left: 4px; }
+[data-testid="stSidebar"] [data-testid="stButton"] button {
+    background: transparent !important;
+    border: 1px solid var(--line-2) !important;
+    border-radius: var(--radius) !important;
+    color: var(--ink-2) !important;
+    font-family: var(--sans) !important;
+    font-size: 12px !important;
+    font-weight: 400 !important;
+    box-shadow: none !important;
+    min-height: 28px !important;
+    padding: 4px 8px !important;
+}
+[data-testid="stSidebar"] [data-testid="stButton"] button:hover {
+    color: var(--ink) !important;
+    border-color: var(--ink) !important;
+    background: var(--card) !important;
+}
 
 /* ── Insights / donut ── */
 .insights {
@@ -273,7 +336,12 @@ a:hover { text-decoration: none; }
     font-family: var(--serif); font-size: 38px; font-weight: 400;
     letter-spacing: -0.015em; margin: 0; line-height: 1.1;
 }
-.greeting h1 em { color: var(--terracotta); font-style: italic; }
+.greeting-title {
+    font-family: var(--serif); font-size: 38px; font-weight: 400;
+    letter-spacing: -0.015em; margin: 0; line-height: 1.1;
+}
+.greeting h1 em, .greeting-title em { color: var(--terracotta); font-style: italic; }
+.greeting a { display: none !important; }
 .greeting .meta {
     font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
     color: var(--ink-3); text-transform: uppercase;
@@ -345,28 +413,46 @@ a:hover { text-decoration: none; }
 .field-label {
     font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
     text-transform: uppercase; color: var(--ink-3);
+    margin-bottom: 5px;
 }
 
+[data-testid="stBottom"],
+[data-testid="stMainBlockContainer"],
+section[data-testid="stSidebar"] ~ div,
+.stMainBlockContainer,
+div[class*="block-container"] {
+    background: #FAF7F2 !important;
+}
+[data-testid="stMainBlockContainer"],
+.stMainBlockContainer,
+div[class*="block-container"] {
+    max-width: 1120px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}            
+        
 /* Streamlit input overrides */
 .stTextInput > div > div, .stTextArea > div > div, .stSelectbox > div > div {
     background: var(--bg) !important;
     border: 1px solid transparent !important;
-    border-radius: var(--radius) !important;
+    border-radius: var(--radius-sm) !important;
     box-shadow: var(--shadow-input) !important;
+    overflow: hidden !important;
 }
 .stTextInput input, .stTextArea textarea {
     color: var(--ink) !important;
-    background: var(--bg) !important;
+    background: transparent !important;
     font-family: var(--sans) !important;
     font-size: 14.5px !important;
     border: none !important;
+    border-radius: inherit !important;
     padding: 12px 14px !important;
+    box-shadow: none !important;
+    outline: none !important;
 }
 .stTextInput input::placeholder, .stTextArea textarea::placeholder { color: var(--ink-3) !important; }
-.stTextInput input:focus, .stTextArea textarea:focus {
-    background: var(--card) !important;
-}
 .stTextInput > div > div:focus-within, .stTextArea > div > div:focus-within {
+    background: var(--card) !important;
     border-color: var(--terracotta) !important;
     box-shadow: 0 0 0 3px rgba(201, 106, 58, 0.12) !important;
 }
@@ -377,25 +463,34 @@ a:hover { text-decoration: none; }
 }
 
 /* ── Suggest chips (anchor links) ── */
-.suggest-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.suggest-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
 .suggest-chip {
-    display: inline-block;
-    background: transparent; border: 1px dashed var(--line-2);
-    border-radius: var(--radius-pill); padding: 4px 10px;
-    font-size: 12px; color: var(--ink-2);
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    background: transparent;
+    border: 1px dashed var(--line-2);
+    border-radius: var(--radius-pill);
+    padding: 4px 11px;
+    font-size: 12.5px;
+    font-weight: 400;
+    line-height: 1.2;
+    color: var(--ink-2);
     transition: all 0.14s ease;
     cursor: pointer;
+    white-space: nowrap;
 }
 .suggest-chip:hover {
     border-color: var(--terracotta); color: var(--terracotta-2); border-style: solid;
 }
 
-/* ── Submit button ── */
-.search-actions {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 14px;
-}
-.stFormSubmitButton > button {
+/* ── Submit button (primary) ── */
+[data-testid="stFormSubmitButton"] button[kind="primary"] {
     background: var(--terracotta) !important; color: #fff !important;
     border: none !important; border-radius: var(--radius) !important;
     padding: 12px 22px !important;
@@ -403,12 +498,16 @@ a:hover { text-decoration: none; }
     font-size: 14px !important;
     box-shadow: 0 1px 0 rgba(255,255,255,0.2) inset, 0 4px 14px rgba(201,106,58,0.30) !important;
     transition: all 0.12s ease !important;
+    width: 100% !important;
 }
-.stFormSubmitButton > button:hover {
+[data-testid="stFormSubmitButton"] button[kind="primary"]:hover {
     background: var(--terracotta-2) !important;
     transform: translateY(-1px) !important;
     box-shadow: 0 6px 18px rgba(201,106,58,0.36) !important;
 }
+
+/* Fix blue color on HTML anchor chips (empty state) */
+.suggest-chip { color: var(--ink-2) !important; }
 
 /* ── Recently saved strip ── */
 .recent {
@@ -460,10 +559,17 @@ a:hover { text-decoration: none; }
 .card.rejected { opacity: 0.5; }
 
 .card-img { position: relative; min-height: 180px; overflow: hidden; }
+.card-img img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    z-index: 1;
+}
 .card-img::after {
     content: ""; position: absolute; inset: 0;
     background: repeating-linear-gradient(45deg, rgba(255,255,255,0.04) 0 8px, transparent 8px 16px);
     pointer-events: none;
+    z-index: 2;
 }
 .card-img .ph {
     position: absolute; inset: 0;
@@ -471,13 +577,22 @@ a:hover { text-decoration: none; }
     font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em;
     color: rgba(0,0,0,0.35); text-transform: uppercase;
 }
-.card-img .label {
+.card-img.has-photo .ph { display: none; }
+.card-img .label, .card-img .photo-attr {
     position: absolute; bottom: 10px; left: 10px;
     background: rgba(255,255,255,0.85);
     backdrop-filter: blur(8px);
     padding: 4px 9px; border-radius: var(--radius-pill);
     font-family: var(--mono); font-size: 10px;
     letter-spacing: 0.08em; color: var(--ink); text-transform: uppercase;
+    z-index: 3;
+}
+.card-img .photo-attr {
+    left: auto; right: 10px;
+    max-width: calc(100% - 20px);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    text-transform: none;
+    color: var(--ink-2);
 }
 
 .ph-warm-amber  { background: linear-gradient(135deg, #E8B07A 0%, #C97A3D 100%); }
@@ -614,6 +729,20 @@ a:hover { text-decoration: none; }
 
 .stSpinner > div { border-top-color: var(--terracotta) !important; }
 
+/* Search card — applied directly to the form container */
+[data-testid="stForm"] {
+    background: var(--card) !important;
+    border: 1px solid var(--line) !important;
+    border-radius: var(--radius-lg) !important;
+    padding: 22px 24px 20px !important;
+    box-shadow: var(--shadow-card) !important;
+    margin-bottom: 28px !important;
+}
+[data-testid="stForm"] [data-testid="stVerticalBlock"],
+[data-testid="stForm"] [data-testid="stHorizontalBlock"] {
+    background: transparent !important;
+}
+
 /* Hide form submit's default appearance when used as a chip */
 .stForm [data-testid="stFormSubmitButton"] { background: transparent !important; padding: 0 !important; border: none !important; box-shadow: none !important; }
 </style>
@@ -676,11 +805,40 @@ def match_indicator(inventory, response_text):
     return None, None
 
 
+def reset_taste_profile():
+    if os.path.exists(PROFILE_PATH):
+        os.remove(PROFILE_PATH)
+    os.makedirs(os.path.dirname(PROFILE_RESET_MARKER), exist_ok=True)
+    with open(PROFILE_RESET_MARKER, "w") as f:
+        f.write("1")
+    profile = load_profile()
+    save_profile(profile)
+    st.session_state.profile = profile
+    st.session_state.sample_profile_disabled = True
+    st.session_state.history = []
+    st.session_state.tab_counts = {"eat": 0, "cook": 0, "drink": 0}
+    st.session_state.eat_results = None
+    st.session_state.eat_fsq_results = None
+    st.session_state.eat_llm_response = None
+    st.session_state.cook_response = None
+    st.session_state.cocktail_response = None
+
+
+def render_reset_button():
+    st.button(
+        "Reset taste profile  ↺",
+        key="reset_taste_profile",
+        on_click=reset_taste_profile,
+        use_container_width=True,
+    )
+
+
 # ── Session state ─────────────────────────────────────────────────────────────
 def init_session():
     if "profile" not in st.session_state:
         profile = load_profile()
-        if not profile["preferred_cuisines"] and not profile["cuisine_scores"]:
+        sample_profile_disabled = os.path.exists(PROFILE_RESET_MARKER)
+        if not sample_profile_disabled and not profile["preferred_cuisines"] and not profile["cuisine_scores"]:
             profile.update({
                 "preferred_cuisines": ["Italian", "Pizza"],
                 "liked_foods": ["pasta", "pizza"],
@@ -693,6 +851,7 @@ def init_session():
             })
             save_profile(profile)
         st.session_state.profile = profile
+        st.session_state.sample_profile_disabled = sample_profile_disabled
 
     defaults = {
         "eat_results": None, "eat_fsq_results": None, "eat_llm_response": None,
@@ -758,14 +917,11 @@ def handle_query_params():
             st.session_state.hint_dismissed = True
 
         elif action == "reset":
-            if os.path.exists("data/taste_profile.json"):
-                os.remove("data/taste_profile.json")
-            st.session_state.profile = load_profile()
-            st.session_state.history = []
-            st.session_state.tab_counts = {"eat": 0, "cook": 0, "drink": 0}
+            reset_taste_profile()
 
         st.query_params.clear()
-        st.rerun()
+        if action != "prefill":
+            st.rerun()
 
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
@@ -782,10 +938,14 @@ def render_sidebar():
         max_score = max(v for _, v in sorted_c) if sorted_c else 1
         rows = ""
         for name, score in sorted_c:
+            display_name = " ".join(
+                part for part in name.split()
+                if part.lower() != "restaurant"
+            ) or name
             pct = max(0, min(100, int((score / max(max_score, 0.01)) * 100)))
             rows += (
                 f'<div class="cuisine-row">'
-                f'<span class="name">{html_module.escape(name)}</span>'
+                f'<span class="name">{html_module.escape(display_name)}</span>'
                 f'<span class="cuisine-bar"><i style="width:{pct}%"></i></span>'
                 f'<span class="pct">{pct}</span>'
                 f'</div>'
@@ -888,16 +1048,9 @@ def render_sidebar():
         f'</div>'
     )
 
-    # Reset
-    sidebar_html += (
-        '<a href="?action=reset" class="reset-link" target="_self">'
-        '<span>Reset taste profile</span>'
-        '<span class="glyph">↺</span>'
-        '</a>'
-    )
-
     with st.sidebar:
         st.markdown(sidebar_html, unsafe_allow_html=True)
+        render_reset_button()
 
 
 # ── Greeting + hint + tabs ────────────────────────────────────────────────────
@@ -913,7 +1066,7 @@ def render_greeting():
 
     st.markdown(
         f'<div class="greeting">'
-        f'<h1>{greeting}<em>{friend}</em></h1>'
+        f'<div class="greeting-title">{greeting}<em>{friend}</em></div>'
         f'</div>'
         f'<p class="subline">A few warm suggestions, narrowed by what you\'ve liked before. Save what you like, pass on what you don\'t — your taste sharpens either way.</p>',
         unsafe_allow_html=True
@@ -963,6 +1116,8 @@ def render_card(r, tab="eat", blurb=""):
     cats = r.get("categories", []) or ([r.get("category")] if r.get("category") else [])
     cat_str = " · ".join(cats[:2]) if cats else ""
     gradient = get_gradient_class(cats)
+    photo_url = r.get("photo_url", "")
+    photo_attribution = r.get("photo_attribution", "")
 
     accepted = name in st.session_state.profile.get("accepted", [])
     rejected = name in st.session_state.profile.get("rejected", [])
@@ -986,6 +1141,11 @@ def render_card(r, tab="eat", blurb=""):
         rating_html = f'<div class="card-rating"><span class="reviews">{html_module.escape(address)}</span></div>'
 
     blurb_html = f'<p class="card-blurb">{html_module.escape(blurb)}</p>' if blurb else ""
+    photo_html = (
+        f'<img src="{html_module.escape(photo_url, quote=True)}" alt="{html_module.escape(name, quote=True)}" loading="lazy" '
+        f'onerror="this.remove(); this.parentElement.classList.remove(\'has-photo\');">'
+        if photo_url else ""
+    )
 
     tag_list = []
     for c in cats[:3]:
@@ -1014,7 +1174,8 @@ def render_card(r, tab="eat", blurb=""):
 
     html_block = (
         f'<article class="{card_class}">'
-        f'<div class="card-img ph-{gradient}">'
+        f'<div class="card-img ph-{gradient}{" has-photo" if photo_url else ""}">'
+        f'{photo_html}'
         f'<span class="ph">{html_module.escape((cats[0] if cats else "").lower().replace(" ", " / "))}</span>'
         f'<span class="label">{html_module.escape(img_label)}</span>'
         f'</div>'
@@ -1049,31 +1210,176 @@ def render_skeletons(n=3):
     st.markdown(f'<div class="cards">{blocks}</div>', unsafe_allow_html=True)
 
 
+def curated_to_cards(rows):
+    cards = []
+    for r in rows[:5]:
+        category = r.get("category", "")
+        cards.append({
+            "name": r.get("title", ""),
+            "address": "",
+            "categories": [category] if category else [],
+            "price": None,
+            "rating": None,
+            "open_now": False,
+            "total_tips": 0,
+            "blurb": f"Curated match for {r.get('popular_food', 'this craving')}.",
+        })
+    return cards
+
+
 # ── Empty state ───────────────────────────────────────────────────────────────
+CHIP_TARGETS = {
+    "eat": "hand-rolled pasta, candlelit, walking distance…",
+    "cook": "something fast, something cozy, something to impress…",
+    "drink": "rainy night, pre-dinner, after a long week…",
+}
+
+CHIP_SUBMIT_LABELS = {
+    "eat": "Find restaurants",
+    "cook": "Suggest recipes",
+    "drink": "Suggest cocktails",
+}
+
+
+def suggest_chips_html(tab, centered=False):
+    chips = "".join([
+        f'<button type="button" class="suggest-chip" data-chip="{html_module.escape(c, quote=True)}">'
+        f'{html_module.escape(c)}</button>'
+        for c in QUICK_STARTS[tab]
+    ])
+    justify = "center" if centered else "flex-start"
+    margin_top = "0" if centered else "12px"
+    target = html_module.escape(CHIP_TARGETS[tab], quote=True)
+    submit_label = html_module.escape(CHIP_SUBMIT_LABELS[tab], quote=True)
+    return f"""
+    <style>
+        html, body {{
+            margin: 0;
+            background: transparent;
+            font-family: 'DM Sans', system-ui, sans-serif;
+        }}
+        .suggest-row {{
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: {justify};
+            margin: {margin_top} 0 0;
+        }}
+        .suggest-chip {{
+            display: inline-flex;
+            align-items: center;
+            min-height: 28px;
+            background: transparent;
+            border: 1px dashed rgba(26,26,26,0.10);
+            border-radius: 999px;
+            padding: 4px 11px;
+            color: #6B6B6B;
+            font: 400 12.5px/1.2 'DM Sans', system-ui, sans-serif;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.14s ease;
+        }}
+        .suggest-chip:hover {{
+            border-color: #C96A3A;
+            border-style: solid;
+            color: #B25A2C;
+        }}
+    </style>
+    <div class="suggest-row" data-target-placeholder="{target}" data-submit-label="{submit_label}">{chips}</div>
+    <script>
+        const root = document.currentScript.previousElementSibling;
+        const targetPlaceholder = root.dataset.targetPlaceholder;
+        const submitLabel = root.dataset.submitLabel;
+        const setNativeValue = (el, value) => {{
+            const win = el.ownerDocument.defaultView;
+            const proto = el.tagName === "TEXTAREA" ? win.HTMLTextAreaElement.prototype : win.HTMLInputElement.prototype;
+            const setter = Object.getOwnPropertyDescriptor(proto, "value").set;
+            setter.call(el, value);
+            el.dispatchEvent(new win.InputEvent("input", {{ bubbles: true, inputType: "insertText", data: value }}));
+            el.dispatchEvent(new win.Event("change", {{ bubbles: true }}));
+            el.focus();
+        }};
+        root.addEventListener("click", (event) => {{
+            const chip = event.target.closest("[data-chip]");
+            if (!chip) return;
+            const doc = window.parent.document;
+            const candidates = Array.from(doc.querySelectorAll("input, textarea"));
+            const target = candidates.find((el) => el.placeholder === targetPlaceholder)
+                || candidates.find((el) => el.placeholder && el.placeholder.startsWith(targetPlaceholder.slice(0, 18)));
+            if (!target) return;
+            setNativeValue(target, chip.dataset.chip);
+            window.setTimeout(() => {{
+                const buttons = Array.from(doc.querySelectorAll("button"));
+                const submit = buttons.find((button) => button.innerText.includes(submitLabel));
+                if (submit) submit.click();
+            }}, 350);
+        }});
+    </script>
+    """
+
+
+def render_suggest_chips(tab, centered=False):
+    components.html(suggest_chips_html(tab, centered=centered), height=46 if not centered else 34, scrolling=False)
+
+
 def render_empty(tab):
     copy = EMPTY_COPY[tab]
-    chips = "".join([
-        f'<a href="?action=prefill&tab={tab}&text={quote(c)}" class="suggest-chip" target="_self">{html_module.escape(c)}</a>'
-        for c in QUICK_STARTS[tab]
-    ])
-    st.markdown(
-        f'<div class="empty">'
-        f'<div class="glyph">{copy["glyph"]}</div>'
-        f'<h3>{copy["title"]}</h3>'
-        f'<p>{copy["body"]}</p>'
-        f'<div class="quick-row">{chips}</div>'
-        f'</div>',
-        unsafe_allow_html=True
-    )
-
-
-# ── Suggest chips above the search button ────────────────────────────────────
-def render_suggest_chips(tab):
-    chips = "".join([
-        f'<a href="?action=prefill&tab={tab}&text={quote(c)}" class="suggest-chip" target="_self">{html_module.escape(c)}</a>'
-        for c in QUICK_STARTS[tab]
-    ])
-    return f'<div class="suggest-row">{chips}</div>'
+    empty_html = f"""
+    <style>
+        html, body {{
+            margin: 0;
+            background: transparent;
+            color: #1A1A1A;
+            font-family: 'DM Sans', system-ui, sans-serif;
+        }}
+        .empty {{
+            background: #FFFFFF;
+            border: 1px dashed rgba(26,26,26,0.10);
+            border-radius: 20px;
+            padding: 48px 32px 64px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            box-sizing: border-box;
+        }}
+        .glyph {{
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: rgba(201,106,58,0.13);
+            color: #C96A3A;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: Georgia, serif;
+            font-size: 28px;
+            margin-bottom: 4px;
+        }}
+        h3 {{
+            font-family: Georgia, serif;
+            font-weight: 400;
+            font-size: 22px;
+            letter-spacing: -0.01em;
+            margin: 0;
+        }}
+        p {{
+            color: #6B6B6B;
+            margin: 0;
+            max-width: 38ch;
+            font-size: 14px;
+        }}
+        .chip-wrap {{ margin-top: 6px; }}
+    </style>
+    <div class="empty">
+        <div class="glyph">{html_module.escape(copy["glyph"])}</div>
+        <h3>{html_module.escape(copy["title"])}</h3>
+        <p>{html_module.escape(copy["body"])}</p>
+        <div class="chip-wrap">{suggest_chips_html(tab, centered=True)}</div>
+    </div>
+    """
+    components.html(empty_html, height=288, scrolling=False)
 
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
@@ -1081,26 +1387,16 @@ def render_eat_tab(client, df):
     prefill = st.session_state.eat_prefill or ""
     st.session_state.eat_prefill = ""
 
-    st.markdown('<div class="search-card">', unsafe_allow_html=True)
-    st.markdown('<div class="search-grid eat">', unsafe_allow_html=True)
-    st.markdown('<div class="field"><div class="field-label">What are you craving</div>', unsafe_allow_html=True)
-
     with st.form(key="eat_form", enter_to_submit=True, border=False):
         col1, col2 = st.columns([3, 1.2])
         with col1:
+            st.markdown('<div class="field-label">What are you craving</div>', unsafe_allow_html=True)
             query = st.text_input("craving", value=prefill, placeholder="hand-rolled pasta, candlelit, walking distance…", label_visibility="collapsed")
+            render_suggest_chips("eat")
         with col2:
-            zipcode = st.text_input("zip", placeholder="ZIP code", label_visibility="collapsed")
-
-        st.markdown(
-            f'<div class="search-actions" style="margin-top:14px">'
-            f'{render_suggest_chips("eat")}'
-            f'</div>',
-            unsafe_allow_html=True
-        )
-        run_search = st.form_submit_button("Find restaurants  →")
-
-    st.markdown('</div></div></div>', unsafe_allow_html=True)
+            st.markdown('<div class="field-label">Zip Code</div>', unsafe_allow_html=True)
+            zipcode = st.text_input("zip", placeholder="Searching all NYC", label_visibility="collapsed")
+            run_search = st.form_submit_button("Find restaurants  →", type="primary", use_container_width=True)
 
     render_recent_strip()
 
@@ -1108,25 +1404,48 @@ def render_eat_tab(client, df):
         st.markdown(f'<div class="results-head"><h2>{TAB_HEADING["eat"]}</h2><span class="count">{THINKING_MSG["eat"]}</span></div>', unsafe_allow_html=True)
         skel_placeholder = st.empty()
         with skel_placeholder.container():
-            render_skeletons(3)
+            render_skeletons(5)
 
-        with st.spinner(""):
+        search_notes = []
+        try:
             _, retrieved = rag_recommend(client, query, st.session_state.profile, df, top_k=5)
-            st.session_state.eat_results = retrieved
-            try:
-                borough = zipcode if zipcode else "New York, NY"
-                _, fsq_restaurants = map_recommend(client, query, st.session_state.profile, borough=borough)
-                st.session_state.eat_fsq_results = fsq_restaurants
-            except Exception:
-                st.session_state.eat_fsq_results = []
+        except Exception as e:
+            retrieved = []
+            search_notes.append(f"Curated retrieval skipped: {e}")
+        st.session_state.eat_results = retrieved
+        try:
+            borough = zipcode if zipcode else "New York, NY"
+            _, fsq_restaurants = map_recommend(client, query, st.session_state.profile, borough=borough)
+            st.session_state.eat_fsq_results = fsq_restaurants
+        except Exception as e:
+            st.session_state.eat_fsq_results = []
+            search_notes.append(f"Live Places search skipped: {e}")
 
-            from src.recommend import combined_recommend
-            response, selected = combined_recommend(
-                client, query, st.session_state.profile,
-                retrieved, st.session_state.eat_fsq_results or []
-            )
-            st.session_state.eat_llm_response = response
-            st.session_state.eat_fsq_results = selected
+        selected = []
+        response = ""
+        live_results = st.session_state.eat_fsq_results or []
+        if live_results:
+            try:
+                from src.recommend import combined_recommend
+                response, selected = combined_recommend(
+                    client, query, st.session_state.profile,
+                    retrieved, live_results
+                )
+            except Exception as e:
+                search_notes.append(f"AI ranking skipped: {e}")
+                selected = live_results[:5]
+        if not selected and live_results:
+            selected = live_results[:5]
+        if not selected and retrieved:
+            selected = curated_to_cards(retrieved)
+        if selected and not response:
+            response = f"Showing direct matches for {query}."
+        if not selected:
+            response = f"No matches came back for {query}. Try a more specific craving or location."
+        if search_notes:
+            st.session_state.eat_search_notes = search_notes
+        st.session_state.eat_llm_response = response
+        st.session_state.eat_fsq_results = selected
 
         skel_placeholder.empty()
         st.rerun()
@@ -1150,13 +1469,11 @@ def render_cook_tab(client):
     prefill = st.session_state.cook_prefill or ""
     st.session_state.cook_prefill = ""
 
-    st.markdown('<div class="search-card">', unsafe_allow_html=True)
-    st.markdown('<div class="search-grid cook">', unsafe_allow_html=True)
-    st.markdown('<div class="field"><div class="field-label">Tonight you want</div>', unsafe_allow_html=True)
-
     with st.form(key="cook_form", enter_to_submit=True, border=False):
+        st.markdown('<div class="field-label">Tonight you want</div>', unsafe_allow_html=True)
         craving = st.text_input("craving", value=prefill, placeholder="something fast, something cozy, something to impress…", label_visibility="collapsed")
-        st.markdown('</div><div class="field pantry"><div class="field-label">In the pantry</div>', unsafe_allow_html=True)
+        render_suggest_chips("cook")
+        st.markdown('<div class="field-label" style="margin-top:10px">In the pantry</div>', unsafe_allow_html=True)
         pantry_input = st.text_area(
             "pantry",
             value=", ".join(st.session_state.profile.get("pantry", [])),
@@ -1164,15 +1481,7 @@ def render_cook_tab(client):
             label_visibility="collapsed",
             height=88,
         )
-        st.markdown(
-            f'<div class="search-actions" style="margin-top:14px">'
-            f'{render_suggest_chips("cook")}'
-            f'</div>',
-            unsafe_allow_html=True
-        )
-        run_cook = st.form_submit_button("Suggest recipes  →")
-
-    st.markdown('</div></div></div>', unsafe_allow_html=True)
+        run_cook = st.form_submit_button("Suggest recipes  →", type="primary", use_container_width=True)
 
     render_recent_strip()
 
@@ -1220,13 +1529,10 @@ def render_cocktail_tab(client):
     prefill = st.session_state.drink_prefill or ""
     st.session_state.drink_prefill = ""
 
-    st.markdown('<div class="search-card">', unsafe_allow_html=True)
-    st.markdown('<div class="search-grid drink">', unsafe_allow_html=True)
-    st.markdown('<div class="field"><div class="field-label">The vibe</div>', unsafe_allow_html=True)
-
     with st.form(key="cocktail_form", enter_to_submit=True, border=False):
+        st.markdown('<div class="field-label">The vibe</div>', unsafe_allow_html=True)
         vibe = st.text_input("vibe", value=prefill, placeholder="rainy night, pre-dinner, after a long week…", label_visibility="collapsed")
-        st.markdown('</div><div class="field bar"><div class="field-label">Bar inventory</div>', unsafe_allow_html=True)
+        st.markdown('<div class="field-label" style="margin-top:10px">Bar inventory</div>', unsafe_allow_html=True)
         bar_input = st.text_area(
             "bar",
             value=", ".join(st.session_state.profile.get("bar_inventory", [])),
@@ -1235,15 +1541,9 @@ def render_cocktail_tab(client):
             height=88,
         )
         mocktail = st.checkbox("Mocktail only")
-        st.markdown(
-            f'<div class="search-actions" style="margin-top:14px">'
-            f'{render_suggest_chips("drink")}'
-            f'</div>',
-            unsafe_allow_html=True
-        )
-        run_cocktail = st.form_submit_button("Suggest cocktails  →")
+        render_suggest_chips("drink")
 
-    st.markdown('</div></div></div>', unsafe_allow_html=True)
+        run_cocktail = st.form_submit_button("Suggest cocktails  →", type="primary", use_container_width=True)
 
     render_recent_strip()
 
