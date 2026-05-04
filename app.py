@@ -538,7 +538,7 @@ div[class*="block-container"] {
 /* ── Results head ── */
 .results-head {
     display: flex; align-items: baseline; justify-content: space-between;
-    margin: -5px 0 8px;
+    margin: -15px 0 5px;
 }
 .results-head h2 {
     font-family: var(--serif); font-weight: 400; font-size: 22px;

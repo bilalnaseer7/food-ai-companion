@@ -13,18 +13,7 @@ PRICE_SENSITIVITY_MAP = {
     "budget":   1,
     "moderate": 2,
     "premium":  3,
-    "premium+": 4,
 }
-
-NYC_CENTER = {"latitude": 40.7128, "longitude": -74.0060}
-NYC_RADIUS_METERS = 32000.0
-NYC_ADDRESS_HINTS = (
-    ", New York, NY",
-    ", Brooklyn, NY",
-    ", Queens, NY",
-    ", Bronx, NY",
-    ", Staten Island, NY",
-)
 
 SEARCH_FIELD_MASK = ",".join([
     "places.id",
@@ -59,20 +48,34 @@ def search_restaurants(
     limit: int = 8,
 ) -> list[dict]:
     body = {
-        "textQuery":    f"{query} restaurant near {borough}, New York City",
+        "textQuery":    f"{query} restaurant near {borough}",
         "pageSize":     min(limit, 20),
         "includedType": "restaurant",
         "languageCode": "en",
-        "locationRestriction": {
-            "circle": {
-                "center": NYC_CENTER,
-                "radius": NYC_RADIUS_METERS,
-            }
-        },
     }
+
+    if borough == "New York, NY":
+        body["locationBias"] = {
+            "circle": {
+                "center": {"latitude": 40.7128, "longitude": -74.0060},
+                "radius": 20000.0
+            }
+        }
+    else:
+        body["textQuery"] = f"{query} restaurant near {borough} New York"
 
     if open_now:
         body["openNow"] = True
+
+    if price is not None:
+        price_map = {
+            1: "PRICE_LEVEL_INEXPENSIVE",
+            2: "PRICE_LEVEL_MODERATE",
+            3: "PRICE_LEVEL_EXPENSIVE",
+            4: "PRICE_LEVEL_VERY_EXPENSIVE",
+        }
+        if price in price_map:
+            body["priceLevels"] = [price_map[price]]
 
     headers = {
         "Content-Type":     "application/json",
@@ -83,11 +86,7 @@ def search_restaurants(
     try:
         r = requests.post(SEARCH_URL, json=body, headers=headers, timeout=15)
         r.raise_for_status()
-        places = [
-            place for place in (_parse_place(p) for p in r.json().get("places", []))
-            if _looks_like_nyc(place.get("address", ""))
-        ]
-        return places[:limit]
+        return [_parse_place(p) for p in r.json().get("places", [])]
     except Exception as e:
         print(f"Google Places search error: {e}")
         return []
@@ -137,12 +136,6 @@ def get_photo_uri(photo_name: str, max_width: int = 640) -> str:
         return r.json().get("photoUri", "")
     except Exception:
         return ""
-
-
-def _looks_like_nyc(address: str) -> bool:
-    if not address:
-        return True
-    return any(hint in address for hint in NYC_ADDRESS_HINTS)
 
 
 def _parse_place(raw: dict) -> dict:

@@ -133,7 +133,7 @@ def map_recommend(client: OpenAI, query: str, user_profile: dict, borough: str =
         "You are a restaurant recommendation assistant for New York City. "
         "You must recommend only from the live restaurant data provided below. "
         "Use the user's taste profile and the retrieved evidence together. "
-        "Treat budget as a soft preference, not a hard requirement; a nearby, strong match is better than a weak match that only fits budget. "
+        "Treat budget as a soft preference, not a hard requirement. "
         "Do not invent restaurants outside the retrieved list."
     )
  
@@ -147,7 +147,7 @@ def map_recommend(client: OpenAI, query: str, user_profile: dict, borough: str =
         "2. Why it matches the user's request\n"
         "3. Why it matches the taste profile\n"
         "4. One short detail from the user tips if available\n\n"
-        "Use budget to break close ties, but do not exclude an otherwise better place solely because it is one price tier away.\n\n"
+        "Use budget to break close ties, but do not reject a better nearby match solely because it is outside the preferred price tier.\n\n"
         "Then include one short overall summary comparing why the top choice is strongest."
     )
  
@@ -210,7 +210,7 @@ def combined_recommend(client: OpenAI, query: str, user_profile: dict, csv_resul
         "You are a restaurant recommendation assistant for New York City. "
         "You have two sources of restaurant data: a curated dataset and live Google Places results. "
         "Use both sources together with the user's taste profile to select and rank the best 5 restaurants. "
-        "Treat budget as a soft preference, not a hard requirement; prioritize location and request fit over exact price tier. "
+        "Treat budget as a soft preference, not a hard requirement. "
         "Only recommend restaurants from the provided lists. Do not invent any."
     )
 
@@ -225,7 +225,7 @@ def combined_recommend(client: OpenAI, query: str, user_profile: dict, csv_resul
         "After all 5, add one sentence starting with BEST: naming the top pick and why. "
         "Use exact restaurant names as they appear in the list. Do not number the entries."
         "Do not mention exact ratings in the blurbs as this information will be included separately. Focus only on atmosphere, food, and fit with the request. "
-        "Use budget to break close ties, but do not exclude an otherwise better place solely because it is one price tier away."
+        "Use budget to break close ties, but do not reject a better nearby match solely because it is outside the preferred price tier."
     )
 
     answer = _chat(client, system_prompt, user_prompt)
