@@ -16,7 +16,7 @@ from src.places import PRICE_LABEL
 load_dotenv()
 
 st.set_page_config(
-    page_title="Food AI",
+    page_title="FoodAI",
     page_icon="🍽️",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -1129,7 +1129,7 @@ def render_sidebar():
     profile = st.session_state.profile
 
     # Brand
-    sidebar_html = '<div class="brand"><div class="brand-mark"></div><div class="brand-name">Food <em>AI</em></div></div>'
+    sidebar_html = '<div class="brand"><div class="brand-mark"></div><div class="brand-name">Food<em>AI</em></div></div>'
 
     # Cuisine pulse
     cs = profile.get("cuisine_scores", {})
@@ -1256,8 +1256,8 @@ def render_sidebar():
 # ── Greeting + hint + tabs ────────────────────────────────────────────────────
 
 def render_greeting():
-    greeting = "Good morning" if time_now == "morning" else "Good afternoon" if time_now == "afternoon" else "Good evening" if time_now == "evening" else "Up for a midnight snack?"
-    friend = "" if hour < 4 else ", early bird" if hour < 12 else ", friend"
+    greeting = "Good morning, " if time_now == "morning" else "Good afternoon, " if time_now == "afternoon" else "Good evening, " if time_now == "evening" else "Up for a midnight snack?"
+    friend = "" if hour < 4 else "early bird" if hour < 12 else "Foodie"
     time_str = now.strftime("%-I:%M %p")
 
     st.markdown(
