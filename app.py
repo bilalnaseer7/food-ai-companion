@@ -20,317 +20,58 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap');
 
     :root {
-        --dark-bg-1: #00202b;
-        --dark-bg-2: #0a2f3d;
-        --light-blue-1: #00B6E6;
-        --light-blue-2: rgba(0, 182, 230, 0.15);
-        --light-blue-3: rgba(0, 182, 230, 0.3);
-        --accent-red-1: #eb123f;
-        --accent-red-2: rgba(235, 18, 63, 0.15);
-        --accent-red-3: rgba(235, 18, 63, 0.3);
-        --white: #FFFFFF;
-        --white-dim: rgba(255,255,255,0.7);
-        --light-grey-1: #f5f5f5;
-        --card-bg: rgba(255,255,255,0.05);
-        --card-border: rgba(255,255,255,0.1);
+        --bg: #FAF7F2;
+        --bg-deep: #F2EDE3;
+        --card: #FFFFFF;
+        --ink: #1A1A1A;
+        --ink-2: #6B6B6B;
+        --ink-3: #9A968D;
+        --line: rgba(26, 26, 26, 0.06);
+        --line-2: rgba(26, 26, 26, 0.10);
+
+        --terracotta: #C96A3A;
+        --terracotta-2: #B25A2C;
+        --sage: #7A9E7E;
+        --sage-2: #688C6D;
+        --gold: #C9A227;
+
+        --tag-terracotta: rgba(201, 106, 58, 0.13);
+        --tag-sage: rgba(122, 158, 126, 0.15);
+        --tag-gold: rgba(201, 162, 39, 0.16);
+        --tag-ink: rgba(26, 26, 26, 0.05);
+
+        --shadow-card: 0 1px 0 rgba(26,26,26,0.02), 0 6px 18px rgba(60,40,20,0.06), 0 24px 60px -30px rgba(60,40,20,0.12);
+        --shadow-pop: 0 1px 0 rgba(26,26,26,0.02), 0 12px 32px rgba(60,40,20,0.10), 0 32px 80px -40px rgba(60,40,20,0.18);
+
+        --radius-sm: 8px;
+        --radius: 14px;
+        --radius-lg: 20px;
+        --radius-pill: 999px;
+
+        --serif: 'DM Serif Display', Georgia, serif;
+        --sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+        --mono: 'IBM Plex Mono', ui-monospace, monospace;
     }
 
     html, body, .stApp {
-        background-color: var(--dark-bg-1) !important;
-        color: var(--white) !important;
-        font-family: 'DM Sans', sans-serif !important;
-        font-weight: 300 !important;
-        min-height: 100vh !important;
+        background-color: var(--bg) !important;
+        color: var(--ink) !important;
+        font-family: var(--sans) !important;
+        font-weight: 350 !important;
     }
 
     [data-testid="stAppViewContainer"] {
-        background-color: var(--dark-bg-1) !important;
-        min-height: 100vh !important;
+        background-color: var(--bg) !important;
     }
 
     .main .block-container {
         background: transparent !important;
         padding-top: 2rem !important;
         padding-bottom: 6rem !important;
-        max-width: 1200px !important;
-    }
-
-    /* Sidebar */
-    [data-testid="stSidebar"] {
-        background-color: var(--dark-bg-2) !important;
-        border-right: 1px solid var(--card-border) !important;
-    }
-
-    [data-testid="collapsedControl"],
-    [data-testid="collapsedControl"] button,
-    [data-testid="collapsedControl"] svg {
-        display: block !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        pointer-events: auto !important;
-    }
-
-    /* Header */
-    .foodai-header {
-        font-family: 'DM Sans', sans-serif !important;
-        font-weight: 700 !important;
-        font-size: 2.2rem !important;
-        color: var(--white) !important;
-        letter-spacing: -0.5px;
-        margin-bottom: 0.25rem;
-    }
-
-    .foodai-subtitle {
-        color: var(--white-dim) !important;
-        font-size: 0.9rem !important;
-        font-weight: 300 !important;
-        margin-bottom: 1.5rem !important;
-    }
-
-    /* Mode tabs */
-    [data-testid="stTabs"] [role="tablist"] {
-        background: var(--card-bg) !important;
-        border-radius: 10px !important;
-        padding: 4px !important;
-        border: 1px solid var(--card-border) !important;
-    }
-
-    [data-testid="stTabs"] [role="tab"] {
-        color: var(--white-dim) !important;
-        font-family: 'DM Sans', sans-serif !important;
-        font-weight: 400 !important;
-        border-radius: 8px !important;
-        padding: 0.5rem 1rem !important;
-    }
-
-    [data-testid="stTabs"] [role="tab"][aria-selected="true"] {
-        background: var(--light-blue-1) !important;
-        color: var(--dark-bg-1) !important;
-        font-weight: 600 !important;
-    }
-
-    /* Text inputs */
-    .stTextInput > div > div, .stSelectbox > div > div, .stTextArea > div > div {
-        background-color: var(--card-bg) !important;
-        border: 1px solid var(--card-border) !important;
-        border-radius: 8px !important;
-        color: var(--white) !important;
-        font-family: 'DM Sans', sans-serif !important;
-    }
-
-    .stTextInput input, .stTextArea textarea {
-        color: var(--white) !important;
-        font-family: 'DM Sans', sans-serif !important;
-    }
-
-    .stSelectbox [data-baseweb="select"] {
-        background-color: var(--card-bg) !important;
-        border: 1px solid var(--card-border) !important;
-        color: var(--white) !important;
-    }
-
-    /* Buttons */
-    .stButton > button {
-        background: linear-gradient(135deg, var(--light-blue-1), #0095c7) !important;
-        color: var(--dark-bg-1) !important;
-        border: none !important;
-        border-radius: 8px !important;
-        font-family: 'DM Sans', sans-serif !important;
-        font-weight: 600 !important;
-        font-size: 0.875rem !important;
-        padding: 0.5rem 1.5rem !important;
-        transition: opacity 0.2s ease !important;
-    }
-
-    .stButton > button:hover {
-        opacity: 0.85 !important;
-    }
-
-    .stButton > button[kind="secondary"] {
-        background: var(--card-bg) !important;
-        color: var(--white) !important;
-        border: 1px solid var(--card-border) !important;
-    }
-
-    /* Accept/reject buttons */
-    .accept-btn > button {
-        background: linear-gradient(135deg, #00c851, #007a32) !important;
-        color: var(--white) !important;
-        font-size: 0.8rem !important;
-        padding: 0.3rem 0.8rem !important;
-    }
-
-    .reject-btn > button {
-        background: linear-gradient(135deg, var(--accent-red-1), #a00020) !important;
-        color: var(--white) !important;
-        font-size: 0.8rem !important;
-        padding: 0.3rem 0.8rem !important;
-    }
-
-    /* Restaurant cards */
-    .restaurant-card {
-        background: var(--card-bg);
-        border: 1px solid var(--card-border);
-        border-radius: 12px;
-        padding: 1rem 1.25rem;
-        margin-bottom: 0.75rem;
-        transition: border-color 0.2s ease;
-    }
-
-    .restaurant-card:hover {
-        border-color: var(--light-blue-3);
-    }
-
-    .restaurant-card.accepted {
-        border-color: #00c851 !important;
-        background: rgba(0, 200, 81, 0.08) !important;
-    }
-
-    .restaurant-card.rejected {
-        border-color: var(--accent-red-3) !important;
-        background: var(--accent-red-2) !important;
-        opacity: 0.6;
-    }
-
-    .restaurant-name {
-        font-family: 'DM Sans', sans-serif !important;
-        font-size: 1.05rem;
-        color: var(--white);
-        margin-bottom: 0.2rem;
-    }
-
-    .restaurant-meta {
-        font-size: 0.8rem;
-        color: var(--white-dim);
-        margin-bottom: 0.4rem;
-    }
-    
-    .results-label {
-        font-size: 0.9rem;
-        font-weight: 600;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        color: var(--white-dim);
-        margin-bottom: 1rem;
-        margin-top: 0.5rem;
-    }
-
-    .restaurant-tip {
-        font-size: 0.82rem;
-        color: var(--light-blue-1);
-        font-style: italic;
-        margin-top: 0.3rem;
-    }
-
-    /* LLM response box */
-    .llm-response {
-        background: var(--light-blue-2);
-        border: 1px solid var(--light-blue-3);
-        border-radius: 12px;
-        padding: 1.25rem;
-        margin: 1rem 0;
-        font-size: 0.9rem;
-        line-height: 1.6;
-    }
-
-    /* Profile card */
-    .profile-card {
-        background: var(--card-bg);
-        border: 1px solid var(--card-border);
-        border-radius: 12px;
-        padding: 1.25rem;
-        margin-bottom: 1rem;
-    }
-
-    .profile-card h4 {
-        font-family: '', serif;
-        color: var(--light-blue-1);
-        margin-bottom: 0.75rem;
-        font-size: 1rem;
-    }
-
-    .profile-tag {
-        display: inline-block;
-        background: var(--light-blue-2);
-        border: 1px solid var(--light-blue-3);
-        color: var(--light-blue-1);
-        border-radius: 20px;
-        padding: 2px 10px;
-        font-size: 0.75rem;
-        margin: 2px;
-    }
-
-    .llm-response {
-        background: var(--light-blue-2);
-        border: 1px solid var(--light-blue-3);
-        border-radius: 12px;
-        padding: 1.25rem;
-        margin: 1rem 0;
-        font-size: 0.9rem;
-        line-height: 1.6;
-        white-space: pre-wrap;
-    }
-
-    .profile-tag.dislike {
-        background: var(--accent-red-2);
-        border-color: var(--accent-red-3);
-        color: var(--accent-red-1);
-    }
-
-    /* Section labels */
-    .section-label {
-        font-size: 0.7rem;
-        font-weight: 600;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        color: var(--white-dim);
-        margin-bottom: 0.5rem;
-    }
-
-    /* Divider */
-    hr {
-        border-color: var(--card-border) !important;
-        margin: 1.5rem 0 !important;
-    }
-
-    /* Spinner */
-    .stSpinner > div {
-        border-top-color: var(--light-blue-1) !important;
-    }
-
-    /* Metrics */
-    [data-testid="stMetric"] {
-        background: var(--card-bg) !important;
-        border: 1px solid var(--card-border) !important;
-        border-radius: 10px !important;
-        padding: 1rem !important;
-    }
-
-    [data-testid="stMetricValue"] {
-        color: var(--light-blue-1) !important;
-        font-family: 'DM Sans', sans-serif !important;
-    }
-
-    [data-testid="stMetricLabel"] {
-        color: var(--white-dim) !important;
-        font-size: 0.75rem !important;
-    }
-
-    /* Markdown headers inside app */
-    .stMarkdown h3 {
-        font-family: 'DM Sans', sans-serif !important;
-        color: var(--white) !important;
-        font-size: 1.1rem !important;
-    }
-
-    /* Labels */
-    label, .stSelectbox label, .stTextInput label {
-        color: var(--white-dim) !important;
-        font-size: 0.82rem !important;
-        font-weight: 400 !important;
+        max-width: 1100px !important;
     }
 
     html, body {
@@ -342,6 +83,385 @@ st.markdown("""
         overscroll-behavior: none !important;
     }
 
+    /* ── Sidebar ── */
+    [data-testid="stSidebar"] {
+        background-color: var(--bg) !important;
+        border-right: 1px solid var(--line) !important;
+    }
+
+    [data-testid="stSidebar"] * {
+        color: var(--ink) !important;
+    }
+
+    [data-testid="collapsedControl"],
+    [data-testid="collapsedControl"] button,
+    [data-testid="collapsedControl"] svg {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+
+    /* ── Header ── */
+    .foodai-header {
+        font-family: var(--serif) !important;
+        font-size: 2.4rem !important;
+        font-weight: 400 !important;
+        color: var(--ink) !important;
+        letter-spacing: -0.015em;
+        margin-bottom: 0.2rem;
+        line-height: 1.1;
+    }
+
+    .foodai-header em {
+        color: var(--terracotta);
+        font-style: italic;
+    }
+
+    .foodai-subtitle {
+        color: var(--ink-2) !important;
+        font-size: 0.95rem !important;
+        font-weight: 350 !important;
+        margin-bottom: 1.5rem !important;
+    }
+
+    /* ── Tabs ── */
+    [data-testid="stTabs"] [role="tablist"] {
+        background: transparent !important;
+        border-bottom: 1px solid var(--line) !important;
+        border-radius: 0 !important;
+        padding: 0 !important;
+        gap: 0 !important;
+    }
+
+    [data-testid="stTabs"] [role="tab"] {
+        color: var(--ink-2) !important;
+        font-family: var(--sans) !important;
+        font-weight: 400 !important;
+        font-size: 0.9rem !important;
+        border-radius: 0 !important;
+        padding: 0.75rem 1.25rem !important;
+        border-bottom: 2px solid transparent !important;
+        background: transparent !important;
+    }
+
+    [data-testid="stTabs"] [role="tab"][aria-selected="true"] {
+        color: var(--ink) !important;
+        font-weight: 500 !important;
+        border-bottom: 2px solid var(--terracotta) !important;
+        background: transparent !important;
+    }
+
+    /* ── Inputs ── */
+    .stTextInput > div > div,
+    .stTextArea > div > div,
+    .stSelectbox > div > div {
+        background-color: var(--bg) !important;
+        border: 1px solid var(--line-2) !important;
+        border-radius: var(--radius-sm) !important;
+        color: var(--ink) !important;
+        font-family: var(--sans) !important;
+    }
+
+    .stTextInput input,
+    .stTextArea textarea {
+        color: var(--ink) !important;
+        background: var(--bg) !important;
+        font-family: var(--sans) !important;
+        font-size: 0.9rem !important;
+    }
+
+    .stTextInput input:focus,
+    .stTextArea textarea:focus {
+        border-color: var(--terracotta) !important;
+        box-shadow: 0 0 0 3px rgba(201, 106, 58, 0.12) !important;
+        background: var(--card) !important;
+    }
+
+    .stTextInput input::placeholder,
+    .stTextArea textarea::placeholder {
+        color: var(--ink-3) !important;
+    }
+
+    /* ── Buttons ── */
+    .stButton > button,
+    .stFormSubmitButton > button {
+        background: var(--terracotta) !important;
+        color: #fff !important;
+        border: none !important;
+        border-radius: var(--radius-sm) !important;
+        font-family: var(--sans) !important;
+        font-weight: 500 !important;
+        font-size: 0.875rem !important;
+        padding: 0.6rem 1.4rem !important;
+        box-shadow: 0 4px 14px rgba(201, 106, 58, 0.30) !important;
+        transition: all 0.15s ease !important;
+    }
+
+    .stButton > button:hover,
+    .stFormSubmitButton > button:hover {
+        background: var(--terracotta-2) !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 6px 18px rgba(201,106,58,0.36) !important;
+    }
+
+    /* Accept/reject buttons */
+    .accept-btn > button {
+        background: var(--card) !important;
+        color: var(--sage-2) !important;
+        border: 1px solid rgba(122, 158, 126, 0.4) !important;
+        box-shadow: none !important;
+        font-size: 0.8rem !important;
+        padding: 0.35rem 0.9rem !important;
+    }
+
+    .accept-btn > button:hover {
+        background: var(--sage) !important;
+        color: #fff !important;
+        border-color: var(--sage) !important;
+        box-shadow: 0 4px 12px rgba(122,158,126,0.30) !important;
+    }
+
+    .reject-btn > button {
+        background: var(--card) !important;
+        color: var(--terracotta-2) !important;
+        border: 1px solid rgba(201, 106, 58, 0.4) !important;
+        box-shadow: none !important;
+        font-size: 0.8rem !important;
+        padding: 0.35rem 0.9rem !important;
+    }
+
+    .reject-btn > button:hover {
+        background: var(--terracotta) !important;
+        color: #fff !important;
+        border-color: var(--terracotta) !important;
+        box-shadow: 0 4px 12px rgba(201,106,58,0.30) !important;
+    }
+
+    /* ── Restaurant cards ── */
+    .restaurant-card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-lg);
+        padding: 1.1rem 1.3rem 0.9rem;
+        margin-bottom: 1rem;
+        box-shadow: var(--shadow-card);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .restaurant-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-pop);
+    }
+
+    .restaurant-card.accepted {
+        border-color: rgba(122, 158, 126, 0.5) !important;
+        background: rgba(122, 158, 126, 0.06) !important;
+    }
+
+    .restaurant-card.rejected {
+        border-color: rgba(201, 106, 58, 0.3) !important;
+        background: rgba(201, 106, 58, 0.04) !important;
+        opacity: 0.6;
+    }
+
+    .restaurant-name {
+        font-family: var(--serif);
+        font-size: 1.25rem;
+        font-weight: 400;
+        color: var(--ink);
+        margin-bottom: 0.2rem;
+        letter-spacing: -0.01em;
+        line-height: 1.2;
+    }
+
+    .restaurant-meta {
+        font-size: 0.78rem;
+        color: var(--ink-3);
+        margin-bottom: 0.5rem;
+        letter-spacing: 0.02em;
+        font-family: var(--mono);
+    }
+
+    .restaurant-blurb {
+        font-size: 0.875rem;
+        line-height: 1.55;
+        color: var(--ink-2);
+        margin-top: 0.4rem;
+        margin-bottom: 0.5rem;
+    }
+
+    /* ── LLM response ── */
+    .llm-response {
+        background: linear-gradient(180deg, #FFFBF5 0%, #FAF3E8 100%);
+        border: 1px solid rgba(201, 162, 39, 0.2);
+        border-radius: var(--radius);
+        padding: 1.1rem 1.3rem;
+        margin: 0.75rem 0 1.25rem;
+        font-size: 0.88rem;
+        line-height: 1.65;
+        color: var(--ink);
+        white-space: pre-wrap;
+    }
+
+    /* ── Section / results labels ── */
+    .section-label {
+        font-size: 0.68rem;
+        font-weight: 500;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+        margin-bottom: 0.5rem;
+        font-family: var(--mono);
+    }
+
+    .results-label {
+        font-family: var(--serif);
+        font-size: 1.25rem;
+        font-weight: 400;
+        color: var(--ink);
+        letter-spacing: -0.01em;
+        margin-bottom: 1rem;
+        margin-top: 0.25rem;
+    }
+
+    /* ── Profile tags ── */
+    .profile-tag {
+        display: inline-block;
+        background: var(--tag-terracotta);
+        color: var(--terracotta-2);
+        border-radius: var(--radius-pill);
+        padding: 3px 11px;
+        font-size: 0.75rem;
+        margin: 2px;
+        font-weight: 400;
+    }
+
+    .profile-tag.dislike {
+        background: var(--tag-ink);
+        color: var(--ink-2);
+    }
+
+    .profile-tag.cuisine {
+        background: var(--tag-sage);
+        color: var(--sage-2);
+    }
+
+    /* ── Sidebar brand ── */
+    .sidebar-brand {
+        font-family: var(--serif);
+        font-size: 1.4rem;
+        font-weight: 400;
+        color: var(--ink);
+        letter-spacing: -0.01em;
+        margin-bottom: 0.1rem;
+    }
+
+    .sidebar-brand em {
+        color: var(--terracotta);
+        font-style: italic;
+    }
+
+    .sidebar-subtitle {
+        color: var(--ink-3);
+        font-size: 0.78rem;
+        margin-bottom: 0;
+        font-family: var(--mono);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    /* ── Metrics ── */
+    [data-testid="stMetric"] {
+        background: var(--card) !important;
+        border: 1px solid var(--line) !important;
+        border-radius: var(--radius-sm) !important;
+        padding: 0.75rem !important;
+        box-shadow: var(--shadow-card) !important;
+    }
+
+    [data-testid="stMetricValue"] {
+        color: var(--terracotta) !important;
+        font-family: var(--serif) !important;
+        font-size: 1.5rem !important;
+    }
+
+    [data-testid="stMetricLabel"] {
+        color: var(--ink-3) !important;
+        font-size: 0.72rem !important;
+        font-family: var(--mono) !important;
+        letter-spacing: 0.08em !important;
+        text-transform: uppercase !important;
+    }
+
+    /* ── Labels ── */
+    label, .stSelectbox label, .stTextInput label, .stTextArea label {
+        color: var(--ink-3) !important;
+        font-size: 0.75rem !important;
+        font-weight: 400 !important;
+        font-family: var(--mono) !important;
+        letter-spacing: 0.1em !important;
+        text-transform: uppercase !important;
+    }
+
+    /* ── Divider ── */
+    hr {
+        border-color: var(--line) !important;
+        margin: 1.25rem 0 !important;
+    }
+
+    /* ── Spinner ── */
+    .stSpinner > div {
+        border-top-color: var(--terracotta) !important;
+    }
+
+    /* ── Caption ── */
+    .stCaption {
+        color: var(--ink-3) !important;
+        font-family: var(--mono) !important;
+        font-size: 0.72rem !important;
+        letter-spacing: 0.06em !important;
+    }
+
+    /* ── Selectbox ── */
+    .stSelectbox [data-baseweb="select"] {
+        background-color: var(--bg) !important;
+        border: 1px solid var(--line-2) !important;
+        color: var(--ink) !important;
+    }
+
+    /* ── Checkbox ── */
+    .stCheckbox label {
+        color: var(--ink-2) !important;
+        font-size: 0.875rem !important;
+        font-family: var(--sans) !important;
+        letter-spacing: 0 !important;
+        text-transform: none !important;
+    }
+
+    /* ── Warning/success ── */
+    .stWarning {
+        background: var(--tag-gold) !important;
+        color: var(--ink) !important;
+        border-radius: var(--radius-sm) !important;
+    }
+
+    .stSuccess {
+        background: var(--tag-sage) !important;
+        color: var(--ink) !important;
+        border-radius: var(--radius-sm) !important;
+    }
+
+    /* ── Markdown ── */
+    .stMarkdown h3 {
+        font-family: var(--serif) !important;
+        color: var(--ink) !important;
+        font-size: 1.1rem !important;
+        font-weight: 400 !important;
+    }
+
+    #MainMenu { visibility: hidden; }
+    footer { visibility: hidden; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -371,29 +491,20 @@ def init_session():
             save_profile(profile)
         st.session_state.profile = profile
 
-    if "eat_results" not in st.session_state:
-        st.session_state.eat_results = None
-    if "eat_fsq_results" not in st.session_state:
-        st.session_state.eat_fsq_results = None
-    if "eat_llm_response" not in st.session_state:
-        st.session_state.eat_llm_response = None
-    if "eat_fsq_response" not in st.session_state:
-        st.session_state.eat_fsq_response = None
+    for key in ["eat_results", "eat_fsq_results", "eat_llm_response",
+                "eat_fsq_response", "cook_response", "cocktail_response"]:
+        if key not in st.session_state:
+            st.session_state[key] = None
+
     if "feedback_given" not in st.session_state:
         st.session_state.feedback_given = set()
-    if "cook_response" not in st.session_state:
-        st.session_state.cook_response = None
-    if "cocktail_response" not in st.session_state:
-        st.session_state.cocktail_response = None
 
 
 def render_sidebar():
     with st.sidebar:
-        st.markdown('<div class="foodai-header">Food AI</div>', unsafe_allow_html=True)
-        st.markdown('<div class="foodai-subtitle">Your AI food companion</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sidebar-brand"><em>Food AI</em></div>', unsafe_allow_html=True)
+        st.markdown('<div class="sidebar-subtitle">Taste Profile</div>', unsafe_allow_html=True)
         st.markdown("---")
-
-        st.markdown('<div class="section-label">Taste Profile</div>', unsafe_allow_html=True)
 
         profile = st.session_state.profile
 
@@ -407,21 +518,28 @@ def render_sidebar():
 
         cuisines = profile.get("preferred_cuisines", [])
         if cuisines:
-            tags = " ".join([f'<span class="profile-tag">{c}</span>' for c in cuisines])
-            st.markdown(f'<div style="margin-bottom:0.5rem"><div class="section-label">Cuisines</div>{tags}</div>', unsafe_allow_html=True)
+            tags = " ".join([f'<span class="profile-tag cuisine">{c}</span>' for c in cuisines])
+            st.markdown(f'<div style="margin-bottom:0.75rem"><div class="section-label">Cuisines</div>{tags}</div>', unsafe_allow_html=True)
 
         liked = profile.get("liked_foods", [])
         if liked:
             tags = " ".join([f'<span class="profile-tag">{f}</span>' for f in liked])
-            st.markdown(f'<div style="margin-bottom:0.5rem"><div class="section-label">Likes</div>{tags}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="margin-bottom:0.75rem"><div class="section-label">Likes</div>{tags}</div>', unsafe_allow_html=True)
 
         disliked = profile.get("disliked_foods", [])
         if disliked:
             tags = " ".join([f'<span class="profile-tag dislike">{f}</span>' for f in disliked])
-            st.markdown(f'<div style="margin-bottom:0.5rem"><div class="section-label">Dislikes</div>{tags}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="margin-bottom:0.75rem"><div class="section-label">Dislikes</div>{tags}</div>', unsafe_allow_html=True)
+
+        accepted_list = profile.get("accepted", [])
+        if accepted_list:
+            st.markdown('<div class="section-label">Recently Accepted</div>', unsafe_allow_html=True)
+            for name in accepted_list[-3:]:
+                st.markdown(f'<div style="font-size:0.8rem;color:var(--sage-2);padding:2px 0">✓ {name}</div>', unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
 
         st.markdown("---")
-        st.markdown('<div class="section-label">Profile Settings</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-label">Settings</div>', unsafe_allow_html=True)
 
         budget = st.selectbox(
             "Budget",
@@ -439,7 +557,8 @@ def render_sidebar():
 
         st.markdown("---")
         if st.button("Reset Profile", key="reset_profile"):
-            os.remove("data/taste_profile.json") if os.path.exists("data/taste_profile.json") else None
+            if os.path.exists("data/taste_profile.json"):
+                os.remove("data/taste_profile.json")
             st.session_state.profile = load_profile()
             st.rerun()
 
@@ -470,22 +589,28 @@ def render_restaurant_card(r, source="fsq", idx=0, blurb=""):
     elif already_rejected:
         card_class += " rejected"
 
-    price_str  = PRICE_LABEL.get(r["price"], "")
-    rating_str = f"{r['rating']} ⭐" if r.get('rating') else ""
-    open_str   = " · open now" if r["open_now"] else ""
+    price_str  = PRICE_LABEL.get(r.get("price"), "")
+    rating_str = f"{r['rating']} ⭐" if r.get("rating") else ""
     cats       = ", ".join(r.get("categories", [])[:2]) if r.get("categories") else r.get("category", "")
     name       = r.get("name") or r.get("title", "")
     address    = r.get("address", "")
 
     meta_parts = [p for p in [cats, price_str, rating_str, address] if p]
-    meta_str   = " · ".join(meta_parts)
+    meta_str   = "  ·  ".join(meta_parts)
 
-    blurb_html = f'<div class="restaurant-blurb">{blurb}</div>' if blurb else ""
+    blurb_html = f'<div class="restaurant-blurb">{html.escape(blurb)}</div>' if blurb else ""
 
-    st.markdown(f'<div class="{card_class}"><div class="restaurant-name">{name}</div><div class="restaurant-meta">{meta_str}</div>{blurb_html}</div>', unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="{card_class}">'
+        f'<div class="restaurant-name">{html.escape(name)}</div>'
+        f'<div class="restaurant-meta">{html.escape(meta_str)}</div>'
+        f'{blurb_html}'
+        f'</div>',
+        unsafe_allow_html=True
+    )
 
     if not already_accepted and not already_rejected:
-        col1, col2, _ = st.columns([1, 1, 4])
+        col1, col2, _ = st.columns([1, 1, 5])
         with col1:
             st.markdown('<div class="accept-btn">', unsafe_allow_html=True)
             if st.button("✓ Accept", key=f"accept_{key}"):
@@ -499,26 +624,27 @@ def render_restaurant_card(r, source="fsq", idx=0, blurb=""):
                 st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
     elif already_accepted:
-        st.markdown('<span style="color:#00c851;font-size:0.8rem">✓ Accepted</span>', unsafe_allow_html=True)
+        st.markdown('<span style="color:var(--sage-2);font-size:0.8rem;font-family:var(--mono)">✓ accepted</span>', unsafe_allow_html=True)
     else:
-        st.markdown('<span style="color:#eb123f;font-size:0.8rem">✗ Passed</span>', unsafe_allow_html=True)
-        
+        st.markdown('<span style="color:var(--terracotta);font-size:0.8rem;font-family:var(--mono)">✗ passed</span>', unsafe_allow_html=True)
+
+
 def render_eat_out_tab(client, df):
-    st.markdown('<div class="section-label">Eat Out / Order In</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-label">Where do you want to eat?</div>', unsafe_allow_html=True)
 
     with st.form(key="eat_form", enter_to_submit=True):
         col1, col2 = st.columns([3, 1])
         with col1:
             query = st.text_input("What are you craving?", placeholder="e.g. cozy ramen, cheap tacos, date night Italian")
         with col2:
-            zipcode = st.text_input("Zip Code", placeholder="Searching All NYC")
+            zipcode = st.text_input("Zip Code", placeholder="All NYC")
         run_search = st.form_submit_button("Find Restaurants")
 
     if run_search:
         if not query:
             st.warning("Enter a craving first.")
         else:
-            with st.spinner("Searching..."):
+            with st.spinner("Finding the best spots..."):
                 _, retrieved = rag_recommend(client, query, st.session_state.profile, df, top_k=5)
                 st.session_state.eat_results = retrieved
 
@@ -541,75 +667,75 @@ def render_eat_out_tab(client, df):
 
     if st.session_state.eat_llm_response:
         fsq_count = len(st.session_state.eat_fsq_results or [])
-        csv_count = len(st.session_state.eat_results or [])
-        st.caption(f"📊 {csv_count} from dataset · 📍 {fsq_count} live from Places")
-        st.markdown('<div class="results-label">Results</div>', unsafe_allow_html=True)
+        st.caption(f"📍 {fsq_count} recommendations · Google Places")
+        st.markdown('<div class="results-label">Top picks for you</div>', unsafe_allow_html=True)
         for i, r in enumerate(st.session_state.eat_fsq_results or []):
             render_restaurant_card(r, source="fsq", idx=i, blurb=r.get("blurb", ""))
 
 
 def render_cook_tab(client):
-    st.markdown('<div class="section-label">Cook at Home</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-label">What are you cooking?</div>', unsafe_allow_html=True)
 
-    craving = st.text_input("What do you feel like making?", placeholder="e.g. something lemony with pasta", key="cook_craving")
+    with st.form(key="cook_form", enter_to_submit=True):
+        craving = st.text_input("What do you feel like making?", placeholder="e.g. something lemony with pasta")
+        pantry_input = st.text_area(
+            "What's in your fridge/pantry? (comma separated)",
+            value=", ".join(st.session_state.profile.get("pantry", [])) if st.session_state.profile.get("pantry") else "",
+            placeholder="chicken, garlic, lemon, olive oil, pasta",
+            key="cook_pantry",
+            height=90,
+        )
+        run_cook = st.form_submit_button("Generate Recipe")
 
-    pantry_input = st.text_area(
-        "What's in your fridge/pantry? (comma separated)",
-        value=", ".join(st.session_state.profile.get("pantry", [])) if st.session_state.profile.get("pantry") else "",
-        placeholder="chicken, garlic, lemon, olive oil, pasta",
-        key="cook_pantry",
-        height=80,
-    )
-
-    if st.button("Generate Recipe", key="cook_search"):
+    if run_cook:
         if not craving:
             st.warning("Tell me what you're craving.")
-            return
+        else:
+            pantry = [p.strip() for p in pantry_input.split(",") if p.strip()]
+            st.session_state.profile["pantry"] = pantry
+            save_profile(st.session_state.profile)
 
-        pantry = [p.strip() for p in pantry_input.split(",") if p.strip()]
-        st.session_state.profile["pantry"] = pantry
-        save_profile(st.session_state.profile)
-
-        from src.recommend import recommend_recipe
-        with st.spinner("Crafting your recipe..."):
-            response = recommend_recipe(craving, st.session_state.profile)
-            st.session_state.cook_response = response
+            from src.recommend import recommend_recipe
+            with st.spinner("Crafting your recipe..."):
+                response = recommend_recipe(craving, st.session_state.profile)
+                st.session_state.cook_response = response
 
     if st.session_state.cook_response:
+        st.markdown('<div class="results-label">Your recipe</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="llm-response">{st.session_state.cook_response}</div>', unsafe_allow_html=True)
 
 
 def render_cocktail_tab(client):
-    st.markdown('<div class="section-label">Cocktails & Drinks</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-label">What are you drinking?</div>', unsafe_allow_html=True)
 
-    vibe = st.text_input("What's the vibe?", placeholder="e.g. herbal and refreshing, something smoky, not too sweet", key="cocktail_vibe")
+    with st.form(key="cocktail_form", enter_to_submit=True):
+        vibe = st.text_input("What's the vibe?", placeholder="e.g. herbal and refreshing, something smoky, not too sweet")
+        bar_input = st.text_area(
+            "What's in your bar? (comma separated)",
+            value=", ".join(st.session_state.profile.get("bar_inventory", [])) if st.session_state.profile.get("bar_inventory") else "",
+            placeholder="gin, lemon juice, honey, rosemary, soda water",
+            key="cocktail_bar",
+            height=90,
+        )
+        mocktail = st.checkbox("Mocktail only")
+        run_cocktail = st.form_submit_button("Mix Something")
 
-    bar_input = st.text_area(
-        "What's in your bar? (comma separated)",
-        value=", ".join(st.session_state.profile.get("bar_inventory", [])) if st.session_state.profile.get("bar_inventory") else "",
-        placeholder="gin, lemon juice, honey, rosemary, soda water",
-        key="cocktail_bar",
-        height=80,
-    )
-
-    mocktail = st.checkbox("Mocktail mode", key="mocktail_mode")
-
-    if st.button("Mix Something", key="cocktail_search"):
+    if run_cocktail:
         if not vibe:
             st.warning("Describe the vibe first.")
-            return
+        else:
+            bar = [b.strip() for b in bar_input.split(",") if b.strip()]
+            st.session_state.profile["bar_inventory"] = bar
+            save_profile(st.session_state.profile)
 
-        bar = [b.strip() for b in bar_input.split(",") if b.strip()]
-        st.session_state.profile["bar_inventory"] = bar
-        save_profile(st.session_state.profile)
-
-        from src.recommend import recommend_cocktail
-        full_vibe = vibe + (" (mocktail, no alcohol)" if mocktail else "")
-        with st.spinner("Mixing..."):
-            response = recommend_cocktail(full_vibe, st.session_state.profile)
-            st.session_state.cocktail_response = response
+            from src.recommend import recommend_cocktail
+            full_vibe = vibe + (" (mocktail, no alcohol)" if mocktail else "")
+            with st.spinner("Mixing..."):
+                response = recommend_cocktail(full_vibe, st.session_state.profile)
+                st.session_state.cocktail_response = response
 
     if st.session_state.cocktail_response:
+        st.markdown('<div class="results-label">Your drink</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="llm-response">{st.session_state.cocktail_response}</div>', unsafe_allow_html=True)
 
 
@@ -617,13 +743,13 @@ def main():
     init_session()
     render_sidebar()
 
-    st.markdown('<div class="foodai-header">Food AI</div>', unsafe_allow_html=True)
+    st.markdown('<div class="foodai-header">What are you <em>hungry</em> for?</div>', unsafe_allow_html=True)
     st.markdown('<div class="foodai-subtitle">Tell me what you want. I\'ll figure out the rest.</div>', unsafe_allow_html=True)
 
     client = get_client()
     df = get_df()
 
-    tab_eat, tab_cook, tab_cocktail = st.tabs(["🍜 Eat Out", "🍳 Cook", "🍹 Cocktails"])
+    tab_eat, tab_cook, tab_cocktail = st.tabs(["🍜  Eat Out", "🍳  Cook", "🍹  Cocktails"])
 
     with tab_eat:
         render_eat_out_tab(client, df)
@@ -637,4 +763,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
