@@ -538,7 +538,7 @@ div[class*="block-container"] {
 /* ── Results head ── */
 .results-head {
     display: flex; align-items: baseline; justify-content: space-between;
-    margin-bottom: 16px;
+    margin: -5px 0 8px;
 }
 .results-head h2 {
     font-family: var(--serif); font-weight: 400; font-size: 22px;
@@ -706,6 +706,10 @@ div[class*="block-container"] {
     height: var(--result-card-height) !important;
     min-height: var(--result-card-height) !important;
     margin: 0 0 16px !important;
+}
+
+[class*="st-key-card_rail_accept_"] {
+    border-color: rgba(122,158,126,0.5) !important;
 }
 
 [class*="st-key-card_rail_"] > div,
@@ -1459,7 +1463,8 @@ def render_card(r, tab="eat", blurb=""):
         + '</div></article>'
     )
     card_id = stable_widget_key(tab, name, address, r.get("id") or r.get("place_id") or r.get("fsq_id"))
-    rail_key = f"card_rail_{card_id}"
+    rail_state = "accept" if accepted else "reject" if rejected else "neutral"
+    rail_key = f"card_rail_{rail_state}_{card_id}"
     pass_key = f"card_pass_{card_id}"
     save_key = f"card_save_{card_id}"
     undo_state = "accept" if accepted else "reject"
