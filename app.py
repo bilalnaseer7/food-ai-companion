@@ -1274,7 +1274,7 @@ def render_sidebar():
     sidebar_html += (
         f'<div class="side-section">'
         f'<div class="insights">'
-        f'<div class="insights-head"><span>Profile insights</span><span class="pct">{pct}% positive</span></div>'
+        f'<div class="insights-head"><span>Profile insights</span><span class="pct">{pct}% Accepted</span></div>'
         f'<div class="donut-wrap">{donut_svg(tc["eat"], tc["cook"], tc["drink"], total)}{legend}</div>'
         f'</div></div>'
     )
