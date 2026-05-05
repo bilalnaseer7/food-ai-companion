@@ -1,0 +1,28 @@
+{
+  "preferred_cuisines": [
+    "Asian, Indian"
+  ],
+  "liked_foods": [],
+  "disliked_foods": [],
+  "budget": "moderate",
+  "online_order": "No",
+  "occasion": "casual dinner",
+  "cuisine_scores": {
+    "American, Bar": -0.3,
+    "Asian, Indian": 0.3
+  },
+  "food_scores": {},
+  "accepted": [
+    "Junoon Restaurant"
+  ],
+  "rejected": [
+    "Bill's Bar & Burger"
+  ],
+  "pantry": [
+    "eggs",
+    "rice",
+    "spinach",
+    "soy sauce",
+    "garlic"
+  ]
+}
