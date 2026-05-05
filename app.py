@@ -209,7 +209,7 @@ a:hover { text-decoration: none; }
 [data-testid="stSidebar"] * { color: var(--ink) !important; }
 
 /* ── Brand ── */
-.brand { display: flex; align-items: center; gap: 10px; margin-top: -20px; padding-bottom: 18px; }
+.brand { display: flex; align-items: center; gap: 10px; margin-top: -30px; padding-bottom: 18px; }
 .brand-mark {
     width: 8px; height: 8px; border-radius: 50%;
     background: #FFD8A8;
@@ -1054,11 +1054,12 @@ def refresh_preference_tags(profile):
         "occasion": profile.get("occasion", ""),
     }
     system_prompt = (
-        "Infer concise food preference tags from user feedback. "
+        "You are updating a user's food preference tags based on their full interaction history. "
         "Return JSON only with keys liked_foods and disliked_foods. "
-        "Use up to 8 short reusable tags in each list, but you don't have to use all 8 unless the data supports it. "
-        "Prefer cuisines, foods, settings, vibes, service styles, and budget/occasion tendencies. "
-        "Do not use restaurant names as tags. Do not over-infer from one event."
+        "Generate a fresh, accurate list of up to 12 short tags per list — drop tags that no longer reflect recent behavior and add new ones that do. "
+        "Prefer specific cuisines, dishes, ingredients, settings, and vibes. "
+        "Weight recent history more heavily than older entries. "
+        "Do not use restaurant names as tags. Do not pad with generic tags."
     )
     user_prompt = json.dumps(payload, ensure_ascii=False)
 
