@@ -60,11 +60,22 @@ To address recent TA feedback and improve demo credibility, the codebase now inc
 - persistent taste profile with accept/reject feedback loop
 - full Streamlit UI with three modes, sidebar profile display, and real-time updates
 
+## Milestone 3 Bilal Update
+
+- Added a modular Cook at Home backend in `src/cook_mode.py` that turns pantry ingredients, cuisine preferences, disliked foods/restrictions, budget, and occasion context into transparent LLM-generated recipe ideas. This mode is clearly framed as LLM + taste-profile generation because no recipe dataset is currently present in the repository.
+- Added a Cook at Home demo/evaluation harness in `scripts/run_cook_mode_demo.py`. By default it writes a no-API prompt preview to `results/cook_mode_demo_preview.md`; with `--generate`, it uses the local OpenAI key to produce real demo outputs.
+- Added a lightweight personalization vs. filter-bubble analysis in `src/filter_bubble.py` and `scripts/run_filter_bubble_analysis.py`. The analysis computes overlap, novelty, category diversity, entropy, and a bounded filter-bubble index from local restaurant metadata without inventing human scores.
+- Added a Milestone 3 evaluation harness in `src/evaluation.py` and `scripts/run_milestone3_evaluation.py`. It creates deterministic system-side metrics plus a human-scoring template for baseline, taste-profile, and RAG-style recommendation comparisons.
+
 ## Repository Structure
 ```text
 food-ai-companion-main/
 ├── app.py
 ├── main.py
+├── scripts/
+│   ├── run_milestone3_evaluation.py
+│   ├── run_filter_bubble_analysis.py
+│   └── run_cook_mode_demo.py
 ├── data/
 │   ├── restaurants.csv
 │   └── restaurant_embeddings.npz
@@ -72,6 +83,8 @@ food-ai-companion-main/
 │   └── milestone2_outputs.txt
 ├── src/
 │   ├── data_loader.py
+│   ├── cook_mode.py
+│   ├── evaluation.py
 │   ├── recommend.py
 │   ├── retrieval.py
 │   ├── places.py
@@ -123,6 +136,37 @@ streamlit run app.py
 ```
 
 This launches the full multi-mode application in your browser.
+
+### Cook at Home Milestone 3 demo
+```bash
+python3 scripts/run_cook_mode_demo.py
+```
+
+This creates `results/cook_mode_demo_preview.md`, a deterministic preview of the Cook mode contexts and prompt contract. To generate real LLM recipe outputs for the report/demo, run:
+
+```bash
+python3 scripts/run_cook_mode_demo.py --generate
+```
+
+### Personalization/filter-bubble analysis
+```bash
+python3 scripts/run_filter_bubble_analysis.py
+```
+
+This creates `results/filter_bubble_metrics.csv` and `results/filter_bubble_analysis.md`. The metrics are deterministic metadata-based estimates for Milestone 3 discussion; they are not human evaluation scores.
+
+### Milestone 3 evaluation artifacts
+```bash
+python3 scripts/run_milestone3_evaluation.py
+```
+
+This creates:
+
+- `results/milestone3_evaluation_metrics.csv`
+- `results/milestone3_human_eval_template.csv`
+- `results/milestone3_evaluation_summary.md`
+
+The metrics are deterministic system-side checks over local restaurant metadata. The human-evaluation template is intentionally blank so the team can score actual generated outputs from `main.py` or the Streamlit demo without fabricating evaluator scores.
 
 ## Pipeline Overview
 
