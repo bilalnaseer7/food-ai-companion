@@ -108,7 +108,8 @@ def main():
     }
 
     os.makedirs("results", exist_ok=True)
-    output_path = Path("results/milestone2_outputs.txt")
+    #output_path = Path("results/milestone2_outputs.txt")
+    output_path = Path("results/milestone3_outputs.txt")
 
     with open(output_path, "w", encoding="utf-8") as f:
         write_section_header(f, "MILESTONE 2 OUTPUTS")
