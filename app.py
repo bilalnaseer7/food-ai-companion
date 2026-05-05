@@ -1060,7 +1060,7 @@ def refresh_preference_tags(profile):
     system_prompt = (
         "Infer concise food preference tags from user feedback. "
         "Return JSON only with keys liked_foods and disliked_foods. "
-        "Use up to 10 short reusable tags in each list. "
+        "Use up to 8 short reusable tags in each list. "
         "Prefer cuisines, foods, settings, vibes, service styles, and budget/occasion tendencies. "
         "Do not use restaurant names as tags. Do not over-infer from one event."
     )
