@@ -1291,7 +1291,7 @@ def render_sidebar():
 
 def render_greeting():
     greeting = "Good morning, " if time_now == "morning" else "Good afternoon, " if time_now == "afternoon" else "Good evening, " if time_now == "evening" else "Up for a midnight snack?"
-    friend = "" if hour < 4 else "early bird" if hour < 12 else "Foodie"
+    friend = "Early bird" if time_now == "morning" else "Foodie" if time_now == "afternoon" else "Foodie" if time_now == "evening" else ""
     time_str = now.strftime("%-I:%M %p")
 
     st.markdown(
