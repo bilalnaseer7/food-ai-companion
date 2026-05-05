@@ -159,6 +159,7 @@ html, body, .stApp {
 [data-testid="stMain"] {
     margin-left: 0 !important;
     width: 100% !important;
+    transition: all 0.3s ease !important;
 }
 .main .block-container,
 [data-testid="stMainBlockContainer"],
@@ -193,6 +194,7 @@ a:hover { text-decoration: none; }
     max-width: 350px !important;
     margin-right: -175px !important;
     position: relative !important;
+    transition: all 0.3s ease !important;
 }
 [data-testid="stSidebar"] > div { padding: 24px 20px !important; }
 [data-testid="stSidebar"] * { color: var(--ink) !important; }
@@ -1249,7 +1251,7 @@ def render_sidebar():
         history_html += '</div>'
     sidebar_html += (
         f'<div class="side-section">'
-        f'<div class="side-label"><span>Recent decisions</span><span class="count">{all_dec}</span></div>'
+        f'<div class="side-label"><span>Recent Activity</span><span class="count">{all_dec}</span></div>'
         f'{history_html}'
         f'</div>'
     )
