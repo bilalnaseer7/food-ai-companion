@@ -205,7 +205,7 @@ a:hover { text-decoration: none; }
     position: relative !important;
     transition: all 0.3s ease !important;
 }
-[data-testid="stSidebar"] > div { padding: 24px 18px !important; }
+[data-testid="stSidebar"] > div { padding: 24px 15px !important; }
 [data-testid="stSidebar"] * { color: var(--ink) !important; }
 
 /* ── Brand ── */
