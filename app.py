@@ -1046,8 +1046,6 @@ def refresh_preference_tags(profile):
         "rejected": rejected[-24:],
         "history": history[-24:],
         "preferred_cuisines": profile.get("preferred_cuisines", []),
-        "liked_foods": profile.get("liked_foods", []),
-        "disliked_foods": profile.get("disliked_foods", []),
         "cuisine_scores": profile.get("cuisine_scores", {}),
         "food_scores": profile.get("food_scores", {}),
         "budget": profile.get("budget", ""),
@@ -1056,8 +1054,8 @@ def refresh_preference_tags(profile):
     system_prompt = (
         "You are updating a user's food preference tags based on their full interaction history. "
         "Return JSON only with keys liked_foods and disliked_foods. "
-        "Generate a fresh, accurate list of up to 8 short tags per list — drop tags that no longer reflect recent behavior and add new ones that do. "
-        "If there are already 8 tags in either liked_foods or disliked_foods, review and replace any that are no longer relevant. Always generate the 8 most accurate tags."
+        "Generate a fresh, accurate list of up to 8 short tags per list, reflecting the user's current tastes. "
+        "You do not have to use all 8 tags unless they are all relevant and informative. "
         "Prefer specific cuisines, dishes, ingredients, settings, and vibes. "
         "Weight recent history more heavily than older entries. "
         "Do not use restaurant names as tags. Do not pad with generic tags."
