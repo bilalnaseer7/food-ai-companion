@@ -679,6 +679,21 @@ div[class*="block-container"] {
 .btn-reject:hover { background: var(--terracotta); color: #fff; border-color: var(--terracotta); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(201,106,58,0.30); }
 .btn-accept .glyph, .btn-reject .glyph { font-family: var(--mono); font-size: 11px; font-weight: 600; }
 
+[class*="st-key-cook_pass"] button, [class*="st-key-drink_pass"] button {
+    color: var(--terracotta-2) !important; border-color: rgba(201,106,58,0.4) !important;
+    background: var(--card) !important; font-weight: 500 !important;
+}
+[class*="st-key-cook_pass"] button:hover, [class*="st-key-drink_pass"] button:hover {
+    background: var(--terracotta) !important; color: #fff !important; border-color: var(--terracotta) !important;
+}
+[class*="st-key-cook_save"] button, [class*="st-key-drink_save"] button {
+    color: var(--sage-2) !important; border-color: rgba(122,158,126,0.4) !important;
+    background: var(--card) !important; font-weight: 500 !important;
+}
+[class*="st-key-cook_save"] button:hover, [class*="st-key-drink_save"] button:hover {
+    background: var(--sage) !important; color: #fff !important; border-color: var(--sage) !important;
+}
+
 .card.combo {
     height: var(--result-card-height) !important;
     min-height: var(--result-card-height) !important;
@@ -888,13 +903,12 @@ div[class*="block-container"] {
 @keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
 
 /* ── LLM response ── */
-.llm-response {
+[class*="st-key-llm_response_"] > div {
     background: linear-gradient(180deg, #FFFBF5 0%, #FAF3E8 100%);
     border: 1px solid rgba(201,162,39,0.2);
     border-radius: var(--radius); padding: 18px 22px;
-    margin: 8px 0 20px;
+    margin: 8px 0 8px;
     font-size: 14.5px; line-height: 1.65; color: var(--ink);
-    white-space: pre-wrap;
 }
 
 .stSpinner > div { border-top-color: var(--terracotta) !important; }
@@ -1075,6 +1089,8 @@ def init_session():
         "history": [],
         "eat_prefill": "", "cook_prefill": "", "drink_prefill": "",
         "active_tab": "eat",
+        "cook_last_craving": "", "drink_last_vibe": "",
+        "cook_remix_active": False, "drink_remix_active": False,
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -1891,6 +1907,8 @@ def render_cook_tab(client):
         with st.spinner(""):
             response = recommend_recipe(craving, st.session_state.profile)
             st.session_state.cook_response = response
+            st.session_state.cook_last_craving = craving
+            st.session_state.cook_remix_active = False
             st.session_state.tab_counts["cook"] += 1
 
         if skel_placeholder:
@@ -1913,7 +1931,41 @@ def render_cook_tab(client):
         )
         if match_html:
             st.markdown(f'<div style="margin-bottom:12px">{match_html}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="llm-response">{html_module.escape(st.session_state.cook_response)}</div>', unsafe_allow_html=True)
+        with st.container(key="llm_response_cook"):
+            st.markdown(st.session_state.cook_response)
+
+        import re as _re
+        _name_m = _re.search(r'^#{1,3}\s+(.+)$', st.session_state.cook_response, _re.MULTILINE)
+        _recipe_name = _name_m.group(1).strip() if _name_m else "this recipe"
+
+        c_pass, c_remix, c_save = st.columns([1, 1, 1])
+        with c_pass:
+            if st.button("Pass", key="cook_pass", use_container_width=True):
+                apply_card_feedback(_recipe_name, False, tab="cook")
+                st.session_state.cook_response = None
+                st.rerun()
+        with c_remix:
+            if st.button("Remix", key="cook_remix_toggle", use_container_width=True):
+                st.session_state.cook_remix_active = not st.session_state.cook_remix_active
+                st.rerun()
+        with c_save:
+            if st.button("Save", key="cook_save", use_container_width=True):
+                apply_card_feedback(_recipe_name, True, tab="cook")
+                st.rerun()
+
+        if st.session_state.cook_remix_active:
+            with st.form(key="cook_remix_form", enter_to_submit=True, border=False):
+                col1, col2 = st.columns([3, 1.2])
+                with col1:
+                    remix_input = st.text_input("Add context", placeholder="make it spicier, fewer steps, vegetarian…", label_visibility="collapsed")
+                with col2:
+                    if st.form_submit_button("Remix Recipe →", type="primary", use_container_width=True) and remix_input:
+                        from src.recommend import recommend_recipe
+                        combined = f"{st.session_state.cook_last_craving}. {remix_input}"
+                        st.session_state.cook_response = recommend_recipe(combined, st.session_state.profile)
+                        st.session_state.cook_last_craving = combined
+                        st.session_state.cook_remix_active = False
+                        st.rerun()
     else:
         render_empty("cook")
 
@@ -1960,6 +2012,8 @@ def render_cocktail_tab(client):
         with st.spinner(""):
             response = recommend_cocktail(vibe, st.session_state.profile)
             st.session_state.cocktail_response = response
+            st.session_state.drink_last_vibe = vibe
+            st.session_state.drink_remix_active = False
             st.session_state.tab_counts["drink"] += 1
 
         if skel_placeholder:
@@ -1982,7 +2036,48 @@ def render_cocktail_tab(client):
         )
         if match_html:
             st.markdown(f'<div style="margin-bottom:12px">{match_html}</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="llm-response">{html_module.escape(st.session_state.cocktail_response)}</div>', unsafe_allow_html=True)
+        import re as _re
+        cocktail_md = _re.sub(
+            r"^\*{0,2}Cocktail Name:?\*{0,2}\s*",
+            "### ",
+            st.session_state.cocktail_response.lstrip(),
+            count=1,
+            flags=_re.IGNORECASE,
+        )
+        with st.container(key="llm_response_cocktail"):
+            st.markdown(cocktail_md)
+
+        _name_m2 = _re.search(r'^#{1,3}\s+(.+)$', cocktail_md, _re.MULTILINE)
+        _cocktail_name = _name_m2.group(1).strip() if _name_m2 else "this cocktail"
+
+        d_pass, d_remix, d_save = st.columns([1, 1, 1])
+        with d_pass:
+            if st.button("Pass", key="drink_pass", use_container_width=True):
+                apply_card_feedback(_cocktail_name, False, tab="drink")
+                st.session_state.cocktail_response = None
+                st.rerun()
+        with d_remix:
+            if st.button("Remix", key="drink_remix_toggle", use_container_width=True):
+                st.session_state.drink_remix_active = not st.session_state.drink_remix_active
+                st.rerun()
+        with d_save:
+            if st.button("Save", key="drink_save", use_container_width=True):
+                apply_card_feedback(_cocktail_name, True, tab="drink")
+                st.rerun()
+
+        if st.session_state.drink_remix_active:
+            with st.form(key="drink_remix_form", enter_to_submit=True, border=False):
+                col1, col2 = st.columns([3, 1.2])
+                with col1:
+                    remix_input = st.text_input("Add context", placeholder="make it sweeter, no citrus, more spirit-forward…", label_visibility="collapsed")
+                with col2:
+                    if st.form_submit_button("Remix Drink  →", type="primary", use_container_width=True) and remix_input:
+                        from src.recommend import recommend_cocktail
+                        combined = f"{st.session_state.drink_last_vibe}. {remix_input}"
+                        st.session_state.cocktail_response = recommend_cocktail(combined, st.session_state.profile)
+                        st.session_state.drink_last_vibe = combined
+                        st.session_state.drink_remix_active = False
+                        st.rerun()
     else:
         render_empty("drink")
 
