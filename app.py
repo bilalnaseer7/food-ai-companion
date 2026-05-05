@@ -111,6 +111,7 @@ st.markdown("""
     --ink: #1A1A1A;
     --ink-2: #6B6B6B;
     --ink-3: #9A968D;
+    --input-text: #5F5D58;
     --placeholder-text: #74716A;
     --line: rgba(26,26,26,0.06);
     --line-2: rgba(26,26,26,0.10);
@@ -457,6 +458,7 @@ div[class*="block-container"] {
 }
 .stTextInput input, .stTextArea textarea {
     caret-color: var(--ink) !important;
+    color: var(--input-text) !important;
     background: transparent !important;
     font-family: var(--sans) !important;
     font-size: 14.5px !important;
@@ -470,6 +472,8 @@ div[class*="block-container"] {
 [data-baseweb="textarea"] textarea,
 [data-baseweb="base-input"] input {
     caret-color: var(--ink) !important;
+    color: var(--input-text) !important;
+    -webkit-text-fill-color: var(--input-text) !important;
 }
 .stTextInput input::placeholder,
 .stTextArea textarea::placeholder,
