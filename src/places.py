@@ -207,7 +207,7 @@ def _next_open_str(periods: list) -> str:
     if not periods:
         return ""
     now = datetime.now()
-    # Google: 0=Sunday … 6=Saturday; Python weekday: 0=Monday … 6=Sunday
+
     google_today = (now.weekday() + 1) % 7
     current_mins = now.hour * 60 + now.minute
     DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -228,7 +228,7 @@ def _next_open_str(periods: list) -> str:
                 return f"Opens today {time_str}"
             if offset == 1:
                 return f"Opens tomorrow {time_str}"
-            return f"Opens {DAY_NAMES[check_day]} {time_str}"
+            return f"Opens {time_str} {DAY_NAMES[check_day]}"
     return ""
 
 
