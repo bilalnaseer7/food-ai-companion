@@ -523,13 +523,14 @@ div[class*="block-container"] {
     padding: 12px 16px; background: var(--bg-deep);
     border-radius: var(--radius); margin-bottom: 12px;
     font-size: 13px; color: var(--ink-2);
-    margin-bottom: 20px;
+    margin-bottom: 12px;
 }
 .recent-label {
     font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em;
     text-transform: uppercase; color: var(--ink-3); flex-shrink: 0;
 }
-.recent-track { display: flex; gap: 6px; flex-wrap: nowrap; overflow: hidden; flex: 1; }
+.recent-track { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: scroll; flex: 1; scrollbar-width: none; }
+.recent-track::-webkit-scrollbar { display: none; }
 .recent-chip {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 4px 10px; background: var(--card);
@@ -662,6 +663,8 @@ div[class*="block-container"] {
 .card-extra .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sage); }
 .card-extra.warn { color: var(--gold); }
 .card-extra.warn .dot { background: var(--gold); }
+.card-extra.closed { color: var(--terracotta); }
+.card-extra.closed .dot { background: var(--terracotta); }
 
 .btn-accept, .btn-reject {
     display: inline-flex; align-items: center; gap: 6px;
@@ -997,7 +1000,7 @@ def reset_taste_profile():
     st.session_state.cocktail_response = None
 
 
-def apply_card_feedback(name, accepted, cuisines=None, tab="eat"):
+def apply_card_feedback(name, accepted, cuisines=None, tab="eat", price=None):
     opposite_bucket = "rejected" if accepted else "accepted"
     if name in st.session_state.profile.get(opposite_bucket, []):
         st.session_state.profile[opposite_bucket].remove(name)
@@ -1006,6 +1009,7 @@ def apply_card_feedback(name, accepted, cuisines=None, tab="eat"):
         restaurant_name=name,
         accepted=accepted,
         cuisines=cuisines or None,
+        price=price,
     )
     save_profile(st.session_state.profile)
     st.session_state.history.append({"name": name, "kind": "acc" if accepted else "rej", "tab": tab})
@@ -1113,11 +1117,6 @@ def handle_query_params():
                 st.session_state.profile.get("food_scores", {}).pop(food, None)
                 save_profile(st.session_state.profile)
 
-        elif action == "budget":
-            level = int(qp.get("level", "2"))
-            st.session_state.profile["budget"] = BUDGET_REVERSE.get(level, "moderate")
-            save_profile(st.session_state.profile)
-
         elif action == "prefill":
             target = qp.get("tab", "eat")
             text = qp.get("text", "")
@@ -1197,18 +1196,23 @@ def render_sidebar():
             f'</div>'
         )
 
-    # Budget
-    current_budget = BUDGET_MAP.get(profile.get("budget", "moderate"), 2)
-    dots = "".join([
-        f'<a href="?action=budget&level={n}" class="dot{" on" if n <= current_budget else ""}" target="_self"></a>'
-        for n in [1, 2, 3, 4]
-    ])
-    sidebar_html += (
-        f'<div class="side-section">'
-        f'<div class="side-label"><span>Budget comfort</span><span class="count">{"$" * current_budget}</span></div>'
-        f'<div class="budget">{dots}<span class="budget-label">{BUDGET_LABELS[current_budget]}</span></div>'
-        f'</div>'
-    )
+    # Inferred spending pattern
+    inferred = profile.get("inferred_budget_level")
+    inferred_count = profile.get("inferred_budget_count", 0)
+    if inferred is not None and inferred_count >= 2:
+        inferred_level = max(1, min(4, round(inferred)))
+        inferred_dollar = "$" * inferred_level
+        idots = "".join([
+            f'<span class="dot{" on" if n <= inferred_level else ""}"></span>'
+            for n in [1, 2, 3, 4]
+        ])
+        sidebar_html += (
+            f'<div class="side-section">'
+            f'<div class="side-label"><span>Spending pattern</span><span class="count">{inferred_dollar}</span></div>'
+            f'<div class="budget">{idots}'
+            f'<span class="budget-label">{BUDGET_LABELS[inferred_level]} · {inferred_count} signal{"s" if inferred_count != 1 else ""}</span>'
+            f'</div></div>'
+        )
 
     # Insights donut
     tc = st.session_state.tab_counts
@@ -1379,9 +1383,26 @@ def render_recent_strip():
     st.markdown(
         f'<div class="recent">'
         f'<span class="recent-label">Recent Activity</span>'
-        f'<div class="recent-track">{chips}</div>'
+        f'<div class="recent-track" id="recent-track">{chips}</div>'
         f'</div>',
         unsafe_allow_html=True
+    )
+    components.html(
+        '<script>'
+        '(function(){'
+        '  function attach(){'
+        '    var t=window.parent.document.getElementById("recent-track");'
+        '    if(t){'
+        '      t.addEventListener("wheel",function(e){'
+        '        if(e.deltaY!==0){e.preventDefault();t.scrollLeft+=e.deltaY;}'
+        '      },{passive:false});'
+        '    } else { setTimeout(attach,100); }'
+        '  }'
+        '  attach();'
+        '})();'
+        '</script>',
+        height=0,
+        scrolling=False,
     )
 
 
@@ -1458,10 +1479,17 @@ def render_card(r, tab="eat", blurb=""):
     ])
 
     # Actions
-    open_html = (
-        f'<span class="card-extra"><span class="dot"></span>Open now</span>'
-        if r.get("open_now") else ''
-    )
+    open_now = r.get("open_now")
+    if open_now is True:
+        closes_at = r.get("closes_at", "")
+        open_label = f"{closes_at}" if closes_at else "Open now"
+        open_html = f'<span class="card-extra"><span class="dot"></span>{html_module.escape(open_label)}</span>'
+    elif open_now is False:
+        next_open = r.get("next_open", "")
+        closed_label = f"{next_open}" if next_open else "Closed"
+        open_html = f'<span class="card-extra closed"><span class="dot"></span>{html_module.escape(closed_label)}</span>'
+    else:
+        open_html = ""
     feedback_html = ""
     if accepted:
         feedback_html = '<span class="card-feedback-done acc">✓ Saved</span>'
@@ -1522,18 +1550,19 @@ def render_card(r, tab="eat", blurb=""):
                     use_container_width=True,
                 )
             else:
+                price_val = r.get("price")
                 st.button(
                     "Pass",
                     key=pass_key,
                     on_click=apply_card_feedback,
-                    args=(name, False, cuisines, tab),
+                    args=(name, False, cuisines, tab, price_val),
                     use_container_width=True,
                 )
                 st.button(
                     "Save",
                     key=save_key,
                     on_click=apply_card_feedback,
-                    args=(name, True, cuisines, tab),
+                    args=(name, True, cuisines, tab, price_val),
                     use_container_width=True,
                 )
 

@@ -25,7 +25,7 @@ SEARCH_FIELD_MASK = ",".join([
     "places.rating",
     "places.userRatingCount",
     "places.priceLevel",
-    "places.regularOpeningHours.openNow",
+    "places.regularOpeningHours",
     "places.businessStatus",
     "places.photos",
     "places.liveMusic",
@@ -166,6 +166,72 @@ def get_photo_uri(photo_name: str, max_width: int = 640) -> str:
         return ""
 
 
+def _fmt_time(h: int, m: int) -> str:
+    ampm = "AM" if h < 12 else "PM"
+    h12 = h % 12 or 12
+    return f"{h12}:{m:02d} {ampm}" if m else f"{h12} {ampm}"
+
+
+def _closes_at_str(periods: list) -> str:
+    from datetime import datetime
+    if not periods:
+        return ""
+    now = datetime.now()
+    google_today = (now.weekday() + 1) % 7
+    google_yesterday = (google_today - 1) % 7
+    current_mins = now.hour * 60 + now.minute
+
+    for period in periods:
+        o = period.get("open", {})
+        c = period.get("close", {})
+        if not o or not c:
+            continue
+        open_day, open_mins = o.get("day"), o.get("hour", 0) * 60 + o.get("minute", 0)
+        close_day, close_h, close_m = c.get("day"), c.get("hour", 0), c.get("minute", 0)
+        close_mins = close_h * 60 + close_m
+
+        # Period started today and closes today (or tomorrow overnight)
+        if open_day == google_today and open_mins <= current_mins:
+            if close_day == google_today and current_mins < close_mins:
+                return f"Open until {_fmt_time(close_h, close_m)}"
+            if close_day != google_today:  # closes past midnight
+                return f"Open until {_fmt_time(close_h, close_m)}"
+        # Period started yesterday and closes today (overnight)
+        if open_day == google_yesterday and close_day == google_today and current_mins < close_mins:
+            return f"Open until {_fmt_time(close_h, close_m)}"
+    return ""
+
+
+def _next_open_str(periods: list) -> str:
+    from datetime import datetime
+    if not periods:
+        return ""
+    now = datetime.now()
+    # Google: 0=Sunday … 6=Saturday; Python weekday: 0=Monday … 6=Sunday
+    google_today = (now.weekday() + 1) % 7
+    current_mins = now.hour * 60 + now.minute
+    DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
+    for offset in range(8):
+        check_day = (google_today + offset) % 7
+        day_slots = sorted(
+            [p["open"] for p in periods if p.get("open", {}).get("day") == check_day],
+            key=lambda s: s.get("hour", 0) * 60 + s.get("minute", 0),
+        )
+        for slot in day_slots:
+            slot_mins = slot.get("hour", 0) * 60 + slot.get("minute", 0)
+            if offset == 0 and slot_mins <= current_mins:
+                continue
+            h, m = slot.get("hour", 0), slot.get("minute", 0)
+            time_str = _fmt_time(h, m)
+            if offset == 0:
+                return f"Opens today {time_str}"
+            if offset == 1:
+                return f"Opens tomorrow {time_str}"
+            return f"Opens {DAY_NAMES[check_day]} {time_str}"
+    return ""
+
+
 def _parse_place(raw: dict) -> dict:
     price_map = {
         "PRICE_LEVEL_FREE":           0,
@@ -176,9 +242,16 @@ def _parse_place(raw: dict) -> dict:
     }
 
     open_now = None
+    next_open = ""
+    closes_at = ""
     hours = raw.get("regularOpeningHours", {})
     if hours:
         open_now = hours.get("openNow")
+        periods = hours.get("periods", [])
+        if open_now is False:
+            next_open = _next_open_str(periods)
+        elif open_now is True:
+            closes_at = _closes_at_str(periods)
 
     primary = raw.get("primaryTypeDisplayName", {}).get("text", "")
     types = [t.replace("_", " ").title() for t in raw.get("types", [])
@@ -218,6 +291,8 @@ def _parse_place(raw: dict) -> dict:
         "price":             price_map.get(raw.get("priceLevel", ""), None),
         "rating":            raw.get("rating"),
         "open_now":          open_now,
+        "next_open":         next_open,
+        "closes_at":         closes_at,
         "total_tips":        raw.get("userRatingCount", 0),
         "photo_url":         photo_url,
         "photo_attribution": photo_attribution,
