@@ -334,7 +334,7 @@ a:hover { text-decoration: none; }
 /* ── Greeting ── */
 .greeting {
     display: flex; align-items: baseline; justify-content: space-between;
-    gap: 24px; margin: 10px 0 8px;
+    gap: 24px; margin: 15px 0 8px;
 }
 .greeting h1 {
     font-family: var(--serif); font-size: 38px; font-weight: 400;
