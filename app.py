@@ -209,7 +209,7 @@ a:hover { text-decoration: none; }
 [data-testid="stSidebar"] * { color: var(--ink) !important; }
 
 /* ── Brand ── */
-.brand { display: flex; align-items: center; gap: 10px; margin-top: -12px; padding-bottom: 18px; }
+.brand { display: flex; align-items: center; gap: 10px; margin-top: -20px; padding-bottom: 18px; }
 .brand-mark {
     width: 8px; height: 8px; border-radius: 50%;
     background: #FFD8A8;
@@ -1056,7 +1056,7 @@ def refresh_preference_tags(profile):
     system_prompt = (
         "Infer concise food preference tags from user feedback. "
         "Return JSON only with keys liked_foods and disliked_foods. "
-        "Use up to 8 short reusable tags in each list. "
+        "Use up to 8 short reusable tags in each list, but you don't have to use all 8 unless the data supports it. "
         "Prefer cuisines, foods, settings, vibes, service styles, and budget/occasion tendencies. "
         "Do not use restaurant names as tags. Do not over-infer from one event."
     )
