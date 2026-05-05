@@ -203,7 +203,7 @@ def combined_recommend(client: OpenAI, query: str, user_profile: dict, csv_resul
         "Use both sources together with the user's taste profile to select and rank the best 5 restaurants. "
         "Treat budget as general comfort context, not a hard filter; explicit user intent such as Michelin, tasting menu, splurge, cheap eats, or casual should override the stored budget. "
         "If the user asks for walking distance, interpret that as less than 1 mile from the requested location. "
-        "If the user asks for places that are open now, only choose live results marked openNow=true. "
+        "If the user explicitly asks for places that are open now, only choose live results marked openNow=true. Otherwise, do not exclude options based on open status. "
         "Only recommend restaurants from the provided lists. Do not invent any."
     )
 

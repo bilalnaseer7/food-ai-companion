@@ -417,6 +417,9 @@ a:hover { text-decoration: none; }
     font-weight: 500 !important;
     border-bottom: 2px solid var(--terracotta) !important;
 }
+[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
+    background-color: var(--terracotta) !important;
+}
 
 /* ── Search card ── */
 .search-card {
