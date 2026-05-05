@@ -256,16 +256,11 @@ a:hover { text-decoration: none; }
     font-size: 12.5px; font-weight: 400;
     background: var(--tag-ink); color: var(--ink);
     border: 1px solid transparent;
-    cursor: pointer;
-    transition: all 0.14s ease;
 }
-.pill:hover { transform: translateY(-1px); }
 .pill.terracotta { background: var(--tag-terracotta); color: var(--terracotta-2); }
 .pill.sage { background: var(--tag-sage); color: var(--sage-2); }
 .pill.outline { background: transparent; border-color: var(--line-2); color: var(--ink-2); }
 .pill .pill-bar { width: 4px; height: 4px; border-radius: 50%; background: currentColor; opacity: 0.5; }
-.pill .x { font-size: 11px; opacity: 0.5; margin-left: 2px; }
-.pill .x:hover { opacity: 1; }
 
 /* ── Budget ── */
 .budget { display: flex; gap: 4px; align-items: center; }
@@ -1250,34 +1245,6 @@ def handle_query_params():
             _tc[tab] = _tc.get(tab, 0) + 1
             save_profile(st.session_state.profile)
 
-        elif action == "rm_like":
-            food = qp.get("food", "")
-            if food:
-                profile = st.session_state.profile
-                removed = profile.setdefault("removed_foods", [])
-                if food not in removed:
-                    removed.append(food)
-                current_score = profile.setdefault("food_scores", {}).get(food, 0.0)
-                profile["food_scores"][food] = round(min(current_score - 0.3, -0.5), 3)
-                if food in profile.get("liked_foods", []):
-                    profile["liked_foods"].remove(food)
-                save_profile(profile)
-                st.session_state.profile = profile
-
-        elif action == "rm_dis":
-            food = qp.get("food", "")
-            if food:
-                profile = st.session_state.profile
-                removed = profile.setdefault("removed_foods", [])
-                if food not in removed:
-                    removed.append(food)
-                current_score = profile.setdefault("food_scores", {}).get(food, 0.0)
-                profile["food_scores"][food] = round(min(current_score - 0.3, -0.5), 3)
-                if food in profile.get("disliked_foods", []):
-                    profile["disliked_foods"].remove(food)
-                save_profile(profile)
-                st.session_state.profile = profile
-
         elif action == "prefill":
             target = qp.get("tab", "eat")
             text = qp.get("text", "")
@@ -1298,17 +1265,16 @@ def render_preference_tags(label, profile_key, tone):
         return
 
     pill_class = "sage" if tone == "liked" else "terracotta"
-    action = "rm_like" if tone == "liked" else "rm_dis"
     pills = "".join([
-        f'<span class="pill {pill_class}" role="button" tabindex="0" data-pref-tag data-action="{action}" data-food="{html_module.escape(item, quote=True)}">'
-        f'<span class="pill-bar"></span>{html_module.escape(item)}<span class="x">×</span>'
+        f'<span class="pill {pill_class}">'
+        f'<span class="pill-bar"></span>{html_module.escape(item)}'
         f'</span>'
         for item in items
     ])
 
     st.markdown(
-        f'<div class="side-section" data-pref-section>'
-        f'<div class="side-label"><span>{html_module.escape(label)}</span><span class="count" data-pref-count>{len(items)}</span></div>'
+        f'<div class="side-section">'
+        f'<div class="side-label"><span>{html_module.escape(label)}</span><span class="count">{len(items)}</span></div>'
         f'<div class="tag-cluster">{pills}</div>'
         f'</div>',
         unsafe_allow_html=True,
@@ -1425,59 +1391,6 @@ def render_sidebar():
     render_preference_tags("You like", "liked_foods", "liked")
     render_preference_tags("Not for you", "disliked_foods", "disliked")
     st.markdown(sidebar_bottom, unsafe_allow_html=True)
-    components.html(
-        """
-        <script>
-            const parentDoc = window.parent && window.parent.document;
-            if (parentDoc && !parentDoc.body.dataset.prefTagsBound) {
-                parentDoc.body.dataset.prefTagsBound = "true";
-
-                const closeTag = (tag) => {
-                    const section = tag.closest("[data-pref-section]");
-                    tag.style.display = "none";
-                    tag.setAttribute("aria-hidden", "true");
-
-                    if (!section) return;
-                    const visibleTags = section.querySelectorAll("[data-pref-tag]:not([aria-hidden='true'])");
-                    const count = section.querySelector("[data-pref-count]");
-                    if (count) count.textContent = visibleTags.length;
-                    if (visibleTags.length === 0) section.style.display = "none";
-                };
-
-                parentDoc.addEventListener("click", (event) => {
-                    const tag = event.target.closest("[data-pref-tag]");
-                    if (!tag) return;
-                    closeTag(tag);
-                    const action = tag.dataset.action;
-                    const food = tag.dataset.food;
-                    if (action && food) {
-                        const url = new URL(parentDoc.location.href);
-                        url.searchParams.set("action", action);
-                        url.searchParams.set("food", food);
-                        parentDoc.location.href = url.toString();
-                    }
-                });
-
-                parentDoc.addEventListener("keydown", (event) => {
-                    if (event.key !== "Enter" && event.key !== " ") return;
-                    const tag = event.target.closest("[data-pref-tag]");
-                    if (!tag) return;
-                    event.preventDefault();
-                    closeTag(tag);
-                    const action = tag.dataset.action;
-                    const food = tag.dataset.food;
-                    if (action && food) {
-                        const url = new URL(parentDoc.location.href);
-                        url.searchParams.set("action", action);
-                        url.searchParams.set("food", food);
-                        parentDoc.location.href = url.toString();
-                    }
-                });
-            }
-        </script>
-        """,
-        height=0,
-    )
     render_reset_button()
 
 
