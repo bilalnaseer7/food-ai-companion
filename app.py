@@ -738,11 +738,13 @@ div[class*="block-container"] {
 [class*="st-key-cook_save"] button:hover, [class*="st-key-drink_save"] button:hover {
     background: var(--sage) !important; color: #fff !important; border-color: var(--sage) !important;
 }
-[class*="st-key-cook_remix_toggle"] button, [class*="st-key-drink_remix_toggle"] button {
+[class*="st-key-cook_remix_toggle"] button, [class*="st-key-drink_remix_toggle"] button,
+[class*="st-key-cook_undo_save"] button, [class*="st-key-drink_undo_save"] button {
     color: var(--ink-2) !important; border-color: var(--line-2) !important;
     background: var(--card) !important; font-weight: 500 !important;
 }
-[class*="st-key-cook_remix_toggle"] button:hover, [class*="st-key-drink_remix_toggle"] button:hover {
+[class*="st-key-cook_remix_toggle"] button:hover, [class*="st-key-drink_remix_toggle"] button:hover,
+[class*="st-key-cook_undo_save"] button:hover, [class*="st-key-drink_undo_save"] button:hover {
     background: var(--bg-deep) !important; color: var(--ink) !important; border-color: var(--line) !important;
 }
 
