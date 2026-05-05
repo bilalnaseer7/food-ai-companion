@@ -1904,12 +1904,12 @@ def render_cook_tab(client):
                 render_skeletons(1)
 
         from src.recommend import recommend_recipe
-        with st.spinner(""):
-            response = recommend_recipe(craving, st.session_state.profile)
-            st.session_state.cook_response = response
-            st.session_state.cook_last_craving = craving
-            st.session_state.cook_remix_active = False
-            st.session_state.tab_counts["cook"] += 1
+        
+        response = recommend_recipe(craving, st.session_state.profile)
+        st.session_state.cook_response = response
+        st.session_state.cook_last_craving = craving
+        st.session_state.cook_remix_active = False
+        st.session_state.tab_counts["cook"] += 1
 
         if skel_placeholder:
             skel_placeholder.empty()
@@ -2009,12 +2009,12 @@ def render_cocktail_tab(client):
                 render_skeletons(1)
 
         from src.recommend import recommend_cocktail
-        with st.spinner(""):
-            response = recommend_cocktail(vibe, st.session_state.profile)
-            st.session_state.cocktail_response = response
-            st.session_state.drink_last_vibe = vibe
-            st.session_state.drink_remix_active = False
-            st.session_state.tab_counts["drink"] += 1
+        
+        response = recommend_cocktail(vibe, st.session_state.profile)
+        st.session_state.cocktail_response = response
+        st.session_state.drink_last_vibe = vibe
+        st.session_state.drink_remix_active = False
+        st.session_state.tab_counts["drink"] += 1
 
         if skel_placeholder:
             skel_placeholder.empty()
