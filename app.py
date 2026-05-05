@@ -1157,15 +1157,20 @@ def render_sidebar():
     # Cuisine pulse
     cs = profile.get("cuisine_scores", {})
     if cs:
-        sorted_c = sorted(cs.items(), key=lambda x: -x[1])[:5]
-        max_score = max(v for _, v in sorted_c) if sorted_c else 1
+        GENERIC_SKIP = {"restaurant", "food", "bar", "cafe", "bistro"}
+        filtered_c = [
+            (k, v) for k, v in cs.items()
+            if k.lower().strip() not in GENERIC_SKIP
+        ]
+        sorted_c = sorted(filtered_c, key=lambda x: -x[1])[:5]
+        max_score = max((v for _, v in sorted_c if v > 0), default=1)
         rows = ""
         for name, score in sorted_c:
             display_name = " ".join(
                 part for part in name.split()
                 if part.lower() != "restaurant"
-            ) or name
-            pct = max(0, min(100, int((score / max(max_score, 0.01)) * 100)))
+            ).strip() or name
+            pct = max(0, min(100, int((score / max_score) * 100)))
             rows += (
                 f'<div class="cuisine-row">'
                 f'<span class="name">{html_module.escape(display_name)}</span>'
@@ -1173,12 +1178,13 @@ def render_sidebar():
                 f'<span class="pct">{pct}</span>'
                 f'</div>'
             )
-        sidebar_html += (
-            f'<div class="side-section">'
-            f'<div class="side-label"><span>Cuisine pulse</span><span class="count">Top {len(sorted_c)}</span></div>'
-            f'<div class="cuisine-list">{rows}</div>'
-            f'</div>'
-        )
+        if sorted_c:
+            sidebar_html += (
+                f'<div class="side-section">'
+                f'<div class="side-label"><span>Cuisine pulse</span><span class="count">Top {len(sorted_c)}</span></div>'
+                f'<div class="cuisine-list">{rows}</div>'
+                f'</div>'
+            )
 
     # Likes
     liked = profile.get("liked_foods", [])
