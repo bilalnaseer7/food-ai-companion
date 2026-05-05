@@ -207,6 +207,9 @@ a:hover { text-decoration: none; }
     color: #1A1A1A !important;
     opacity: 1 !important;
 }
+[data-testid="stSidebarCollapsedControl"] > div {
+    margin-top: 20px !important;
+}
 [data-testid="stSidebar"][aria-expanded="true"] {
     width: 355px !important;
     min-width: 355px !important;
