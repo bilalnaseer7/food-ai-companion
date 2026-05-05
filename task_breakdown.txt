@@ -1,0 +1,43 @@
+Task Breakdown (Aligned with Proposal + Milestone 2):
+
+1. Retrieval + Data Layer (Hoerim)
+finalize dataset (NYC restaurants dataset we switched to)
+clean + structure restaurant data (group by restaurant, fix noisy fields)
+implement embedding-based retrieval (vector search) instead of keyword matching
+return top-k relevant restaurants with scores
+
+Output:
+function: retrieve(query, profile) → top restaurants
+
+
+2. Core System + LLM Pipeline (Bilal)
+define taste profile (preferences, budget, cuisine, etc.)
+integrate OpenAI LLM (already done)
+build 3 pipelines:
+baseline LLM
+LLM + taste profile
+LLM + taste profile + retrieval (RAG)
+inject:
+taste profile
+retrieved restaurant context
+generate final recommendations + explanations
+
+Output:
+function: input → recommendation (3 versions)
+working main.py pipeline (already done)
+
+
+3. Ranking + Evaluation (Owen)
+improve ranking logic on top of retrieval:
+filter mismatches (like fried rice for Italian)
+boost based on cuisine + profile match
+create evaluation queries (5–10 realistic cases)
+compare:
+baseline vs profile vs RAG
+build results table:
+relevance
+diversity
+consistency
+
+Output:
+evaluation table + analysis
