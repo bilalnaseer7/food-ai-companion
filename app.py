@@ -466,12 +466,6 @@ div[class*="block-container"] {
     box-shadow: none !important;
     outline: none !important;
 }
-.stTextInput input:focus, .stTextArea textarea:focus,
-[data-baseweb="input"] input:focus,
-[data-baseweb="textarea"] textarea:focus,
-[data-baseweb="base-input"] input:focus {
-    text-shadow: 0 0 0.01px var(--ink) !important;
-}
 [data-baseweb="input"] input,
 [data-baseweb="textarea"] textarea,
 [data-baseweb="base-input"] input {
