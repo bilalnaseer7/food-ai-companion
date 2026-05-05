@@ -2068,8 +2068,8 @@ def render_cocktail_tab(client):
             st.markdown(f'<div style="margin-bottom:12px">{match_html}</div>', unsafe_allow_html=True)
         import re as _re
         cocktail_md = _re.sub(
-            r"^\*{0,2}Cocktail Name:?\*{0,2}\s*",
-            "### ",
+            r"^\*{0,2}Cocktail Name:?\*{0,2}\s*\*{0,2}([^*\n]+)\*{0,2}",
+            lambda m: "### " + m.group(1).strip(),
             st.session_state.cocktail_response.lstrip(),
             count=1,
             flags=_re.IGNORECASE,
