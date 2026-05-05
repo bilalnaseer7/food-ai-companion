@@ -1025,8 +1025,9 @@ def apply_card_feedback(name, accepted, cuisines=None, tab="eat", price=None):
         price=price,
     )
     st.session_state.profile.setdefault("history", []).append({"name": name, "kind": "acc" if accepted else "rej", "tab": tab})
-    _tc = st.session_state.profile.setdefault("tab_counts", {"eat": 0, "cook": 0, "drink": 0})
-    _tc[tab] = _tc.get(tab, 0) + 1
+    if accepted:
+        _tc = st.session_state.profile.setdefault("tab_counts", {"eat": 0, "cook": 0, "drink": 0})
+        _tc[tab] = _tc.get(tab, 0) + 1
     save_profile(st.session_state.profile)
 
 
@@ -1048,8 +1049,9 @@ def undo_card_feedback(name, was_accepted, cuisines=None, tab="eat"):
         h for h in st.session_state.profile.get("history", [])
         if not (h.get("name") == name and h.get("kind") == kind and h.get("tab") == tab)
     ]
-    tc = st.session_state.profile.setdefault("tab_counts", {"eat": 0, "cook": 0, "drink": 0})
-    tc[tab] = max(0, tc.get(tab, 0) - 1)
+    if was_accepted:
+        tc = st.session_state.profile.setdefault("tab_counts", {"eat": 0, "cook": 0, "drink": 0})
+        tc[tab] = max(0, tc.get(tab, 0) - 1)
     save_profile(st.session_state.profile)
 
 
@@ -1917,9 +1919,6 @@ def render_cook_tab(client):
         st.session_state.cook_response = response
         st.session_state.cook_last_craving = craving
         st.session_state.cook_remix_active = False
-        _tc = st.session_state.profile.setdefault("tab_counts", {"eat": 0, "cook": 0, "drink": 0})
-        _tc["cook"] = _tc.get("cook", 0) + 1
-        save_profile(st.session_state.profile)
 
         if skel_placeholder:
             skel_placeholder.empty()
@@ -2039,9 +2038,6 @@ def render_cocktail_tab(client):
         st.session_state.cocktail_response = response
         st.session_state.drink_last_vibe = vibe
         st.session_state.drink_remix_active = False
-        _tc = st.session_state.profile.setdefault("tab_counts", {"eat": 0, "cook": 0, "drink": 0})
-        _tc["drink"] = _tc.get("drink", 0) + 1
-        save_profile(st.session_state.profile)
 
         if skel_placeholder:
             skel_placeholder.empty()
