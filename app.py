@@ -509,6 +509,7 @@ div[class*="block-container"] {
 [data-testid="stFormSubmitButton"] button[kind="primary"],
 [data-testid="stFormSubmitButton"] button[data-testid="baseButton-primary"] {
     background: var(--button-terracotta) !important; color: #fff !important;
+    border: none !important; 
     font-family: var(--sans) !important; font-weight: 500 !important;
     font-size: 14px !important;
     box-shadow: 0 1px 0 rgba(255,255,255,0.2) inset, 0 4px 14px rgba(169,101,67,0.24) !important;
