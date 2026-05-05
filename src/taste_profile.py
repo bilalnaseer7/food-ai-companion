@@ -77,12 +77,13 @@ def update_profile(
     profile["preferred_cuisines"] = [
         k for k, v in profile["cuisine_scores"].items() if v > 0.2
     ]
-    profile["liked_foods"] = [
-        k for k, v in profile["food_scores"].items() if v > 0.2
-    ]
-    profile["disliked_foods"] = [
-        k for k, v in profile["food_scores"].items() if v < -0.2
-    ]
+    if foods:
+        profile["liked_foods"] = [
+            k for k, v in profile["food_scores"].items() if v > 0.2
+        ]
+        profile["disliked_foods"] = [
+            k for k, v in profile["food_scores"].items() if v < -0.2
+        ]
 
     return profile
 
