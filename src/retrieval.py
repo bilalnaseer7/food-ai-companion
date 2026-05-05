@@ -97,7 +97,8 @@ def _build_retrieval_query(query: str, user_profile: dict) -> str:
 
     learned_disliked = [f for f, s in food_scores.items() if s < -0.05]
     explicit_disliked = user_profile.get("disliked_foods", [])
-    all_disliked = list(dict.fromkeys(explicit_disliked + learned_disliked))
+    removed_foods = user_profile.get("removed_foods", [])
+    all_disliked = list(dict.fromkeys(explicit_disliked + learned_disliked + removed_foods))
 
     occasion = user_profile.get("occasion", "")
     budget = user_profile.get("budget", "")
@@ -110,6 +111,9 @@ def _build_retrieval_query(query: str, user_profile: dict) -> str:
         parts.append(f"Liked foods: {', '.join(all_liked)}.")
     if all_disliked:
         parts.append(f"Disliked foods: {', '.join(all_disliked)}.")
+    removed_foods = user_profile.get("removed_foods", [])
+    if removed_foods:
+        parts.append(f"Removed foods: {', '.join(removed_foods)}.")
     if budget:
         parts.append(f"Budget: {budget}.")
     if online_order:

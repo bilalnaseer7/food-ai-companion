@@ -66,7 +66,7 @@ EMPTY_COPY = {
     "cook": {
         "glyph": "◐",
         "title": "What's in the kitchen tonight?",
-        "body": "Drop your craving and what's actually in the fridge. We'll work backward from there.",
+        "body": "Drop your craving and what's actually in the fridge. We'll work backwards from there.",
     },
     "drink": {
         "glyph": "◑",
@@ -256,6 +256,7 @@ a:hover { text-decoration: none; }
     font-size: 12.5px; font-weight: 400;
     background: var(--tag-ink); color: var(--ink);
     border: 1px solid transparent;
+    cursor: pointer;
     transition: all 0.14s ease;
 }
 .pill:hover { transform: translateY(-1px); }
@@ -1196,6 +1197,13 @@ def render_reset_button():
     )
 
 
+def remove_preference_tag(list_key, food):
+    if food in st.session_state.profile.get(list_key, []):
+        st.session_state.profile[list_key].remove(food)
+        st.session_state.profile.get("food_scores", {}).pop(food, None)
+        save_profile(st.session_state.profile)
+
+
 # ── Session state ─────────────────────────────────────────────────────────────
 def init_session():
     if "profile" not in st.session_state:
@@ -1244,17 +1252,31 @@ def handle_query_params():
 
         elif action == "rm_like":
             food = qp.get("food", "")
-            if food in st.session_state.profile.get("liked_foods", []):
-                st.session_state.profile["liked_foods"].remove(food)
-                st.session_state.profile.get("food_scores", {}).pop(food, None)
-                save_profile(st.session_state.profile)
+            if food:
+                profile = st.session_state.profile
+                removed = profile.setdefault("removed_foods", [])
+                if food not in removed:
+                    removed.append(food)
+                current_score = profile.setdefault("food_scores", {}).get(food, 0.0)
+                profile["food_scores"][food] = round(min(current_score - 0.3, -0.5), 3)
+                if food in profile.get("liked_foods", []):
+                    profile["liked_foods"].remove(food)
+                save_profile(profile)
+                st.session_state.profile = profile
 
         elif action == "rm_dis":
             food = qp.get("food", "")
-            if food in st.session_state.profile.get("disliked_foods", []):
-                st.session_state.profile["disliked_foods"].remove(food)
-                st.session_state.profile.get("food_scores", {}).pop(food, None)
-                save_profile(st.session_state.profile)
+            if food:
+                profile = st.session_state.profile
+                removed = profile.setdefault("removed_foods", [])
+                if food not in removed:
+                    removed.append(food)
+                current_score = profile.setdefault("food_scores", {}).get(food, 0.0)
+                profile["food_scores"][food] = round(min(current_score - 0.3, -0.5), 3)
+                if food in profile.get("disliked_foods", []):
+                    profile["disliked_foods"].remove(food)
+                save_profile(profile)
+                st.session_state.profile = profile
 
         elif action == "prefill":
             target = qp.get("tab", "eat")
@@ -1270,7 +1292,31 @@ def handle_query_params():
         st.query_params.clear()
 
 
+def render_preference_tags(label, profile_key, tone):
+    items = st.session_state.profile.get(profile_key, [])
+    if not items:
+        return
+
+    pill_class = "sage" if tone == "liked" else "terracotta"
+    action = "rm_like" if tone == "liked" else "rm_dis"
+    pills = "".join([
+        f'<span class="pill {pill_class}" role="button" tabindex="0" data-pref-tag data-action="{action}" data-food="{html_module.escape(item, quote=True)}">'
+        f'<span class="pill-bar"></span>{html_module.escape(item)}<span class="x">×</span>'
+        f'</span>'
+        for item in items
+    ])
+
+    st.markdown(
+        f'<div class="side-section" data-pref-section>'
+        f'<div class="side-label"><span>{html_module.escape(label)}</span><span class="count" data-pref-count>{len(items)}</span></div>'
+        f'<div class="tag-cluster">{pills}</div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+
 # ── Sidebar ───────────────────────────────────────────────────────────────────
+
 def render_sidebar():
     profile = st.session_state.profile
 
@@ -1308,38 +1354,7 @@ def render_sidebar():
                 f'<div class="cuisine-list">{rows}</div>'
                 f'</div>'
             )
-
-    # Likes
-    liked = profile.get("liked_foods", [])
-    if liked:
-        pills = "".join([
-            f'<a href="?action=rm_like&food={quote(f)}" class="pill sage" target="_self">'
-            f'<span class="pill-bar"></span>{html_module.escape(f)}<span class="x">×</span>'
-            f'</a>'
-            for f in liked
-        ])
-        sidebar_html += (
-            f'<div class="side-section">'
-            f'<div class="side-label"><span>You like</span><span class="count">{len(liked)}</span></div>'
-            f'<div class="tag-cluster">{pills}</div>'
-            f'</div>'
-        )
-
-    # Dislikes
-    disliked = profile.get("disliked_foods", [])
-    if disliked:
-        pills = "".join([
-            f'<a href="?action=rm_dis&food={quote(f)}" class="pill terracotta" target="_self">'
-            f'<span class="pill-bar"></span>{html_module.escape(f)}<span class="x">×</span>'
-            f'</a>'
-            for f in disliked
-        ])
-        sidebar_html += (
-            f'<div class="side-section">'
-            f'<div class="side-label"><span>Not for you</span><span class="count">{len(disliked)}</span></div>'
-            f'<div class="tag-cluster">{pills}</div>'
-            f'</div>'
-        )
+    sidebar_html += '<!--PREF_TAGS-->'
 
     # Inferred spending pattern
     inferred = profile.get("inferred_budget_level")
@@ -1405,9 +1420,65 @@ def render_sidebar():
         f'</div>'
     )
 
-    with st.sidebar:
-        st.markdown(sidebar_html, unsafe_allow_html=True)
-        render_reset_button()
+    sidebar_top, sidebar_bottom = sidebar_html.split("<!--PREF_TAGS-->", 1)
+    st.markdown(sidebar_top, unsafe_allow_html=True)
+    render_preference_tags("You like", "liked_foods", "liked")
+    render_preference_tags("Not for you", "disliked_foods", "disliked")
+    st.markdown(sidebar_bottom, unsafe_allow_html=True)
+    components.html(
+        """
+        <script>
+            const parentDoc = window.parent && window.parent.document;
+            if (parentDoc && !parentDoc.body.dataset.prefTagsBound) {
+                parentDoc.body.dataset.prefTagsBound = "true";
+
+                const closeTag = (tag) => {
+                    const section = tag.closest("[data-pref-section]");
+                    tag.style.display = "none";
+                    tag.setAttribute("aria-hidden", "true");
+
+                    if (!section) return;
+                    const visibleTags = section.querySelectorAll("[data-pref-tag]:not([aria-hidden='true'])");
+                    const count = section.querySelector("[data-pref-count]");
+                    if (count) count.textContent = visibleTags.length;
+                    if (visibleTags.length === 0) section.style.display = "none";
+                };
+
+                parentDoc.addEventListener("click", (event) => {
+                    const tag = event.target.closest("[data-pref-tag]");
+                    if (!tag) return;
+                    closeTag(tag);
+                    const action = tag.dataset.action;
+                    const food = tag.dataset.food;
+                    if (action && food) {
+                        const url = new URL(parentDoc.location.href);
+                        url.searchParams.set("action", action);
+                        url.searchParams.set("food", food);
+                        parentDoc.location.href = url.toString();
+                    }
+                });
+
+                parentDoc.addEventListener("keydown", (event) => {
+                    if (event.key !== "Enter" && event.key !== " ") return;
+                    const tag = event.target.closest("[data-pref-tag]");
+                    if (!tag) return;
+                    event.preventDefault();
+                    closeTag(tag);
+                    const action = tag.dataset.action;
+                    const food = tag.dataset.food;
+                    if (action && food) {
+                        const url = new URL(parentDoc.location.href);
+                        url.searchParams.set("action", action);
+                        url.searchParams.set("food", food);
+                        parentDoc.location.href = url.toString();
+                    }
+                });
+            }
+        </script>
+        """,
+        height=0,
+    )
+    render_reset_button()
 
 
 # ── Greeting + hint + tabs ────────────────────────────────────────────────────
@@ -2258,7 +2329,8 @@ def render_cocktail_tab(client):
 def main():
     init_session()
     handle_query_params()
-    render_sidebar()
+    with st.sidebar:
+        render_sidebar()
 
     render_greeting()
     render_hint()
