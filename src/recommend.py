@@ -135,6 +135,7 @@ def map_recommend(client: OpenAI, query: str, user_profile: dict, borough: str =
         "You must recommend only from the live restaurant data provided below. "
         "Use the user's taste profile and the retrieved evidence together. "
         "Treat budget as general comfort context, not a hard filter; explicit user intent such as Michelin, tasting menu, splurge, cheap eats, or casual should override the stored budget. "
+        "If the user asks for walking distance, interpret that as less than 1 mile from the requested location. "
         "Do not invent restaurants outside the retrieved list."
     )
  
@@ -194,6 +195,7 @@ def combined_recommend(client: OpenAI, query: str, user_profile: dict, csv_resul
         "You have two sources of restaurant data: a curated dataset and live Google Places results. "
         "Use both sources together with the user's taste profile to select and rank the best 5 restaurants. "
         "Treat budget as general comfort context, not a hard filter; explicit user intent such as Michelin, tasting menu, splurge, cheap eats, or casual should override the stored budget. "
+        "If the user asks for walking distance, interpret that as less than 1 mile from the requested location. "
         "Only recommend restaurants from the provided lists. Do not invent any."
     )
 
