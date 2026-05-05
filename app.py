@@ -88,7 +88,7 @@ TAB_HEADING = {
 }
 
 TAB_ICON = {"eat": "◖", "cook": "◐", "drink": "◗"}
-MAX_PREFERENCE_TAGS = 8
+MAX_PREFERENCE_TAGS = 9
 
 
 # ── Cached resources ──────────────────────────────────────────────────────────
@@ -1056,7 +1056,7 @@ def refresh_preference_tags(profile):
     system_prompt = (
         "You are updating a user's food preference tags based on their full interaction history. "
         "Return JSON only with keys liked_foods and disliked_foods. "
-        "Generate a fresh, accurate list of up to 8 short tags per list — drop tags that no longer reflect recent behavior and add new ones that do. "
+        "Generate a fresh, accurate list of up to 9 short tags per list — drop tags that no longer reflect recent behavior and add new ones that do. "
         "Prefer specific cuisines, dishes, ingredients, settings, and vibes. "
         "Weight recent history more heavily than older entries. "
         "Do not use restaurant names as tags. Do not pad with generic tags."
