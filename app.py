@@ -2,6 +2,7 @@ import os
 import math
 import hashlib
 import html as html_module
+import json
 from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
@@ -87,6 +88,7 @@ TAB_HEADING = {
 }
 
 TAB_ICON = {"eat": "◖", "cook": "◐", "drink": "◗"}
+MAX_PREFERENCE_TAGS = 10
 
 
 # ── Cached resources ──────────────────────────────────────────────────────────
@@ -1031,6 +1033,92 @@ def match_indicator(inventory, response_text):
     return None, None
 
 
+def refresh_preference_tags(profile):
+    accepted = profile.get("accepted", [])
+    rejected = profile.get("rejected", [])
+    history = profile.get("history", [])
+    if len(accepted) + len(rejected) == 0 and not history:
+        profile["liked_foods"] = []
+        profile["disliked_foods"] = []
+        return profile
+
+    payload = {
+        "accepted": accepted[-24:],
+        "rejected": rejected[-24:],
+        "history": history[-24:],
+        "preferred_cuisines": profile.get("preferred_cuisines", []),
+        "liked_foods": profile.get("liked_foods", []),
+        "disliked_foods": profile.get("disliked_foods", []),
+        "cuisine_scores": profile.get("cuisine_scores", {}),
+        "food_scores": profile.get("food_scores", {}),
+        "budget": profile.get("budget", ""),
+        "occasion": profile.get("occasion", ""),
+    }
+    system_prompt = (
+        "Infer concise food preference tags from user feedback. "
+        "Return JSON only with keys liked_foods and disliked_foods. "
+        "Use up to 10 short reusable tags in each list. "
+        "Prefer cuisines, foods, settings, vibes, service styles, and budget/occasion tendencies. "
+        "Do not use restaurant names as tags. Do not over-infer from one event."
+    )
+    user_prompt = json.dumps(payload, ensure_ascii=False)
+
+    try:
+        response = get_client().chat.completions.create(
+            model="gpt-4o-mini",
+            temperature=0.2,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+        raw = response.choices[0].message.content.strip()
+        if raw.startswith("```"):
+            raw = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+        data = json.loads(raw)
+        profile["liked_foods"] = clean_preference_tags(data.get("liked_foods", []))
+        profile["disliked_foods"] = clean_preference_tags(data.get("disliked_foods", []))
+    except Exception:
+        fallback = fallback_preference_tags(profile)
+        profile["liked_foods"] = fallback["liked_foods"]
+        profile["disliked_foods"] = fallback["disliked_foods"]
+    return profile
+
+
+def clean_preference_tags(tags):
+    cleaned = []
+    seen = set()
+    for tag in tags or []:
+        text = str(tag).strip().strip("-•")
+        if not text:
+            continue
+        text = " ".join(text.split())
+        key = text.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        cleaned.append(text[:36])
+        if len(cleaned) >= MAX_PREFERENCE_TAGS:
+            break
+    return cleaned
+
+
+def fallback_preference_tags(profile):
+    likes = []
+    dislikes = []
+    for name, score in sorted(profile.get("cuisine_scores", {}).items(), key=lambda item: -item[1]):
+        if score > 0:
+            likes.append(name.replace(" restaurant", "").replace(" Restaurant", ""))
+        elif score < 0:
+            dislikes.append(name.replace(" restaurant", "").replace(" Restaurant", ""))
+    likes.extend(profile.get("liked_foods", []))
+    dislikes.extend(profile.get("disliked_foods", []))
+    return {
+        "liked_foods": clean_preference_tags(likes),
+        "disliked_foods": clean_preference_tags(dislikes),
+    }
+
+
 def reset_taste_profile():
     if os.path.exists(PROFILE_PATH):
         os.remove(PROFILE_PATH)
@@ -1038,6 +1126,8 @@ def reset_taste_profile():
     with open(PROFILE_RESET_MARKER, "w") as f:
         f.write("1")
     profile = load_profile()
+    profile["liked_foods"] = []
+    profile["disliked_foods"] = []
     save_profile(profile)
     st.session_state.profile = profile
     st.session_state.sample_profile_disabled = True
@@ -1052,6 +1142,8 @@ def apply_card_feedback(name, accepted, cuisines=None, tab="eat", price=None):
     opposite_bucket = "rejected" if accepted else "accepted"
     if name in st.session_state.profile.get(opposite_bucket, []):
         st.session_state.profile[opposite_bucket].remove(name)
+    preserved_liked_foods = st.session_state.profile.get("liked_foods", [])
+    preserved_disliked_foods = st.session_state.profile.get("disliked_foods", [])
     st.session_state.profile = update_profile(
         st.session_state.profile,
         restaurant_name=name,
@@ -1059,6 +1151,8 @@ def apply_card_feedback(name, accepted, cuisines=None, tab="eat", price=None):
         cuisines=cuisines or None,
         price=price,
     )
+    st.session_state.profile["liked_foods"] = preserved_liked_foods
+    st.session_state.profile["disliked_foods"] = preserved_disliked_foods
     st.session_state.profile.setdefault("history", []).append({"name": name, "kind": "acc" if accepted else "rej", "tab": tab})
     if accepted:
         _tc = st.session_state.profile.setdefault("tab_counts", {"eat": 0, "cook": 0, "drink": 0})
@@ -1104,17 +1198,6 @@ def init_session():
     if "profile" not in st.session_state:
         profile = load_profile()
         sample_profile_disabled = os.path.exists(PROFILE_RESET_MARKER)
-        if not sample_profile_disabled and not profile["preferred_cuisines"] and not profile["cuisine_scores"]:
-            profile.update({
-                "preferred_cuisines": ["Italian", "Pizza"],
-                "liked_foods": ["pasta", "pizza"],
-                "disliked_foods": ["seafood"],
-                "budget": "moderate",
-                "online_order": "Yes",
-                "cuisine_scores": {"Italian": 0.8, "Japanese": 0.6, "Mediterranean": 0.45, "American": 0.3},
-                "food_scores": {"pasta": 0.7, "pizza": 0.6, "seafood": -0.5},
-            })
-            save_profile(profile)
         st.session_state.profile = profile
         st.session_state.sample_profile_disabled = sample_profile_disabled
 
@@ -1835,6 +1918,9 @@ def render_eat_tab(client, df):
     render_recent_strip()
 
     if run_search and query:
+        refresh_preference_tags(st.session_state.profile)
+        save_profile(st.session_state.profile)
+
         st.markdown(f'<div class="results-head"><h2>{TAB_HEADING["eat"]}</h2><span class="count">{THINKING_MSG["eat"]}</span></div>', unsafe_allow_html=True)
         
         # Only show skeletons if there's no existing output
@@ -1941,6 +2027,7 @@ def render_cook_tab(client):
     if run_cook and craving:
         pantry = [p.strip() for p in pantry_input.split(",") if p.strip()]
         st.session_state.profile["pantry"] = pantry
+        refresh_preference_tags(st.session_state.profile)
         save_profile(st.session_state.profile)
 
         st.markdown(f'<div class="results-head"><h2>{TAB_HEADING["cook"]}</h2><span class="count">{THINKING_MSG["cook"]}</span></div>', unsafe_allow_html=True)
@@ -2062,6 +2149,7 @@ def render_cocktail_tab(client):
     if run_cocktail and vibe:
         bar = [b.strip() for b in bar_input.split(",") if b.strip()]
         st.session_state.profile["bar_inventory"] = bar
+        refresh_preference_tags(st.session_state.profile)
         save_profile(st.session_state.profile)
 
         st.markdown(f'<div class="results-head"><h2>{TAB_HEADING["drink"]}</h2><span class="count">{THINKING_MSG["drink"]}</span></div>', unsafe_allow_html=True)
