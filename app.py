@@ -1006,8 +1006,6 @@ def reset_taste_profile():
     save_profile(profile)
     st.session_state.profile = profile
     st.session_state.sample_profile_disabled = True
-    st.session_state.history = []
-    st.session_state.tab_counts = {"eat": 0, "cook": 0, "drink": 0}
     st.session_state.eat_results = None
     st.session_state.eat_fsq_results = None
     st.session_state.eat_llm_response = None
@@ -1026,9 +1024,10 @@ def apply_card_feedback(name, accepted, cuisines=None, tab="eat", price=None):
         cuisines=cuisines or None,
         price=price,
     )
+    st.session_state.profile.setdefault("history", []).append({"name": name, "kind": "acc" if accepted else "rej", "tab": tab})
+    _tc = st.session_state.profile.setdefault("tab_counts", {"eat": 0, "cook": 0, "drink": 0})
+    _tc[tab] = _tc.get(tab, 0) + 1
     save_profile(st.session_state.profile)
-    st.session_state.history.append({"name": name, "kind": "acc" if accepted else "rej", "tab": tab})
-    st.session_state.tab_counts[tab] = st.session_state.tab_counts.get(tab, 0) + 1
 
 
 def undo_card_feedback(name, was_accepted, cuisines=None, tab="eat"):
@@ -1045,11 +1044,12 @@ def undo_card_feedback(name, was_accepted, cuisines=None, tab="eat"):
     st.session_state.profile["preferred_cuisines"] = [
         k for k, v in st.session_state.profile.get("cuisine_scores", {}).items() if v > 0.2
     ]
-    st.session_state.history = [
-        h for h in st.session_state.history
+    st.session_state.profile["history"] = [
+        h for h in st.session_state.profile.get("history", [])
         if not (h.get("name") == name and h.get("kind") == kind and h.get("tab") == tab)
     ]
-    st.session_state.tab_counts[tab] = max(0, st.session_state.tab_counts.get(tab, 0) - 1)
+    tc = st.session_state.profile.setdefault("tab_counts", {"eat": 0, "cook": 0, "drink": 0})
+    tc[tab] = max(0, tc.get(tab, 0) - 1)
     save_profile(st.session_state.profile)
 
 
@@ -1086,8 +1086,6 @@ def init_session():
         "cook_response": None, "cocktail_response": None,
         "feedback_given": set(),
         "hint_dismissed": False,
-        "tab_counts": {"eat": 0, "cook": 0, "drink": 0},
-        "history": [],
         "eat_prefill": "", "cook_prefill": "", "drink_prefill": "",
         "active_tab": "eat",
         "cook_last_craving": "", "drink_last_vibe": "",
@@ -1116,9 +1114,10 @@ def handle_query_params():
                 st.session_state.profile, restaurant_name=name,
                 accepted=accepted, cuisines=cuisines,
             )
+            st.session_state.profile.setdefault("history", []).append({"name": name, "kind": "acc" if accepted else "rej", "tab": tab})
+            _tc = st.session_state.profile.setdefault("tab_counts", {"eat": 0, "cook": 0, "drink": 0})
+            _tc[tab] = _tc.get(tab, 0) + 1
             save_profile(st.session_state.profile)
-            st.session_state.history.append({"name": name, "kind": "acc" if accepted else "rej", "tab": tab})
-            st.session_state.tab_counts[tab] = st.session_state.tab_counts.get(tab, 0) + 1
 
         elif action == "rm_like":
             food = qp.get("food", "")
@@ -1232,7 +1231,7 @@ def render_sidebar():
         )
 
     # Insights donut
-    tc = st.session_state.tab_counts
+    tc = profile.get("tab_counts", {"eat": 0, "cook": 0, "drink": 0})
     total = tc["eat"] + tc["cook"] + tc["drink"]
     accepted = len(profile.get("accepted", []))
     rejected = len(profile.get("rejected", []))
@@ -1255,7 +1254,7 @@ def render_sidebar():
     )
 
     # History
-    history = st.session_state.history[-6:][::-1]
+    history = profile.get("history", [])[-6:][::-1]
     if not history:
         history_html = '<div class="history-empty">No history yet</div>'
     else:
@@ -1911,7 +1910,9 @@ def render_cook_tab(client):
         st.session_state.cook_response = response
         st.session_state.cook_last_craving = craving
         st.session_state.cook_remix_active = False
-        st.session_state.tab_counts["cook"] += 1
+        _tc = st.session_state.profile.setdefault("tab_counts", {"eat": 0, "cook": 0, "drink": 0})
+        _tc["cook"] = _tc.get("cook", 0) + 1
+        save_profile(st.session_state.profile)
 
         if skel_placeholder:
             skel_placeholder.empty()
@@ -2031,7 +2032,9 @@ def render_cocktail_tab(client):
         st.session_state.cocktail_response = response
         st.session_state.drink_last_vibe = vibe
         st.session_state.drink_remix_active = False
-        st.session_state.tab_counts["drink"] += 1
+        _tc = st.session_state.profile.setdefault("tab_counts", {"eat": 0, "cook": 0, "drink": 0})
+        _tc["drink"] = _tc.get("drink", 0) + 1
+        save_profile(st.session_state.profile)
 
         if skel_placeholder:
             skel_placeholder.empty()

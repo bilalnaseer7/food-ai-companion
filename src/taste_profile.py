@@ -14,6 +14,8 @@ DEFAULT_PROFILE = {
     "food_scores": {},
     "accepted": [],
     "rejected": [],
+    "history": [],
+    "tab_counts": {"eat": 0, "cook": 0, "drink": 0},
 }
 
 
