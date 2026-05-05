@@ -184,9 +184,16 @@ def combined_recommend(client: OpenAI, query: str, user_profile: dict, csv_resul
         for r in csv_results
     ])
 
+    def open_status(r: dict) -> str:
+        if r.get("open_now") is True:
+            return "openNow=true"
+        if r.get("open_now") is False:
+            return "openNow=false"
+        return "openNow=unknown"
+
     fsq_block = "\n".join([
         f"- {r['name']} | {', '.join(r.get('categories', [])[:2])} | "
-        f"Rating: {r.get('rating', 'N/A')}/5 | {r.get('address', '')}"
+        f"Rating: {r.get('rating', 'N/A')}/5 | {open_status(r)} | {r.get('address', '')}"
         for r in fsq_results
     ]) if fsq_results else "No live results available."
 
@@ -196,6 +203,7 @@ def combined_recommend(client: OpenAI, query: str, user_profile: dict, csv_resul
         "Use both sources together with the user's taste profile to select and rank the best 5 restaurants. "
         "Treat budget as general comfort context, not a hard filter; explicit user intent such as Michelin, tasting menu, splurge, cheap eats, or casual should override the stored budget. "
         "If the user asks for walking distance, interpret that as less than 1 mile from the requested location. "
+        "If the user asks for places that are open now, only choose live results marked openNow=true. "
         "Only recommend restaurants from the provided lists. Do not invent any."
     )
 
