@@ -198,14 +198,14 @@ a:hover { text-decoration: none; }
     border-right: 1px solid var(--line) !important;
 }
 [data-testid="stSidebar"][aria-expanded="true"] {
-    width: 350px !important;
-    min-width: 350px !important;
-    max-width: 350px !important;
+    width: 355px !important;
+    min-width: 355px !important;
+    max-width: 355px !important;
     margin-right: -175px !important;
     position: relative !important;
     transition: all 0.3s ease !important;
 }
-[data-testid="stSidebar"] > div { padding: 24px 20px !important; }
+[data-testid="stSidebar"] > div { padding: 24px 18px !important; }
 [data-testid="stSidebar"] * { color: var(--ink) !important; }
 
 /* ── Brand ── */
