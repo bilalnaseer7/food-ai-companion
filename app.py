@@ -111,6 +111,7 @@ st.markdown("""
     --ink: #1A1A1A;
     --ink-2: #6B6B6B;
     --ink-3: #9A968D;
+    --placeholder-text: #74716A;
     --line: rgba(26,26,26,0.06);
     --line-2: rgba(26,26,26,0.10);
     --terracotta: #C96A3A;
@@ -469,6 +470,14 @@ div[class*="block-container"] {
 [data-baseweb="textarea"] textarea,
 [data-baseweb="base-input"] input {
     caret-color: var(--ink) !important;
+}
+.stTextInput input::placeholder,
+.stTextArea textarea::placeholder,
+[data-baseweb="input"] input::placeholder,
+[data-baseweb="textarea"] textarea::placeholder,
+[data-baseweb="base-input"] input::placeholder {
+    color: var(--placeholder-text) !important;
+    opacity: 1 !important;
 }
 .stTextInput > div > div:focus-within, .stTextArea > div > div:focus-within {
     background: var(--card) !important;
