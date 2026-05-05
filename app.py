@@ -113,6 +113,8 @@ st.markdown("""
     --line-2: rgba(26,26,26,0.10);
     --terracotta: #C96A3A;
     --terracotta-2: #B25A2C;
+    --button-terracotta: #A96543;
+    --button-terracotta-2: #91563A;
     --sage: #7A9E7E;
     --sage-2: #688C6D;
     --gold: #C9A227;
@@ -502,19 +504,19 @@ div[class*="block-container"] {
 
 /* ── Submit button (primary) ── */
 [data-testid="stFormSubmitButton"] button[kind="primary"] {
-    background: var(--terracotta) !important; color: #fff !important;
+    background: var(--button-terracotta) !important; color: #fff !important;
     border: none !important; border-radius: var(--radius) !important;
     padding: 12px 22px !important;
     font-family: var(--sans) !important; font-weight: 500 !important;
     font-size: 14px !important;
-    box-shadow: 0 1px 0 rgba(255,255,255,0.2) inset, 0 4px 14px rgba(201,106,58,0.30) !important;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.2) inset, 0 4px 14px rgba(169,101,67,0.24) !important;
     transition: all 0.12s ease !important;
     width: 100% !important;
 }
 [data-testid="stFormSubmitButton"] button[kind="primary"]:hover {
-    background: var(--terracotta-2) !important;
+    background: var(--button-terracotta-2) !important;
     transform: translateY(-1px) !important;
-    box-shadow: 0 6px 18px rgba(201,106,58,0.36) !important;
+    box-shadow: 0 6px 18px rgba(145,86,58,0.30) !important;
 }
 
 .suggest-chip { color: var(--ink-2) !important; }
