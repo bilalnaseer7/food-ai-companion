@@ -198,15 +198,26 @@ a:hover { text-decoration: none; }
     border-right: 1px solid var(--line) !important;
 }
 [data-testid="stSidebarCollapsedControl"] {
-    background: var(--bg) !important;
-    border-right: 1px solid var(--line) !important;
+    background: #FAF7F2 !important;
+    border-right: 1px solid rgba(26,26,26,0.06) !important;
 }
-[data-testid="stSidebarCollapsedControl"] button,
-[data-testid="stSidebarCollapsedControl"] svg {
-    color: var(--ink) !important;
-    fill: var(--ink) !important;
+[data-testid="stSidebarCollapsedControl"] button {
+    color: #1A1A1A !important;
+    background: transparent !important;
     opacity: 1 !important;
     visibility: visible !important;
+}
+[data-testid="stSidebarCollapsedControl"] svg {
+    color: #1A1A1A !important;
+    fill: #1A1A1A !important;
+    stroke: #1A1A1A !important;
+    opacity: 1 !important;
+}
+[data-testid="stSidebarCollapsedControl"] svg path,
+[data-testid="stSidebarCollapsedControl"] svg polyline,
+[data-testid="stSidebarCollapsedControl"] svg line {
+    stroke: #1A1A1A !important;
+    fill: none !important;
 }
 [data-testid="stSidebar"][aria-expanded="true"] {
     width: 355px !important;
