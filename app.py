@@ -201,16 +201,11 @@ a:hover { text-decoration: none; }
     background: #FAF7F2 !important;
     border-right: 1px solid rgba(26,26,26,0.06) !important;
 }
-[data-testid="stSidebarCollapsedControl"] * {
+[data-testid="stExpandSidebarButton"],
+[data-testid="stExpandSidebarButton"] span,
+[data-testid="stExpandSidebarButton"] [data-testid="stIconMaterial"] {
     color: #1A1A1A !important;
     opacity: 1 !important;
-    visibility: visible !important;
-}
-[data-testid="stSidebarCollapsedControl"] button {
-    background: transparent !important;
-}
-[data-testid="stSidebarCollapsedControl"] svg {
-    filter: brightness(0) !important;
 }
 [data-testid="stSidebar"][aria-expanded="true"] {
     width: 355px !important;
