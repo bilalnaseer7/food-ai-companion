@@ -22,6 +22,13 @@ The full proposed system includes three modes:
 
 All three modes share a persistent taste profile that captures preferences such as cuisine, liked and disliked foods, budget sensitivity, and occasion context. The system is designed to improve personalization over time as users accept and reject recommendations.
 
+## Milestone 3 Bilal Update
+
+- Added a modular Cook at Home backend in `src/cook_mode.py` that turns pantry ingredients, cuisine preferences, disliked foods/restrictions, budget, and occasion context into transparent LLM-generated recipe ideas. This mode is clearly framed as LLM + taste-profile generation because no recipe dataset is currently present in the repository.
+- Added a Cook at Home demo/evaluation harness in `scripts/run_cook_mode_demo.py`. By default it writes a no-API prompt preview to `results/cook_mode_demo_preview.md`; with `--generate`, it uses the local OpenAI key to produce real demo outputs.
+- Added a lightweight personalization vs. filter-bubble analysis in `src/filter_bubble.py` and `scripts/run_filter_bubble_analysis.py`. The analysis computes overlap, novelty, category diversity, entropy, and a bounded filter-bubble index from local restaurant metadata without inventing human scores.
+- Added a Milestone 3 evaluation harness in `src/evaluation.py` and `scripts/run_milestone3_evaluation.py`. It creates deterministic system-side metrics plus a human-scoring template for baseline, taste-profile, and RAG-style recommendation comparisons.
+
 ## Current Milestone 2 Scope
 
 This repository implements the **Eat Out** mode prototype for evaluation, plus a full interactive Streamlit app covering all three modes.
@@ -59,13 +66,6 @@ To address recent TA feedback and improve demo credibility, the codebase now inc
 - LLM-driven restaurant selection from live results with per-restaurant blurbs
 - persistent taste profile with accept/reject feedback loop
 - full Streamlit UI with three modes, sidebar profile display, and real-time updates
-
-## Milestone 3 Bilal Update
-
-- Added a modular Cook at Home backend in `src/cook_mode.py` that turns pantry ingredients, cuisine preferences, disliked foods/restrictions, budget, and occasion context into transparent LLM-generated recipe ideas. This mode is clearly framed as LLM + taste-profile generation because no recipe dataset is currently present in the repository.
-- Added a Cook at Home demo/evaluation harness in `scripts/run_cook_mode_demo.py`. By default it writes a no-API prompt preview to `results/cook_mode_demo_preview.md`; with `--generate`, it uses the local OpenAI key to produce real demo outputs.
-- Added a lightweight personalization vs. filter-bubble analysis in `src/filter_bubble.py` and `scripts/run_filter_bubble_analysis.py`. The analysis computes overlap, novelty, category diversity, entropy, and a bounded filter-bubble index from local restaurant metadata without inventing human scores.
-- Added a Milestone 3 evaluation harness in `src/evaluation.py` and `scripts/run_milestone3_evaluation.py`. It creates deterministic system-side metrics plus a human-scoring template for baseline, taste-profile, and RAG-style recommendation comparisons.
 
 ## Repository Structure
 ```text
