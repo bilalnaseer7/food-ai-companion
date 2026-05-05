@@ -41,7 +41,7 @@ def baseline_recommend(client: OpenAI, query: str) -> str:
 
     user_prompt = (
         f"User request: {query}\n\n"
-        "Recommend 3 NYC restaurant options or restaurant types. "
+        "Recommend 5 NYC restaurant options or restaurant types. "
         "For each one, briefly explain why it may fit. "
         "Be honest that this is based on general knowledge only."
     )
@@ -142,7 +142,7 @@ def map_recommend(client: OpenAI, query: str, user_profile: dict, borough: str =
         f"User request: {query}\n\n"
         f"User taste profile:\n{_profile_to_text(user_profile)}\n\n"
         f"{restaurant_block}\n\n"
-        "Pick the best 3 restaurants from the list above. "
+        "Pick the best 5 restaurants from the list above. "
         "For each recommendation, provide:\n"
         "1. Restaurant name\n"
         "2. Why it matches the user's request\n"
