@@ -1025,8 +1025,9 @@ def apply_card_feedback(name, accepted, cuisines=None, tab="eat", price=None):
         price=price,
     )
     st.session_state.profile.setdefault("history", []).append({"name": name, "kind": "acc" if accepted else "rej", "tab": tab})
-    _tc = st.session_state.profile.setdefault("tab_counts", {"eat": 0, "cook": 0, "drink": 0})
-    _tc[tab] = _tc.get(tab, 0) + 1
+    if accepted:
+        _tc = st.session_state.profile.setdefault("tab_counts", {"eat": 0, "cook": 0, "drink": 0})
+        _tc[tab] = _tc.get(tab, 0) + 1
     save_profile(st.session_state.profile)
 
 
@@ -1048,8 +1049,9 @@ def undo_card_feedback(name, was_accepted, cuisines=None, tab="eat"):
         h for h in st.session_state.profile.get("history", [])
         if not (h.get("name") == name and h.get("kind") == kind and h.get("tab") == tab)
     ]
-    tc = st.session_state.profile.setdefault("tab_counts", {"eat": 0, "cook": 0, "drink": 0})
-    tc[tab] = max(0, tc.get(tab, 0) - 1)
+    if was_accepted:
+        tc = st.session_state.profile.setdefault("tab_counts", {"eat": 0, "cook": 0, "drink": 0})
+        tc[tab] = max(0, tc.get(tab, 0) - 1)
     save_profile(st.session_state.profile)
 
 
@@ -1157,15 +1159,20 @@ def render_sidebar():
     # Cuisine pulse
     cs = profile.get("cuisine_scores", {})
     if cs:
-        sorted_c = sorted(cs.items(), key=lambda x: -x[1])[:5]
-        max_score = max(v for _, v in sorted_c) if sorted_c else 1
+        GENERIC_SKIP = {"restaurant", "food", "bar", "cafe", "bistro"}
+        filtered_c = [
+            (k, v) for k, v in cs.items()
+            if k.lower().strip() not in GENERIC_SKIP
+        ]
+        sorted_c = sorted(filtered_c, key=lambda x: -x[1])[:5]
+        max_score = max((v for _, v in sorted_c if v > 0), default=1)
         rows = ""
         for name, score in sorted_c:
             display_name = " ".join(
                 part for part in name.split()
                 if part.lower() != "restaurant"
-            ) or name
-            pct = max(0, min(100, int((score / max(max_score, 0.01)) * 100)))
+            ).strip() or name
+            pct = max(0, min(100, int((score / max_score) * 100)))
             rows += (
                 f'<div class="cuisine-row">'
                 f'<span class="name">{html_module.escape(display_name)}</span>'
@@ -1173,12 +1180,13 @@ def render_sidebar():
                 f'<span class="pct">{pct}</span>'
                 f'</div>'
             )
-        sidebar_html += (
-            f'<div class="side-section">'
-            f'<div class="side-label"><span>Cuisine pulse</span><span class="count">Top {len(sorted_c)}</span></div>'
-            f'<div class="cuisine-list">{rows}</div>'
-            f'</div>'
-        )
+        if sorted_c:
+            sidebar_html += (
+                f'<div class="side-section">'
+                f'<div class="side-label"><span>Cuisine pulse</span><span class="count">Top {len(sorted_c)}</span></div>'
+                f'<div class="cuisine-list">{rows}</div>'
+                f'</div>'
+            )
 
     # Likes
     liked = profile.get("liked_foods", [])
@@ -1285,7 +1293,7 @@ def render_sidebar():
 
 def render_greeting():
     greeting = "Good morning, " if time_now == "morning" else "Good afternoon, " if time_now == "afternoon" else "Good evening, " if time_now == "evening" else "Up for a midnight snack?"
-    friend = "" if hour < 4 else "early bird" if hour < 12 else "Foodie"
+    friend = "Early bird" if time_now == "morning" else "Foodie" if time_now == "afternoon" else "Foodie" if time_now == "evening" else ""
     time_str = now.strftime("%-I:%M %p")
 
     st.markdown(
@@ -1543,12 +1551,12 @@ def render_card(r, tab="eat", blurb=""):
     save_key = f"card_save_{card_id}"
     undo_state = "accept" if accepted else "reject"
     undo_key = f"card_undo_{undo_state}_{card_id}"
-    card_col, action_col = st.columns([8, 1.05], gap="small")
+    card_col, action_col = st.columns([8, 1.05], gap=None)
     cuisines = [cats[0]] if cats else None
     with card_col:
         st.markdown(html_block, unsafe_allow_html=True)
     with action_col:
-        with st.container(height=280, border=False):
+        with st.container(key=rail_key, height=280, border=False, gap=None):
             if accepted:
                 st.button(
                     "Undo Save",
@@ -1778,7 +1786,7 @@ def render_eat_tab(client, df):
     prefill = st.session_state.eat_prefill or ""
     st.session_state.eat_prefill = ""
 
-    with st.form(key="eat_form", border=False):
+    with st.form(key="eat_form", enter_to_submit=True, border=False):
         col1, col2 = st.columns([3, 1.2])
         with col1:
             st.markdown('<div class="field-label">What are you craving</div>', unsafe_allow_html=True)
@@ -1864,10 +1872,7 @@ def render_eat_tab(client, df):
             unsafe_allow_html=True
         )
         if st.session_state.get("eat_search_notes"):
-            st.warning(
-                "Live Google Places results were unavailable, so the app is showing static dataset matches. "
-                "Restaurant photos require a valid GOOGLE_PLACES_API_KEY in your .env file."
-            )
+            st.warning("Live Google Places results were unavailable. Showing static dataset matches — photos require a valid GOOGLE_PLACES_API_KEY.")
         for r in results:
             render_card(r, tab="eat", blurb=r.get("blurb", ""))
     else:
@@ -1878,7 +1883,7 @@ def render_cook_tab(client):
     prefill = st.session_state.cook_prefill or ""
     st.session_state.cook_prefill = ""
 
-    with st.form(key="cook_form", border=False):
+    with st.form(key="cook_form", enter_to_submit=True, border=False):
         st.markdown('<div class="field-label">Tonight you want</div>', unsafe_allow_html=True)
         craving = st.text_input("craving", value=prefill, placeholder="something fast, something cozy, something to impress…", label_visibility="collapsed")
         st.markdown('<div class="field-label" style="margin-top:10px">In the pantry</div>', unsafe_allow_html=True)
@@ -1918,9 +1923,6 @@ def render_cook_tab(client):
         st.session_state.cook_response = response
         st.session_state.cook_last_craving = craving
         st.session_state.cook_remix_active = False
-        _tc = st.session_state.profile.setdefault("tab_counts", {"eat": 0, "cook": 0, "drink": 0})
-        _tc["cook"] = _tc.get("cook", 0) + 1
-        save_profile(st.session_state.profile)
 
         if skel_placeholder:
             skel_placeholder.empty()
@@ -1951,7 +1953,7 @@ def render_cook_tab(client):
         )
         if match_html:
             st.markdown(f'<div style="margin-bottom:12px">{match_html}</div>', unsafe_allow_html=True)
-        with st.container():
+        with st.container(key="llm_response_cook"):
             st.markdown(st.session_state.cook_response)
 
         import re as _re
@@ -1982,7 +1984,7 @@ def render_cook_tab(client):
                 st.rerun()
 
         if st.session_state.cook_remix_active:
-            with st.form(key="cook_remix_form", border=False):
+            with st.form(key="cook_remix_form", enter_to_submit=True, border=False):
                 col1, col2 = st.columns([3, 1.2])
                 with col1:
                     remix_input = st.text_input("Add context", placeholder="make it spicier, fewer steps, vegetarian…", label_visibility="collapsed")
@@ -2000,7 +2002,7 @@ def render_cocktail_tab(client):
     prefill = st.session_state.drink_prefill or ""
     st.session_state.drink_prefill = ""
 
-    with st.form(key="cocktail_form", border=False):
+    with st.form(key="cocktail_form", enter_to_submit=True, border=False):
         st.markdown('<div class="field-label">The vibe</div>', unsafe_allow_html=True)
         vibe = st.text_input("vibe", value=prefill, placeholder="rainy night, pre-dinner, after a long week…", label_visibility="collapsed")
         st.markdown('<div class="field-label" style="margin-top:10px">Bar inventory</div>', unsafe_allow_html=True)
@@ -2040,9 +2042,6 @@ def render_cocktail_tab(client):
         st.session_state.cocktail_response = response
         st.session_state.drink_last_vibe = vibe
         st.session_state.drink_remix_active = False
-        _tc = st.session_state.profile.setdefault("tab_counts", {"eat": 0, "cook": 0, "drink": 0})
-        _tc["drink"] = _tc.get("drink", 0) + 1
-        save_profile(st.session_state.profile)
 
         if skel_placeholder:
             skel_placeholder.empty()
@@ -2075,13 +2074,13 @@ def render_cocktail_tab(client):
             st.markdown(f'<div style="margin-bottom:12px">{match_html}</div>', unsafe_allow_html=True)
         import re as _re
         cocktail_md = _re.sub(
-            r"^\*{0,2}Cocktail Name:?\*{0,2}\s*",
-            "### ",
+            r"^\*{0,2}Cocktail Name:?\*{0,2}\s*\*{0,2}([^*\n]+)\*{0,2}",
+            lambda m: "### " + m.group(1).strip(),
             st.session_state.cocktail_response.lstrip(),
             count=1,
             flags=_re.IGNORECASE,
         )
-        with st.container():
+        with st.container(key="llm_response_cocktail"):
             st.markdown(cocktail_md)
 
         _name_m2 = _re.search(r'^#{1,3}\s+(.+)$', cocktail_md, _re.MULTILINE)
@@ -2111,7 +2110,7 @@ def render_cocktail_tab(client):
                 st.rerun()
 
         if st.session_state.drink_remix_active:
-            with st.form(key="drink_remix_form", border=False):
+            with st.form(key="drink_remix_form", enter_to_submit=True, border=False):
                 col1, col2 = st.columns([3, 1.2])
                 with col1:
                     remix_input = st.text_input("Add context", placeholder="make it sweeter, no citrus, more spirit-forward…", label_visibility="collapsed")
