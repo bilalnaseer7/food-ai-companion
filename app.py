@@ -442,11 +442,12 @@ div[class*="block-container"] {
 }            
         
 /* Streamlit input overrides */
-.stTextInput > div > div, .stTextArea > div > div, .stSelectbox > div > div {
+.stTextInput > div > div, .stTextArea > div > div, .stSelectbox > div > div,
+[data-baseweb="input"], [data-baseweb="textarea"], [data-baseweb="base-input"] {
     background: var(--bg) !important;
-    border: 1px solid transparent !important;
+    border: 1px solid rgba(26,26,26,0.10) !important;
     border-radius: var(--radius-sm) !important;
-    box-shadow: var(--shadow-input) !important;
+    box-shadow: none !important;
     overflow: hidden !important;
 }
 .stTextInput input, .stTextArea textarea {
@@ -1959,29 +1960,31 @@ def render_cook_tab(client):
         import re as _re
         _name_m = _re.search(r'^#{1,3}\s+(.+)$', st.session_state.cook_response, _re.MULTILINE)
         _recipe_name = _name_m.group(1).strip() if _name_m else "this recipe"
+        _is_empty_msg = "pantry is empty" in st.session_state.cook_response.lower()
 
         _cook_saved = _recipe_name in st.session_state.profile.get("accepted", [])
-        c_pass, c_remix, c_save = st.columns([1, 1, 1])
-        if not _cook_saved:
-            with c_pass:
-                if st.button("Pass", key="cook_pass", use_container_width=True):
-                    apply_card_feedback(_recipe_name, False, tab="cook")
-                    st.session_state.cook_response = None
+        if not _is_empty_msg:
+            c_pass, c_remix, c_save = st.columns([1, 1, 1])
+            if not _cook_saved:
+                with c_pass:
+                    if st.button("Pass", key="cook_pass", use_container_width=True):
+                        apply_card_feedback(_recipe_name, False, tab="cook")
+                        st.session_state.cook_response = None
+                        st.rerun()
+                with c_remix:
+                    if st.button("Remix", key="cook_remix_toggle", use_container_width=True):
+                        st.session_state.cook_remix_active = not st.session_state.cook_remix_active
+                        st.rerun()
+            with c_save:
+                _save_label = "Undo Save" if _cook_saved else "Save"
+                _save_key = "cook_undo_save" if _cook_saved else "cook_save"
+                if st.button(_save_label, key=_save_key, use_container_width=True):
+                    if _cook_saved:
+                        undo_card_feedback(_recipe_name, True, tab="cook")
+                    else:
+                        apply_card_feedback(_recipe_name, True, tab="cook")
+                        st.session_state.cook_remix_active = False
                     st.rerun()
-            with c_remix:
-                if st.button("Remix", key="cook_remix_toggle", use_container_width=True):
-                    st.session_state.cook_remix_active = not st.session_state.cook_remix_active
-                    st.rerun()
-        with c_save:
-            _save_label = "Undo Save" if _cook_saved else "Save"
-            _save_key = "cook_undo_save" if _cook_saved else "cook_save"
-            if st.button(_save_label, key=_save_key, use_container_width=True):
-                if _cook_saved:
-                    undo_card_feedback(_recipe_name, True, tab="cook")
-                else:
-                    apply_card_feedback(_recipe_name, True, tab="cook")
-                    st.session_state.cook_remix_active = False
-                st.rerun()
 
         if st.session_state.cook_remix_active:
             with st.form(key="cook_remix_form", enter_to_submit=True, border=False):
@@ -2085,29 +2088,31 @@ def render_cocktail_tab(client):
 
         _name_m2 = _re.search(r'^#{1,3}\s+(.+)$', cocktail_md, _re.MULTILINE)
         _cocktail_name = _name_m2.group(1).strip() if _name_m2 else "this cocktail"
+        _is_empty_bar = "bar is empty" in st.session_state.cocktail_response.lower()
 
         _drink_saved = _cocktail_name in st.session_state.profile.get("accepted", [])
-        d_pass, d_remix, d_save = st.columns([1, 1, 1])
-        if not _drink_saved:
-            with d_pass:
-                if st.button("Pass", key="drink_pass", use_container_width=True):
-                    apply_card_feedback(_cocktail_name, False, tab="drink")
-                    st.session_state.cocktail_response = None
+        if not _is_empty_bar:
+            d_pass, d_remix, d_save = st.columns([1, 1, 1])
+            if not _drink_saved:
+                with d_pass:
+                    if st.button("Pass", key="drink_pass", use_container_width=True):
+                        apply_card_feedback(_cocktail_name, False, tab="drink")
+                        st.session_state.cocktail_response = None
+                        st.rerun()
+                with d_remix:
+                    if st.button("Remix", key="drink_remix_toggle", use_container_width=True):
+                        st.session_state.drink_remix_active = not st.session_state.drink_remix_active
+                        st.rerun()
+            with d_save:
+                _save_label = "Undo Save" if _drink_saved else "Save"
+                _save_key = "drink_undo_save" if _drink_saved else "drink_save"
+                if st.button(_save_label, key=_save_key, use_container_width=True):
+                    if _drink_saved:
+                        undo_card_feedback(_cocktail_name, True, tab="drink")
+                    else:
+                        apply_card_feedback(_cocktail_name, True, tab="drink")
+                        st.session_state.drink_remix_active = False
                     st.rerun()
-            with d_remix:
-                if st.button("Remix", key="drink_remix_toggle", use_container_width=True):
-                    st.session_state.drink_remix_active = not st.session_state.drink_remix_active
-                    st.rerun()
-        with d_save:
-            _save_label = "Undo Save" if _drink_saved else "Save"
-            _save_key = "drink_undo_save" if _drink_saved else "drink_save"
-            if st.button(_save_label, key=_save_key, use_container_width=True):
-                if _drink_saved:
-                    undo_card_feedback(_cocktail_name, True, tab="drink")
-                else:
-                    apply_card_feedback(_cocktail_name, True, tab="drink")
-                    st.session_state.drink_remix_active = False
-                st.rerun()
 
         if st.session_state.drink_remix_active:
             with st.form(key="drink_remix_form", enter_to_submit=True, border=False):
