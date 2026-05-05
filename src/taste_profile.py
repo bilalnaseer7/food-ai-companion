@@ -7,7 +7,6 @@ DEFAULT_PROFILE = {
     "preferred_cuisines": [],
     "liked_foods": [],
     "disliked_foods": [],
-    "removed_foods": [],
     "budget": "moderate",
     "online_order": "No",
     "occasion": "casual dinner",

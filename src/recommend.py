@@ -12,7 +12,6 @@ def _profile_to_text(user_profile: dict) -> str:
         f"Preferred cuisines: {', '.join(user_profile.get('preferred_cuisines', []))}\n"
         f"Liked foods: {', '.join(user_profile.get('liked_foods', []))}\n"
         f"Disliked foods: {', '.join(user_profile.get('disliked_foods', []))}\n"
-        f"Removed foods: {', '.join(user_profile.get('removed_foods', []))}\n"
         f"Budget: {user_profile.get('budget', '')}\n"
         f"Online order preference: {user_profile.get('online_order', '')}\n"
         f"Occasion: {user_profile.get('occasion', '')}\n"
