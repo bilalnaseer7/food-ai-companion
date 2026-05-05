@@ -646,7 +646,7 @@ div[class*="block-container"] {
     font-size: 14px; line-height: 1.55; color: var(--ink);
     margin: 4px 0 6px; max-width: 80ch;
 }
-.card-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
+.card-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; max-height: 32px; overflow: hidden; }
 
 .card-actions {
     display: flex; gap: 8px; margin-top: auto;
