@@ -1218,6 +1218,7 @@ def init_session():
         "cook_last_craving": "", "drink_last_vibe": "",
         "cook_remix_active": False, "drink_remix_active": False,
         "cook_remix_pending": None, "drink_remix_pending": None,
+        "eat_batch_tags_refreshed": False,
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -1966,6 +1967,7 @@ def render_eat_tab(client, df):
             st.session_state.eat_search_notes = []
         st.session_state.eat_llm_response = response
         st.session_state.eat_fsq_results = selected
+        st.session_state.eat_batch_tags_refreshed = False
 
         if skel_placeholder:
             skel_placeholder.empty()
@@ -1984,6 +1986,14 @@ def render_eat_tab(client, df):
             st.warning("Live Google Places results were unavailable. Showing static dataset matches — photos require a valid GOOGLE_PLACES_API_KEY.")
         for r in results:
             render_card(r, tab="eat", blurb=r.get("blurb", ""))
+
+        if results and not st.session_state.eat_batch_tags_refreshed:
+            acted = st.session_state.profile.get("accepted", []) + st.session_state.profile.get("rejected", [])
+            acted_set = set(acted)
+            if all((r.get("name") or r.get("title", "")) in acted_set for r in results):
+                refresh_preference_tags(st.session_state.profile)
+                save_profile(st.session_state.profile)
+                st.session_state.eat_batch_tags_refreshed = True
     else:
         render_empty("eat")
 
