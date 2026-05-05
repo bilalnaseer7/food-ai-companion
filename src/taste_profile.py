@@ -62,12 +62,15 @@ def update_profile(
         profile["rejected"].append(restaurant_name)
 
     # Infer budget from price levels of accepted restaurants (EMA, alpha=0.3)
+    # Write through to profile["budget"] so all downstream code benefits automatically
     if accepted and price is not None and 1 <= price <= 4:
+        _BUDGET_REVERSE = {1: "budget", 2: "moderate", 3: "premium", 4: "premium+"}
         current = profile.get("inferred_budget_level")
         if current is None:
             profile["inferred_budget_level"] = float(price)
         else:
             profile["inferred_budget_level"] = round(0.3 * price + 0.7 * current, 2)
+        profile["budget"] = _BUDGET_REVERSE.get(round(profile["inferred_budget_level"]), "moderate")
         profile["inferred_budget_count"] = profile.get("inferred_budget_count", 0) + 1
 
     profile["preferred_cuisines"] = [
