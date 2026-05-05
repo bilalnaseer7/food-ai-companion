@@ -9,6 +9,7 @@ DEFAULT_PROFILE = {
     "disliked_foods": [],
     "budget": "moderate",
     "online_order": "No",
+    "occasion": "casual dinner",
     "cuisine_scores": {},
     "food_scores": {},
     "accepted": [],
@@ -38,7 +39,6 @@ def update_profile(
     accepted: bool,
     cuisines: list[str] | None = None,
     foods: list[str] | None = None,
-    price: int | None = None,
 ) -> dict:
     delta = 0.15 if accepted else -0.15
 
@@ -59,18 +59,6 @@ def update_profile(
         profile["accepted"].append(restaurant_name)
     elif not accepted and restaurant_name not in profile["rejected"]:
         profile["rejected"].append(restaurant_name)
-
-    # Infer budget from price levels of accepted restaurants (EMA, alpha=0.3)
-    # Write through to profile["budget"] so all downstream code benefits automatically
-    if accepted and price is not None and 1 <= price <= 4:
-        _BUDGET_REVERSE = {1: "budget", 2: "moderate", 3: "premium", 4: "premium+"}
-        current = profile.get("inferred_budget_level")
-        if current is None:
-            profile["inferred_budget_level"] = float(price)
-        else:
-            profile["inferred_budget_level"] = round(0.3 * price + 0.7 * current, 2)
-        profile["budget"] = _BUDGET_REVERSE.get(round(profile["inferred_budget_level"]), "moderate")
-        profile["inferred_budget_count"] = profile.get("inferred_budget_count", 0) + 1
 
     profile["preferred_cuisines"] = [
         k for k, v in profile["cuisine_scores"].items() if v > 0.2
@@ -94,6 +82,7 @@ def profile_summary(profile: dict) -> str:
         f"Disliked foods: {', '.join(profile['disliked_foods']) or 'none yet'}",
         f"Budget: {profile['budget']}",
         f"Online order: {profile['online_order']}",
+        f"Occasion: {profile['occasion']}",
         f"Accepted restaurants: {len(profile['accepted'])}",
         f"Rejected restaurants: {len(profile['rejected'])}",
     ]
