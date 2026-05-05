@@ -44,7 +44,7 @@ CUISINE_GRADIENTS = {
     "greek": "garden-jade", "vietnamese": "scallion-jade",
 }
 
-BUDGET_LABELS = {1: "Thrifty", 2: "Moderate", 3: "Foodie", 4: "International Student"}
+BUDGET_LABELS = {1: "Thrifty", 2: "Moderate", 3: "Foodie", 4: "Int'l Student"}
 BUDGET_MAP = {"budget": 1, "moderate": 2, "premium": 3, "premium+": 4}
 BUDGET_REVERSE = {1: "budget", 2: "moderate", 3: "premium", 4: "premium+"}
 PROFILE_PATH = "data/taste_profile.json"
