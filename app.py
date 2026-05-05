@@ -534,6 +534,7 @@ div[class*="block-container"] {
     white-space: nowrap; border: 1px solid var(--line); color: var(--ink);
 }
 .recent-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sage); }
+.recent-chip.rej .dot { background: var(--terracotta); }
 
 /* ── Results head ── */
 .results-head {
@@ -615,7 +616,7 @@ div[class*="block-container"] {
 .ph-spritz-rust { background: linear-gradient(135deg, #E89570 0%, #B0552E 100%); }
 .ph-rye-sage    { background: linear-gradient(135deg, #C4B580 0%, #6E7E55 100%); }
 
-.card-body { padding: 18px 20px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.card-body { padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .card-meta-top {
     display: flex; align-items: center; gap: 10px;
     font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
@@ -640,12 +641,12 @@ div[class*="block-container"] {
 
 .card-blurb {
     font-size: 14px; line-height: 1.55; color: var(--ink);
-    margin: 4px 0 6px; max-width: 60ch;
+    margin: 4px 0 6px; max-width: 80ch;
 }
 .card-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
 
 .card-actions {
-    display: flex; gap: 8px; margin-top: 14px;
+    display: flex; gap: 8px; margin-top: auto;
     padding-top: 14px; border-top: 1px solid var(--line);
     align-items: center;
     justify-content: space-between;
@@ -1364,15 +1365,17 @@ def render_hint():
 
 def render_recent_strip():
     accepted = st.session_state.profile.get("accepted", [])
-    if not accepted:
+    rejected = st.session_state.profile.get("rejected", [])
+    if not accepted and not rejected:
         return
+    tagged = [(n, "acc") for n in accepted[-5:]] + [(n, "rej") for n in rejected[-5:]]
     chips = "".join([
-        f'<span class="recent-chip"><span class="dot"></span>{html_module.escape(n)}</span>'
-        for n in accepted[-5:][::-1]
+        f'<span class="recent-chip {kind}"><span class="dot"></span>{html_module.escape(n)}</span>'
+        for n, kind in tagged[::-1]
     ])
     st.markdown(
         f'<div class="recent">'
-        f'<span class="recent-label">Recently saved</span>'
+        f'<span class="recent-label">Recent Activity</span>'
         f'<div class="recent-track">{chips}</div>'
         f'</div>',
         unsafe_allow_html=True
@@ -1453,7 +1456,6 @@ def render_card(r, tab="eat", blurb=""):
         f'</div>'
         f'<div class="card-body">'
         f'<div class="card-meta-top"><span>{html_module.escape(cat_str)}</span>'
-        + (f'<span class="sep">·</span><span class="open">Open now</span>' if r.get("open_now") else '')
         + f'</div>'
         f'<h3 class="card-title">{html_module.escape(name)}</h3>'
         f'{rating_html}'
@@ -1474,7 +1476,7 @@ def render_card(r, tab="eat", blurb=""):
     with card_col:
         st.markdown(html_block, unsafe_allow_html=True)
     with action_col:
-        with st.container(key=rail_key, height=300, border=False, gap=None):
+        with st.container(key=rail_key, height=280, border=False, gap=None):
             if accepted:
                 st.button(
                     "Undo Save",
