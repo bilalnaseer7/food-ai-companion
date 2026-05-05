@@ -1718,6 +1718,7 @@ def render_empty(tab):
     <style>
         html, body {{
             margin: 0;
+            padding-bottom: 4px;
             background: transparent;
             color: #1A1A1A;
             font-family: 'DM Sans', system-ui, sans-serif;
@@ -1769,7 +1770,7 @@ def render_empty(tab):
         <div class="chip-wrap">{suggest_chips_html(tab, centered=True)}</div>
     </div>
     """
-    components.html(empty_html, height=288, scrolling=False)
+    components.html(empty_html, height=338, scrolling=False)
 
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
