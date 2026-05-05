@@ -209,6 +209,7 @@ a:hover { text-decoration: none; }
 }
 [data-testid="stExpandSidebarButton"] {
     margin-top: 50px !important;
+    margin-left: 12px !important;
 }
 
 [data-testid="stSidebar"][aria-expanded="true"] {
