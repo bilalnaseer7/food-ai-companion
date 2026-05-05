@@ -2136,7 +2136,7 @@ def render_cocktail_tab(client):
         bar_input = st.text_area(
             "bar",
             value=", ".join(st.session_state.profile.get("bar_inventory", [])),
-            placeholder="show me what you've got, or try 'the basics'",
+            placeholder="tell me what you've got, or try 'the basics'",
             label_visibility="collapsed",
             height=88,
         )
