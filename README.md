@@ -29,6 +29,14 @@ All three modes share a persistent taste profile that captures preferences such 
 - Added a lightweight personalization vs. filter-bubble analysis in `src/filter_bubble.py` and `scripts/run_filter_bubble_analysis.py`. The analysis computes overlap, novelty, category diversity, entropy, and a bounded filter-bubble index from local restaurant metadata without inventing human scores.
 - Added a Milestone 3 evaluation harness in `src/evaluation.py` and `scripts/run_milestone3_evaluation.py`. It creates deterministic system-side metrics plus a human-scoring template for baseline, taste-profile, and RAG-style recommendation comparisons.
 
+## Milestone 3 Hoerim Update
+- Improved `src/retrieval.py` to incorporate learned `cuisine_scores` from the taste profile into the embedding query and reranking stage, so retrieval results become more personalized as users provide accept/reject feedback.
+- Fixed a filtering bug in `src/retrieval.py` where strict cuisine and food filters could return zero results. Replaced with a three-stage fallback strategy (strict → cuisine-only → no filter) to ensure recommendations are always returned.
+- Expanded `CATEGORY_FOOD_HINTS` in `src/retrieval.py` to cover Chinese, Mexican, Indian, Thai, and American cuisines, reducing food-category mismatch penalties for a broader range of queries.
+- Fixed a bug in `src/filter_bubble.py` where `filter_bubble_index` returned a misleading non-zero score for first-time users with no history. The function now correctly returns 0.0 when no prior session exists.
+- Added `weighted_profile_alignment` to `src/filter_bubble.py`, a continuous alignment metric using learned `cuisine_scores` and `food_scores` that improves as the user gives feedback, complementing the existing binary alignment ratio.
+- Extended `diversity_rerank` in `src/filter_bubble.py` to accept an optional `profile` argument, giving a small tiebreaking bonus to cuisine-preferred restaurants during diversity reranking.
+
 ## Current Milestone 2 Scope
 
 This repository implements the **Eat Out** mode prototype for evaluation, plus a full interactive Streamlit app covering all three modes.
