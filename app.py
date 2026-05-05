@@ -191,6 +191,8 @@ a:hover { text-decoration: none; }
     width: 350px !important;
     min-width: 350px !important;
     max-width: 350px !important;
+    margin-right: -175px !important;
+    position: relative !important;
 }
 [data-testid="stSidebar"] > div { padding: 24px 20px !important; }
 [data-testid="stSidebar"] * { color: var(--ink) !important; }
@@ -520,7 +522,6 @@ div[class*="block-container"] {
     border-radius: var(--radius); margin-bottom: 12px;
     font-size: 13px; color: var(--ink-2);
     margin-bottom: 20px;
-    overflow: hidden;
 }
 .recent-label {
     font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em;
@@ -622,7 +623,7 @@ div[class*="block-container"] {
     font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
     text-transform: uppercase; color: var(--ink-3);
 }
-.card-meta-top .sep { opacity: 0.4; }
+.card-meta-top .sep { opacity: 0.6; }
 .card-meta-top .open { color: var(--sage-2); }
 
 .card-title {
@@ -1237,7 +1238,7 @@ def render_sidebar():
     else:
         history_html = '<div class="history">'
         for h in history:
-            src = {"eat": "EAT", "cook": "COOK", "drink": "BAR"}.get(h.get("tab", "eat"), "EAT")
+            src = {"eat": "Eat Out", "cook": "Cook", "drink": "Cocktails"}.get(h.get("tab", "eat"), "EAT")
             history_html += (
                 f'<div class="history-row {h["kind"]}">'
                 f'<span class="dot"></span>'
@@ -1382,6 +1383,15 @@ def render_recent_strip():
     )
 
 
+def _haversine_mi(lat1, lon1, lat2, lon2) -> float:
+    from math import radians, sin, cos, sqrt, atan2
+    R = 3958.8
+    p1, p2 = radians(lat1), radians(lat2)
+    dp, dl = radians(lat2 - lat1), radians(lon2 - lon1)
+    a = sin(dp / 2) ** 2 + cos(p1) * cos(p2) * sin(dl / 2) ** 2
+    return R * 2 * atan2(sqrt(a), sqrt(1 - a))
+
+
 # ── Cards ─────────────────────────────────────────────────────────────────────
 def render_card(r, tab="eat", blurb=""):
     name = r.get("name") or r.get("title", "")
@@ -1401,8 +1411,14 @@ def render_card(r, tab="eat", blurb=""):
     if accepted: card_class += " accepted"
     elif rejected: card_class += " rejected"
 
+    dist_str = ""
+    origin = st.session_state.get("eat_search_origin")
+    if origin and r.get("lat") and r.get("lng"):
+        d = _haversine_mi(origin[0], origin[1], r["lat"], r["lng"])
+        dist_str = f"{d:.1f} mi"
+
     # Build card HTML
-    img_label = price_str if price_str else (cats[0] if cats else "restaurant")
+    img_label = price_str
     rating_html = ""
     if rating:
         rating_html = (
@@ -1423,9 +1439,17 @@ def render_card(r, tab="eat", blurb=""):
         if photo_url else ""
     )
 
+    PRICE_CHIPS = {1: "Cheap Eats", 4: "Upscale"}
     tag_list = []
-    for c in cats[:3]:
-        if c: tag_list.append(c)
+    if cats:
+        tag_list.append(cats[0])
+    price_chip = PRICE_CHIPS.get(r.get("price"), "")
+    if price_chip:
+        tag_list.append(price_chip)
+    for attr in r.get("attributes", []):
+        tag_list.append(attr)
+    for c in cats[1:2]:
+        tag_list.append(c)
     tags_html = "".join([
         f'<span class="pill outline">{html_module.escape(t)}</span>'
         for t in tag_list
@@ -1447,15 +1471,17 @@ def render_card(r, tab="eat", blurb=""):
         if open_html or feedback_html else ''
     )
 
+    label_html = f'<span class="label">{html_module.escape(img_label)}</span>' if img_label else ""
     html_block = (
         f'<article class="{card_class}">'
         f'<div class="card-img ph-{gradient}{" has-photo" if photo_url else ""}">'
         f'{photo_html}'
         f'<span class="ph">{html_module.escape((cats[0] if cats else "").lower().replace(" ", " / "))}</span>'
-        f'<span class="label">{html_module.escape(img_label)}</span>'
+        f'{label_html}'
         f'</div>'
         f'<div class="card-body">'
         f'<div class="card-meta-top"><span>{html_module.escape(cat_str)}</span>'
+        + (f'<span class="sep">·</span><span>{html_module.escape(dist_str)}</span>' if dist_str else "")
         + f'</div>'
         f'<h3 class="card-title">{html_module.escape(name)}</h3>'
         f'{rating_html}'
@@ -1736,6 +1762,12 @@ def render_eat_tab(client, df):
         st.session_state.eat_results = retrieved
         try:
             borough = zipcode if zipcode else "New York, NY"
+            if zipcode:
+                from src.places import geocode_location
+                origin = geocode_location(zipcode + " New York")
+            else:
+                origin = (40.7128, -74.0060)
+            st.session_state.eat_search_origin = origin
             _, fsq_restaurants = map_recommend(client, query, st.session_state.profile, borough=borough)
             st.session_state.eat_fsq_results = fsq_restaurants
         except Exception as e:

@@ -3,9 +3,10 @@ import requests
 from typing import Optional
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY")
-SEARCH_URL  = "https://places.googleapis.com/v1/places:searchText"
-DETAILS_URL = "https://places.googleapis.com/v1/places/{place_id}"
-PHOTO_URL   = "https://places.googleapis.com/v1/{photo_name}/media"
+SEARCH_URL   = "https://places.googleapis.com/v1/places:searchText"
+DETAILS_URL  = "https://places.googleapis.com/v1/places/{place_id}"
+PHOTO_URL    = "https://places.googleapis.com/v1/{photo_name}/media"
+GEOCODE_URL  = "https://maps.googleapis.com/maps/api/geocode/json"
 
 PRICE_LABEL = {1: "$", 2: "$$", 3: "$$$", 4: "$$$$"}
 
@@ -27,6 +28,16 @@ SEARCH_FIELD_MASK = ",".join([
     "places.regularOpeningHours.openNow",
     "places.businessStatus",
     "places.photos",
+    "places.liveMusic",
+    "places.outdoorSeating",
+    "places.servesCocktails",
+    "places.servesWine",
+    "places.servesBrunch",
+    "places.servesVegetarianFood",
+    "places.goodForGroups",
+    "places.menuForChildren",
+    "places.reservable",
+    "places.location",
 ])
 
 REVIEW_FIELD_MASK = "reviews,rating"
@@ -39,7 +50,24 @@ def _api_key() -> str:
             "Enable billing at https://console.cloud.google.com and get a key."
         )
     return key
-    
+
+
+def geocode_location(address: str) -> Optional[tuple[float, float]]:
+    try:
+        r = requests.get(
+            GEOCODE_URL,
+            params={"address": address, "key": _api_key()},
+            timeout=5,
+        )
+        results = r.json().get("results", [])
+        if not results:
+            return None
+        loc = results[0]["geometry"]["location"]
+        return (loc["lat"], loc["lng"])
+    except Exception:
+        return None
+
+
 def search_restaurants(
     query: str,
     borough: str = "New York, NY",
@@ -166,17 +194,35 @@ def _parse_place(raw: dict) -> dict:
         if attr.get("displayName")
     )
 
+    ATTR_MAP = [
+        ("liveMusic",             "Lively"),
+        ("outdoorSeating",        "Outdoor"),
+        ("servesCocktails",       "Cocktails"),
+        ("servesWine",            "Wine"),
+        ("servesBrunch",          "Brunch"),
+        ("servesVegetarianFood",  "Veggie-Friendly"),
+        ("goodForGroups",         "Great for Groups"),
+        ("menuForChildren",       "Family-Friendly"),
+        ("reservable",            "Reservations"),
+    ]
+    attributes = [label for field, label in ATTR_MAP if raw.get(field)]
+
+    loc = raw.get("location", {})
+
     return {
-        "fsq_id":     raw.get("id", ""),
-        "name":       raw.get("displayName", {}).get("text", "Unknown"),
-        "address":    raw.get("formattedAddress", ""),
-        "categories": categories,
-        "price":      price_map.get(raw.get("priceLevel", ""), None),
-        "rating":     raw.get("rating"),
-        "open_now":   open_now,
-        "total_tips": raw.get("userRatingCount", 0),
-        "photo_url":   photo_url,
+        "fsq_id":            raw.get("id", ""),
+        "name":              raw.get("displayName", {}).get("text", "Unknown"),
+        "address":           raw.get("formattedAddress", ""),
+        "categories":        categories,
+        "attributes":        attributes,
+        "price":             price_map.get(raw.get("priceLevel", ""), None),
+        "rating":            raw.get("rating"),
+        "open_now":          open_now,
+        "total_tips":        raw.get("userRatingCount", 0),
+        "photo_url":         photo_url,
         "photo_attribution": photo_attribution,
+        "lat":               loc.get("latitude"),
+        "lng":               loc.get("longitude"),
     }
 
 
