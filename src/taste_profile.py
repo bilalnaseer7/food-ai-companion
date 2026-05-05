@@ -9,7 +9,6 @@ DEFAULT_PROFILE = {
     "disliked_foods": [],
     "budget": "moderate",
     "online_order": "No",
-    "occasion": "casual dinner",
     "cuisine_scores": {},
     "food_scores": {},
     "accepted": [],
@@ -95,7 +94,6 @@ def profile_summary(profile: dict) -> str:
         f"Disliked foods: {', '.join(profile['disliked_foods']) or 'none yet'}",
         f"Budget: {profile['budget']}",
         f"Online order: {profile['online_order']}",
-        f"Occasion: {profile['occasion']}",
         f"Accepted restaurants: {len(profile['accepted'])}",
         f"Rejected restaurants: {len(profile['rejected'])}",
     ]

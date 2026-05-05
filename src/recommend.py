@@ -13,7 +13,6 @@ def _profile_to_text(user_profile: dict) -> str:
         f"Disliked foods: {', '.join(user_profile.get('disliked_foods', []))}\n"
         f"Budget: {user_profile.get('budget', '')}\n"
         f"Online order preference: {user_profile.get('online_order', '')}\n"
-        f"Occasion: {user_profile.get('occasion', '')}\n"
         f"City: {user_profile.get('city', 'New York City')}"
     )
 

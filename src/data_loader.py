@@ -288,7 +288,6 @@ def _build_retrieval_query(query: str, user_profile: dict) -> str:
     disliked_foods = ", ".join(user_profile.get("disliked_foods", []))
     budget = user_profile.get("budget", "")
     online_order = user_profile.get("online_order", "")
-    occasion = user_profile.get("occasion", "")
     city = user_profile.get("city", "New York City")
 
     return (
@@ -298,8 +297,7 @@ def _build_retrieval_query(query: str, user_profile: dict) -> str:
         f"Liked foods: {liked_foods}. "
         f"Disliked foods: {disliked_foods}. "
         f"Budget: {budget}. "
-        f"Online order preference: {online_order}. "
-        f"Occasion: {occasion}."
+        f"Online order preference: {online_order}."
     )
 
 

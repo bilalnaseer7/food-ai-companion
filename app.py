@@ -1059,7 +1059,6 @@ def init_session():
                 "disliked_foods": ["seafood"],
                 "budget": "moderate",
                 "online_order": "Yes",
-                "occasion": "casual dinner",
                 "cuisine_scores": {"Italian": 0.8, "Japanese": 0.6, "Mediterranean": 0.45, "American": 0.3},
                 "food_scores": {"pasta": 0.7, "pizza": 0.6, "seafood": -0.5},
             })
