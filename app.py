@@ -456,6 +456,7 @@ div[class*="block-container"] {
 }
 .stTextInput input, .stTextArea textarea {
     color: var(--ink) !important;
+    caret-color: var(--ink) !important;
     background: transparent !important;
     font-family: var(--sans) !important;
     font-size: 14.5px !important;
@@ -464,6 +465,13 @@ div[class*="block-container"] {
     padding: 12px 14px !important;
     box-shadow: none !important;
     outline: none !important;
+}
+[data-baseweb="input"] input,
+[data-baseweb="textarea"] textarea,
+[data-baseweb="base-input"] input {
+    caret-color: var(--ink) !important;
+    color: var(--ink) !important;
+    -webkit-text-fill-color: var(--ink) !important;
 }
 .stTextInput input::placeholder, .stTextArea textarea::placeholder { color: var(--ink-3) !important; }
 .stTextInput > div > div:focus-within, .stTextArea > div > div:focus-within {
