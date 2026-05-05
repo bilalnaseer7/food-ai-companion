@@ -1208,7 +1208,7 @@ def render_sidebar():
         ])
         sidebar_html += (
             f'<div class="side-section">'
-            f'<div class="side-label"><span>Spending pattern</span><span class="count">{inferred_dollar}</span></div>'
+            f'<div class="side-label"><span>Inferred Spending Pattern</span></div>'
             f'<div class="budget">{idots}'
             f'<span class="budget-label">{BUDGET_LABELS[inferred_level]} · {inferred_count} signal{"s" if inferred_count != 1 else ""}</span>'
             f'</div></div>'
