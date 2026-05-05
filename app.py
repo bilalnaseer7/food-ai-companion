@@ -1994,6 +1994,7 @@ def render_eat_tab(client, df):
                 refresh_preference_tags(st.session_state.profile)
                 save_profile(st.session_state.profile)
                 st.session_state.eat_batch_tags_refreshed = True
+                st.rerun()
     else:
         render_empty("eat")
 
