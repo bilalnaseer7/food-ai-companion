@@ -2,7 +2,9 @@ import os
 import math
 import hashlib
 import html as html_module
+from datetime import datetime
 from urllib.parse import quote
+from zoneinfo import ZoneInfo
 import streamlit as st
 import streamlit.components.v1 as components
 from dotenv import load_dotenv
@@ -24,8 +26,8 @@ st.set_page_config(
 
 st.html("<style>[data-testid='stHeaderActionElements'] {display: none;}</style>")
 
-import datetime
-now = datetime.datetime.now()
+EASTERN_TZ = ZoneInfo("America/New_York")
+now = datetime.now(EASTERN_TZ)
 day = now.strftime("%a")
 hour = now.hour
 time_now = "morning" if hour < 12 and hour >= 4 else "afternoon" if hour < 18 and hour >= 12 else "evening" if hour < 23 and hour >= 18 else "late"
@@ -113,8 +115,8 @@ st.markdown("""
     --line-2: rgba(26,26,26,0.10);
     --terracotta: #C96A3A;
     --terracotta-2: #B25A2C;
-    --button-terracotta: #A96543;
-    --button-terracotta-2: #91563A;
+    --button-terracotta: #C96A3A;
+    --button-terracotta-2: #B25A2C;
     --sage: #7A9E7E;
     --sage-2: #688C6D;
     --gold: #C9A227;
@@ -503,7 +505,9 @@ div[class*="block-container"] {
 }
 
 /* ── Submit button (primary) ── */
-[data-testid="stFormSubmitButton"] button[kind="primary"] {
+[data-testid="stFormSubmitButton"] button,
+[data-testid="stFormSubmitButton"] button[kind="primary"],
+[data-testid="stFormSubmitButton"] button[data-testid="baseButton-primary"] {
     background: var(--button-terracotta) !important; color: #fff !important;
     border: none !important; border-radius: var(--radius) !important;
     padding: 12px 22px !important;
@@ -513,10 +517,15 @@ div[class*="block-container"] {
     transition: all 0.12s ease !important;
     width: 100% !important;
 }
-[data-testid="stFormSubmitButton"] button[kind="primary"]:hover {
+[data-testid="stFormSubmitButton"] button:hover,
+[data-testid="stFormSubmitButton"] button[kind="primary"]:hover,
+[data-testid="stFormSubmitButton"] button[data-testid="baseButton-primary"]:hover {
     background: var(--button-terracotta-2) !important;
     transform: translateY(-1px) !important;
     box-shadow: 0 6px 18px rgba(145,86,58,0.30) !important;
+}
+[data-testid="stFormSubmitButton"] button p {
+    color: #fff !important;
 }
 
 .suggest-chip { color: var(--ink-2) !important; }
