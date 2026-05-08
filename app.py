@@ -776,18 +776,30 @@ div[class*="block-container"] {
 }
 
 /* ── Cook recipe cards ── */
-[class*="st-key-cook_recipe_card_"] > div {
+[class*="st-key-cook_recipe_card_"] {
     background: var(--card) !important;
     border: 1px solid var(--line) !important;
     border-radius: var(--radius-lg) !important;
-    padding: 20px 22px 14px !important;
-    margin-bottom: 18px !important;
+    padding: 18px 20px 14px !important;
+    margin-bottom: 16px !important;
+    overflow: hidden !important;
 }
 [class*="st-key-cook_recipe_card_"] p,
 [class*="st-key-cook_recipe_card_"] li { font-size: 14px !important; line-height: 1.65 !important; }
 [class*="st-key-cook_recipe_card_"] h1,
 [class*="st-key-cook_recipe_card_"] h2,
 [class*="st-key-cook_recipe_card_"] h3 { margin-top: 0 !important; }
+[class*="st-key-cook_recipe_card_"] .stExpander {
+    border: none !important;
+    background: transparent !important;
+}
+[class*="st-key-cook_recipe_card_"] .stExpander summary,
+[class*="st-key-cook_recipe_card_"] .stExpander [data-testid="stExpanderToggleIcon"] {
+    color: var(--ink-2) !important;
+}
+[class*="st-key-cook_recipe_card_"] .stExpander summary:hover {
+    color: var(--ink) !important;
+}
 
 .card.combo {
     height: var(--result-card-height) !important;
@@ -2540,9 +2552,10 @@ def render_cook_tab(client):
 
                 with st.container(key=f"cook_recipe_card_{key_base}"):
                     status_suffix = " · Saved" if accepted else " · Passed" if rejected else ""
+                    why_clean = re.sub(r'\*+', '', recipe_why).strip()
                     st.markdown(f"**{html_module.escape(recipe_name)}**{status_suffix}")
-                    if recipe_why:
-                        st.markdown(f'<p style="color:var(--ink-2);font-size:13px;margin:2px 0 10px">{html_module.escape(recipe_why)}</p>', unsafe_allow_html=True)
+                    if why_clean:
+                        st.markdown(f'<p style="color:var(--ink-2);font-size:13px;margin:2px 0 10px">{html_module.escape(why_clean)}</p>', unsafe_allow_html=True)
                     with st.expander("Full recipe"):
                         st.markdown(recipe_block)
 
