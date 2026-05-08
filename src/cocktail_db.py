@@ -211,21 +211,25 @@ def find_matching_cocktails(bar_inventory: list[str], top_k: int = 8) -> list[di
     return scored[:top_k]
 
 
-def find_cocktails_by_name(query: str, top_k: int = 8) -> list[dict]:
-    cleaned_query = " ".join(str(query or "").split())
-    if not cleaned_query:
+def find_cocktails_by_name(search_terms: list[str] | str, top_k: int = 8) -> list[dict]:
+    if isinstance(search_terms, str):
+        raw_terms = [search_terms]
+    else:
+        raw_terms = list(search_terms or [])
+    cleaned_terms = []
+    seen_terms = set()
+    for term in raw_terms:
+        cleaned = " ".join(str(term or "").split())
+        key = cleaned.lower()
+        if cleaned and key not in seen_terms:
+            cleaned_terms.append(cleaned)
+            seen_terms.add(key)
+    if not cleaned_terms:
         return []
-
-    search_terms = [cleaned_query]
-    words = [
-        word for word in re.findall(r"[A-Za-z0-9']+", cleaned_query)
-        if len(word) > 2 and word.lower() not in _VAGUE_BAR_INPUTS
-    ]
-    search_terms.extend(words[:4])
 
     seen = set()
     scored = []
-    for term in search_terms:
+    for term in cleaned_terms:
         for raw in _search_by_name(term):
             cid = raw.get("idDrink", "")
             if not cid or cid in seen:

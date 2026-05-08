@@ -123,6 +123,59 @@ def recommend_recipe(craving: str, profile: dict, client: OpenAI | None = None, 
     return generate_cook_recommendations(client, craving, profile, previous_response=previous_response)
 
 
+def infer_cocktail_search_terms(client: OpenAI, vibe: str, bar_inventory: list[str]) -> list[str]:
+    fallback = ["margarita", "daiquiri", "negroni", "old fashioned", "martini", "mojito"]
+    vibe_text = " ".join(str(vibe or "").split())
+    bar_text = ", ".join(bar_inventory or [])
+    if not vibe_text:
+        return fallback
+
+    try:
+        response = client.chat.completions.create(
+            model=CHAT_MODEL,
+            temperature=0.1,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Infer CocktailDB cocktail name search targets from a user's mood/vibe. "
+                        "Return JSON only: an array of 4 to 8 classic or common cocktail names. "
+                        "Do not echo vague words from the user. Prefer likely CocktailDB names, e.g. "
+                        "Negroni, Old Fashioned, Margarita, Daiquiri, Martini, Mojito, Manhattan, "
+                        "Whiskey Sour, Tom Collins, Mai Tai, Cosmopolitan, Boulevardier, Rob Roy."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"Vibe/request: {vibe_text}\n"
+                        f"Available bar context: {bar_text or 'unspecified / flexible'}"
+                    ),
+                },
+            ],
+        )
+        raw = response.choices[0].message.content.strip()
+        raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.MULTILINE).strip()
+        parsed = json.loads(raw)
+        if isinstance(parsed, list):
+            terms = []
+            seen = set()
+            for item in parsed:
+                term = " ".join(str(item or "").split())
+                key = term.lower()
+                if term and key not in seen:
+                    terms.append(term)
+                    seen.add(key)
+                if len(terms) >= 8:
+                    break
+            if terms:
+                return terms
+    except Exception:
+        pass
+
+    return fallback
+
+
 def recommend_cocktail(vibe: str, profile: dict, previous_response: str | None = None) -> str:
     bar = profile.get("bar_inventory", [])
     if not bar:
@@ -139,7 +192,8 @@ def recommend_cocktail(vibe: str, profile: dict, previous_response: str | None =
     bar = normalize_bar_inventory(bar, client_inst)
     matched = [] if is_vague_bar_inventory(bar) else find_matching_cocktails(bar, top_k=12)
     if not matched:
-        matched = find_cocktails_by_name(vibe, top_k=12)
+        search_terms = infer_cocktail_search_terms(client_inst, vibe, bar)
+        matched = find_cocktails_by_name(search_terms, top_k=12)
     grounding_block = format_for_prompt(matched)
     has_grounding = bool(matched)
 
