@@ -242,7 +242,7 @@ a:hover { text-decoration: none; }
 /* ── Brand ── */
 .brand { display: flex; align-items: center; gap: 10px; margin-top: -30px; padding-bottom: 18px; }
 .brand-mark {
-    width: 8px; height: 8px; border-radius: 50%;
+    width: 13px; height: 13px; border-radius: 50%;
     background: #FFD8A8;
     box-shadow:
         0 0 0 3px rgba(201,106,58,0.10),
@@ -2036,12 +2036,12 @@ def render_card(r, tab="eat", blurb=""):
     save_key = f"card_save_{card_id}"
     undo_state = "accept" if accepted else "reject"
     undo_key = f"card_undo_{undo_state}_{card_id}"
-    card_col, action_col = st.columns([8, 1.05], gap="small")
+    card_col, action_col = st.columns([8, 1.05], gap=None)
     cuisines = [cats[0]] if cats else None
     with card_col:
         st.markdown(html_block, unsafe_allow_html=True)
     with action_col:
-        with st.container(height=280, border=False):
+        with st.container(key=rail_key, height=280, border=False, gap=None):
             if accepted:
                 st.button(
                     "Undo Save",
