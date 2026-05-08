@@ -740,22 +740,28 @@ div[class*="block-container"] {
 .btn-reject:hover { background: var(--terracotta); color: #fff; border-color: var(--terracotta); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(201,106,58,0.30); }
 .btn-accept .glyph, .btn-reject .glyph { font-family: var(--mono); font-size: 11px; font-weight: 600; }
 
-[class*="st-key-cook_pass"] button, [class*="st-key-drink_pass"] button {
+[class*="st-key-cook_pass"] button, [class*="st-key-drink_pass"] button,
+[class*="st-key-cook_option_pass_"] button, [class*="st-key-drink_option_pass_"] button {
     color: var(--terracotta-2) !important; border-color: rgba(201,106,58,0.4) !important;
     background: var(--card) !important; font-weight: 500 !important;
 }
-[class*="st-key-cook_pass"] button:hover, [class*="st-key-drink_pass"] button:hover {
+[class*="st-key-cook_pass"] button:hover, [class*="st-key-drink_pass"] button:hover,
+[class*="st-key-cook_option_pass_"] button:hover, [class*="st-key-drink_option_pass_"] button:hover {
     background: var(--terracotta) !important; color: #fff !important; border-color: var(--terracotta) !important;
 }
-[class*="st-key-cook_save"] button, [class*="st-key-drink_save"] button {
+[class*="st-key-cook_save"] button, [class*="st-key-drink_save"] button,
+[class*="st-key-cook_option_save_"] button, [class*="st-key-drink_option_save_"] button {
     color: var(--sage-2) !important; border-color: rgba(122,158,126,0.4) !important;
     background: var(--card) !important; font-weight: 500 !important;
 }
-[class*="st-key-cook_save"] button:hover, [class*="st-key-drink_save"] button:hover {
+[class*="st-key-cook_save"] button:hover, [class*="st-key-drink_save"] button:hover,
+[class*="st-key-cook_option_save_"] button:hover, [class*="st-key-drink_option_save_"] button:hover {
     background: var(--sage) !important; color: #fff !important; border-color: var(--sage) !important;
 }
 [class*="st-key-cook_remix_toggle"] button, [class*="st-key-drink_remix_toggle"] button,
-[class*="st-key-cook_undo_save"] button, [class*="st-key-drink_undo_save"] button {
+[class*="st-key-cook_undo_save"] button, [class*="st-key-drink_undo_save"] button,
+[class*="st-key-cook_option_undo_pass_"] button, [class*="st-key-drink_option_undo_pass_"] button,
+[class*="st-key-cook_option_undo_save_"] button, [class*="st-key-drink_option_undo_save_"] button {
     color: var(--ink-2) !important; border-color: var(--line-2) !important;
     background: var(--card) !important; font-weight: 500 !important;
 }
@@ -2460,7 +2466,7 @@ def render_cook_tab(client):
         render_skeletons(1)
         from src.recommend import recommend_recipe
         combined = st.session_state.cook_remix_pending
-        st.session_state.cook_response = recommend_recipe(combined, st.session_state.profile, client=client)
+        st.session_state.cook_response = recommend_recipe(combined, st.session_state.profile, client=client, previous_response=st.session_state.cook_response)
         st.session_state.cook_last_craving = combined
         st.session_state.cook_remix_pending = None
         st.rerun()
@@ -2606,7 +2612,7 @@ def render_cocktail_tab(client):
         render_skeletons(1)
         from src.recommend import recommend_cocktail
         combined = st.session_state.drink_remix_pending
-        st.session_state.cocktail_response = recommend_cocktail(combined, st.session_state.profile)
+        st.session_state.cocktail_response = recommend_cocktail(combined, st.session_state.profile, previous_response=st.session_state.cocktail_response)
         st.session_state.drink_last_vibe = combined
         st.session_state.drink_remix_pending = None
         st.rerun()

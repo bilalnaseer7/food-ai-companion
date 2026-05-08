@@ -64,6 +64,7 @@ def build_cook_context(
     craving: str,
     profile: dict,
     ingredients: list[str] | str | None = None,
+    previous_response: str | None = None,
 ) -> dict:
     profile = profile or {}
     available = parse_ingredient_text(
@@ -96,11 +97,13 @@ def build_cook_context(
             "No recipe dataset is available in this repository, so this mode is "
             "LLM + taste-profile generation, not recipe RAG."
         ),
+        "previous_response": previous_response or "",
     }
 
 
 def build_cook_prompt(context: dict) -> tuple[str, str]:
     meal_context = _meal_context_text(context["occasion"], context["meal_type"])
+    previous = str(context.get("previous_response") or "").strip()
 
     system_prompt = (
         "You are Food AI Companion's Cook at Home mode. "
@@ -110,6 +113,11 @@ def build_cook_prompt(context: dict) -> tuple[str, str]:
         "RAG grounding. Do not invent exact nutrition facts. Avoid disliked foods and "
         "dietary restrictions. If a recipe depends on missing ingredients, say so clearly "
         "and suggest reasonable substitutions with flavor reasoning."
+    )
+
+    previous_block = (
+        f"\nPrevious suggestion (modify this based on the remix instruction):\n{previous}\n"
+        if previous else ""
     )
 
     user_prompt = (
@@ -123,7 +131,8 @@ def build_cook_prompt(context: dict) -> tuple[str, str]:
         f"Budget: {context['budget']}\n"
         f"Time preference: {context['time_preference']}\n"
         f"Occasion/meal type: {meal_context}\n"
-        f"Grounding note: {context['grounding_note']}\n\n"
+        f"Grounding note: {context['grounding_note']}\n"
+        f"{previous_block}\n"
         "Return 2 to 3 recipe ideas. For each recipe, use this exact structure:\n"
         "RECIPE: <name>\n"
         "WHY IT FITS: <why it matches the craving and taste profile>\n"
@@ -154,8 +163,9 @@ def generate_cook_recommendations(
     craving: str,
     profile: dict,
     ingredients: list[str] | str | None = None,
+    previous_response: str | None = None,
 ) -> str:
-    context = build_cook_context(craving=craving, profile=profile, ingredients=ingredients)
+    context = build_cook_context(craving=craving, profile=profile, ingredients=ingredients, previous_response=previous_response)
 
     if not context["available_ingredients"]:
         return "Your pantry is empty. Add available ingredients in the Cook tab first."

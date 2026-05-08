@@ -156,11 +156,11 @@ def map_recommend(client: OpenAI, query: str, user_profile: dict, borough: str =
     answer = _chat(client, system_prompt, user_prompt)
     return answer, restaurants
 
-def recommend_recipe(craving: str, profile: dict, client: OpenAI | None = None) -> str:
-    return generate_cook_recommendations(client, craving, profile)
+def recommend_recipe(craving: str, profile: dict, client: OpenAI | None = None, previous_response: str | None = None) -> str:
+    return generate_cook_recommendations(client, craving, profile, previous_response=previous_response)
 
 
-def recommend_cocktail(vibe: str, profile: dict) -> str:
+def recommend_cocktail(vibe: str, profile: dict, previous_response: str | None = None) -> str:
     bar = profile.get("bar_inventory", [])
     if not bar:
         return "Your bar is empty. Add some spirits and mixers in the Cocktails tab."
@@ -170,9 +170,16 @@ def recommend_cocktail(vibe: str, profile: dict) -> str:
         "If a classic ingredient is missing, find a lateral substitute and explain the flavor logic briefly."
     )
 
+    previous = str(previous_response or "").strip()
+    previous_block = (
+        f"\nPrevious suggestion (modify this based on the remix instruction):\n{previous}\n"
+        if previous else ""
+    )
+
     user_prompt = (
         f"Vibe: {vibe}\n"
-        f"Available: {', '.join(bar)}\n\n"
+        f"Available: {', '.join(bar)}\n"
+        f"{previous_block}\n"
         "Create a drink with exact measurements, substitution rationale if needed, and an optional garnish."
     )
 
