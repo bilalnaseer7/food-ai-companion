@@ -1391,6 +1391,10 @@ def stable_widget_key(*parts):
     return hashlib.md5(raw.encode("utf-8")).hexdigest()[:10]
 
 
+def normalized_lookup_key(value):
+    return re.sub(r"[^a-z0-9]", "", str(value or "").lower())
+
+
 def donut_svg(eat, cook, drink, total):
     if total == 0:
         return '<svg class="donut" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="none" stroke="#F2EDE3" stroke-width="8"/><text x="32" y="36" text-anchor="middle" class="donut-text">0</text></svg>'
@@ -1896,9 +1900,9 @@ def render_generation_trace(kind, response_text, inventory, request_text):
     else:
         grounding = st.session_state.get("drink_grounding", []) or []
         generated_names = extract_generated_item_names(response_text, "drink", request_text)
-        generated_keys = {name.lower() for name in generated_names}
+        generated_keys = {normalized_lookup_key(name) for name in generated_names}
         grounded_match = next(
-            (item for item in grounding if str(item.get("name", "")).lower() in generated_keys),
+            (item for item in grounding if normalized_lookup_key(item.get("name", "")) in generated_keys),
             None,
         )
         if grounded_match:
@@ -3191,13 +3195,17 @@ def render_cocktail_tab(client):
                 st.markdown(st.session_state.cocktail_response)
         else:
             grounding = st.session_state.get("drink_grounding", [])
-            thumb_map = {c["name"].lower(): c["thumbnail"] for c in grounding if c.get("thumbnail")}
+            thumb_map = {
+                normalized_lookup_key(c.get("name", "")): c["thumbnail"]
+                for c in grounding
+                if c.get("thumbnail")
+            }
 
             for idx, (cocktail_name, cocktail_why, cocktail_block) in enumerate(_split_cocktail_recipes(st.session_state.cocktail_response)):
                 key_base = stable_widget_key("drink", cocktail_name, idx)
                 accepted = cocktail_name in st.session_state.profile.get("accepted", [])
                 rejected = cocktail_name in st.session_state.profile.get("rejected", [])
-                thumb_url = thumb_map.get(cocktail_name.lower(), "")
+                thumb_url = thumb_map.get(normalized_lookup_key(cocktail_name), "")
 
                 with st.container(key=f"drink_recipe_card_{key_base}"):
                     why_clean = re.sub(r'\*+', '', cocktail_why).strip()
