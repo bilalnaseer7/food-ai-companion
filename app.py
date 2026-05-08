@@ -1325,18 +1325,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     color: var(--ink-3);
     list-style-position: inside;
 }
-.trace-panel-body {
-    display: grid;
-    grid-template-rows: 0fr;
-    opacity: 0;
-    transition: grid-template-rows 0.6s ease, opacity 0.5s ease;
-}
-.trace-panel[open] .trace-panel-body {
-    grid-template-rows: 1fr;
-    opacity: 1;
-}
 .trace-panel-body dl {
-    overflow: hidden;
     display: grid;
     grid-template-columns: minmax(128px, 0.28fr) 1fr;
     gap: 7px 14px;
