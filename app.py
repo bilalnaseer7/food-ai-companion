@@ -781,8 +781,13 @@ div[class*="block-container"] {
     border: 1px solid var(--line) !important;
     border-radius: var(--radius-lg) !important;
     padding: 18px 20px 14px !important;
-    margin-bottom: 16px !important;
+    margin-bottom: 0 !important;
     overflow: hidden !important;
+}
+div:has(> [class*="st-key-cook_recipe_card_"]) {
+    gap: 16px !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
 }
 [class*="st-key-cook_recipe_card_"] p,
 [class*="st-key-cook_recipe_card_"] li { font-size: 14px !important; line-height: 1.65 !important; }
