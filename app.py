@@ -192,7 +192,7 @@ div[class*="block-container"] {
 a { color: inherit; text-decoration: none; }
 a:hover { text-decoration: none; }
 
-/* ── Sidebar (target Streamlit's sidebar to match design's 320px column) ── */
+/* ── Sidebar ── */
 [data-testid="stSidebar"] {
     background: var(--bg) !important;
     border-right: 1px solid var(--line) !important;
@@ -220,7 +220,7 @@ a:hover { text-decoration: none; }
     position: relative !important;
     transition: all 0.3s ease !important;
 }
-[data-testid="stSidebar"] > div { padding: 24px 15px !important; }
+[data-testid="stSidebar"] > div { padding: 24px 18px !important; }
 [data-testid="stSidebar"] * { color: var(--ink) !important; }
 
 /* ── Brand ── */
