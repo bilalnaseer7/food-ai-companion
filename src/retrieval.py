@@ -1,4 +1,5 @@
 import hashlib
+import re
 from pathlib import Path
 
 import numpy as np
@@ -16,8 +17,35 @@ CATEGORY_FOOD_HINTS = {
     "chinese": {"dim sum", "dumplings", "noodles", "fried rice", "peking duck", "hot pot"},
     "mexican": {"tacos", "burritos", "enchiladas", "guacamole", "quesadilla"},
     "indian": {"curry", "naan", "biryani", "tikka", "samosa", "dal"},
+    "pakistani": {"biryani", "karahi", "nihari", "haleem", "kebab", "kabob", "tikka", "naan"},
     "thai": {"pad thai", "curry", "spring rolls", "satay", "tom yum"},
     "american": {"burger", "fries", "steak", "bbq", "wings", "sandwich"},
+    "south asian": {"biryani", "karahi", "nihari", "haleem", "kebab", "kabob", "tikka", "naan", "curry", "samosa", "dal", "dosa"},
+    "halal": {"halal", "gyro", "kebab", "kabob", "chicken", "lamb", "rice", "falafel", "biryani"},
+}
+
+REQUEST_CUISINE_ALIASES = {
+    # Explicit query intent should beat the learned taste profile. Pakistani
+    # is sparse in the static dataset, so related South Asian / halal terms are
+    # allowed as static fallback, but unrelated cuisines such as Korean are not.
+    "pakistani": {
+        "pakistani", "pakistan", "desi", "indian", "halal", "biryani",
+        "karahi", "nihari", "haleem", "kebab", "kabob", "tikka", "naan",
+        "middle eastern",
+    },
+    "pakistan": {
+        "pakistani", "pakistan", "desi", "indian", "halal", "biryani",
+        "karahi", "nihari", "haleem", "kebab", "kabob", "tikka", "naan",
+        "middle eastern",
+    },
+    "indian": {"indian", "curry", "naan", "biryani", "tikka", "samosa", "dal", "dosa"},
+    "korean": {"korean", "korean bbq", "bulgogi", "bibimbap", "kimchi"},
+    "japanese": {"japanese", "sushi", "ramen", "omakase", "tempura"},
+    "sushi": {"japanese", "sushi", "sashimi", "omakase"},
+    "chinese": {"chinese", "dim sum", "dumplings", "fried rice", "hot pot"},
+    "mexican": {"mexican", "tacos", "burritos", "quesadilla"},
+    "italian": {"italian", "pizza", "pasta", "lasagna", "trattoria"},
+    "thai": {"thai", "pad thai", "tom yum", "satay"},
 }
 
 
@@ -37,6 +65,110 @@ def _contains_any(target_text: str, phrases: list[str]) -> bool:
     return False
 
 
+def _contains_phrase(target_text: str, phrase: str) -> bool:
+    phrase = str(phrase or "").strip().lower()
+    if not phrase:
+        return False
+    return re.search(rf"\b{re.escape(phrase)}\b", str(target_text or "").lower()) is not None
+
+
+def _contains_explicit_alias(target_text: str, phrases: list[str]) -> bool:
+    return any(_contains_phrase(target_text, phrase) for phrase in phrases)
+
+
+def _explicit_query_triggers(query: str) -> list[str]:
+    query_text = str(query or "").lower()
+    return [
+        trigger
+        for trigger in REQUEST_CUISINE_ALIASES
+        if _contains_phrase(query_text, trigger)
+    ]
+
+
+def _explicit_query_aliases(query: str) -> list[str]:
+    aliases: list[str] = []
+    for trigger in _explicit_query_triggers(query):
+        aliases.extend(sorted(REQUEST_CUISINE_ALIASES[trigger]))
+    return list(dict.fromkeys(aliases))
+
+
+def _explicit_match_strength(
+    query: str,
+    title: str,
+    category: str,
+    review_text: str,
+    popular_food: str,
+) -> int:
+    """
+    Return 0/1/2/3 for explicit cuisine intent alignment.
+
+    3 = strong evidence in restaurant name or exact requested category.
+    2 = supporting evidence in review snippets or popular-food text.
+    1 = acceptable static fallback category for sparse cuisines such as Pakistani.
+    0 = no support; should not be shown for explicit cuisine queries.
+    """
+    triggers = _explicit_query_triggers(query)
+    aliases = _explicit_query_aliases(query)
+    if not triggers:
+        return 0
+
+    evidence_text = " ".join([title, review_text, popular_food])
+    if _contains_explicit_alias(title, aliases):
+        return 3
+    if _contains_explicit_alias(category, triggers):
+        return 3
+
+    if any(trigger in {"pakistani", "pakistan"} for trigger in triggers):
+        if _contains_explicit_alias(category, ["pakistani", "halal"]):
+            return 3
+        if _contains_explicit_alias(title, ["indian", "halal", "desi", "biryani", "kebab", "kabob"]):
+            return 3
+        if _contains_explicit_alias(" ".join([review_text, popular_food]), aliases):
+            return 2
+        if _contains_explicit_alias(category, ["indian", "middle eastern"]):
+            return 1
+
+    if _contains_explicit_alias(category, aliases):
+        return 3
+    if _contains_explicit_alias(evidence_text, aliases):
+        return 2
+
+    return 0
+
+
+def _explicit_category_override(
+    query: str,
+    title: str,
+    category: str,
+    review_text: str,
+    popular_food: str,
+) -> str:
+    triggers = _explicit_query_triggers(query)
+    if not triggers:
+        return ""
+
+    evidence_text = " ".join([title, category, review_text, popular_food])
+
+    if any(trigger in {"pakistani", "pakistan"} for trigger in triggers):
+        if _contains_explicit_alias(evidence_text, ["pakistani", "pakistan"]):
+            return "Pakistani, South Asian"
+        if _contains_explicit_alias(evidence_text, ["halal"]):
+            return "Halal, South Asian"
+        if _contains_explicit_alias(
+            evidence_text,
+            ["indian", "biryani", "karahi", "tikka", "naan", "samosa", "dal", "dosa", "curry"],
+        ):
+            return "Indian, South Asian"
+        if _contains_explicit_alias(category, ["middle eastern"]):
+            return "Middle Eastern, South Asian"
+
+    if any(trigger == "indian" for trigger in triggers):
+        if _contains_explicit_alias(evidence_text, ["indian", "biryani", "tikka", "naan", "samosa", "dal", "dosa", "curry"]):
+            return "Indian"
+
+    return ""
+
+
 def _food_matches_category(food: str, category: str) -> bool:
     food = food.lower()
     category = category.lower()
@@ -47,6 +179,85 @@ def _food_matches_category(food: str, category: str) -> bool:
             if food in hints:
                 return True
     return matched_hint_groups == 0
+
+
+def find_static_cuisine_matches(query: str, df, top_k: int = 5) -> list[dict]:
+    """
+    Lightweight exact/fallback matcher for explicit cuisine requests.
+
+    The Streamlit demo keeps the embedding index intentionally small for speed,
+    so sparse cuisines can exist later in the raw CSV without appearing in the
+    RAG cache. This matcher lets an explicit query like "Pakistani" use those
+    local rows without rebuilding embeddings or inventing live results.
+    """
+    explicit_aliases = _explicit_query_aliases(query)
+    if not explicit_aliases or df is None or len(df) == 0:
+        return []
+
+    scored_rows: list[tuple[float, int, dict]] = []
+    triggers = _explicit_query_triggers(query)
+    exact_terms = list(triggers)
+    if any(trigger in {"pakistani", "pakistan"} for trigger in triggers):
+        exact_terms.extend(["pakistani", "pakistan"])
+    exact_terms = list(dict.fromkeys(exact_terms))
+
+    for idx, row_obj in enumerate(df.to_dict("records")):
+        title = str(row_obj.get("title", "") or "").lower()
+        category = str(row_obj.get("category", "") or "").lower()
+        review_text = str(row_obj.get("review_text", row_obj.get("review_snippets", "")) or "").lower()
+        popular_food = str(row_obj.get("popular_food", "") or "").lower()
+        strength = _explicit_match_strength(query, title, category, review_text, popular_food)
+        if strength == 0:
+            continue
+
+        row = dict(row_obj)
+        category_override = _explicit_category_override(query, title, category, review_text, popular_food)
+        if category_override:
+            row["category"] = category_override
+            category = category_override.lower()
+
+        if row.get("popular_food") and not _food_matches_category(str(row["popular_food"]), category):
+            row["popular_food"] = ""
+
+        original_evidence = " ".join([title, str(row_obj.get("category", "") or "").lower()])
+        exact_requested_signal = any(_contains_phrase(original_evidence, term) for term in exact_terms)
+        source_kind = "static_exact_cuisine" if exact_requested_signal else "static_sparse_cuisine_fallback"
+        row["match_source"] = source_kind
+        row["match_note"] = (
+            "Exact local cuisine/category signal from the full restaurant CSV."
+            if source_kind == "static_exact_cuisine"
+            else "Closest local cuisine fallback because exact matches are sparse in the static CSV."
+        )
+
+        try:
+            review_count = int(row.get("num_reviews", 0) or 0)
+        except (TypeError, ValueError):
+            review_count = 0
+        try:
+            quality_score = float(row.get("quality_score", 0.0) or 0.0)
+        except (TypeError, ValueError):
+            quality_score = 0.0
+
+        score = (strength * 1000.0) + (500.0 if exact_requested_signal else 0.0)
+        score += min(review_count, 5000) / 10.0
+        score += quality_score * 10.0
+        row["retrieval_score"] = round(score / 1000.0, 4)
+        scored_rows.append((score, idx, row))
+
+    scored_rows.sort(key=lambda item: (-item[0], item[1]))
+
+    results: list[dict] = []
+    seen_titles: set[str] = set()
+    for _, _, row in scored_rows:
+        title_key = str(row.get("title", "")).strip().lower()
+        if not title_key or title_key in seen_titles:
+            continue
+        results.append(row)
+        seen_titles.add(title_key)
+        if len(results) >= top_k:
+            break
+
+    return results
 
 
 def _has_strong_preference_mismatch(row_text: str, preferred_cuisines: list[str]) -> bool:
@@ -78,16 +289,19 @@ def _build_retrieval_query(query: str, user_profile: dict) -> str:
     cuisine_scores: dict = user_profile.get("cuisine_scores", {})
     food_scores: dict = user_profile.get("food_scores", {})
 
+    explicit_aliases = _explicit_query_aliases(query)
+
     # Build a weighted cuisine string: repeat high-scoring cuisines so the
     # embedding space naturally pulls toward them.
     weighted_cuisines: list[str] = []
-    for cuisine, score in sorted(cuisine_scores.items(), key=lambda x: -x[1]):
-        if score > 0.0:
-            repeats = 3 if score >= 0.6 else (2 if score >= 0.3 else 1)
-            weighted_cuisines.extend([cuisine] * repeats)
+    if not explicit_aliases:
+        for cuisine, score in sorted(cuisine_scores.items(), key=lambda x: -x[1]):
+            if score > 0.0:
+                repeats = 3 if score >= 0.6 else (2 if score >= 0.3 else 1)
+                weighted_cuisines.extend([cuisine] * repeats)
 
     # Fall back to the static preferred_cuisines list when scores are empty.
-    if not weighted_cuisines:
+    if not weighted_cuisines and not explicit_aliases:
         weighted_cuisines = list(user_profile.get("preferred_cuisines", []))
 
     # Include foods with a positive score even below the liked_foods threshold.
@@ -105,6 +319,11 @@ def _build_retrieval_query(query: str, user_profile: dict) -> str:
     online_order = user_profile.get("online_order", "")
 
     parts = [f"User query: {query}."]
+    if explicit_aliases:
+        parts.append(
+            "Current request cuisine intent must be prioritized over saved taste profile: "
+            f"{', '.join(explicit_aliases)}."
+        )
     if weighted_cuisines:
         parts.append(f"Cuisine preferences (weighted by strength): {', '.join(weighted_cuisines)}.")
     if all_liked:
@@ -217,6 +436,7 @@ def retrieve_restaurants(
     preferred_cuisines = [x.lower() for x in user_profile.get("preferred_cuisines", [])]
     liked_foods = [x.lower() for x in user_profile.get("liked_foods", [])]
     disliked_foods = [x.lower() for x in user_profile.get("disliked_foods", [])]
+    explicit_aliases = _explicit_query_aliases(query)
     online_pref = str(user_profile.get("online_order", "")).strip().lower()
     budget_pref = str(user_profile.get("budget", "")).strip().lower()
 
@@ -232,11 +452,22 @@ def retrieve_restaurants(
         title = str(row["title"]).lower()
         row_text = " ".join([title, category, review_text, popular_food])
         quality_score = float(row.get("quality_score", 1.0))
+        explicit_strength = _explicit_match_strength(query, title, category, review_text, popular_food)
+
+        if explicit_aliases:
+            if explicit_strength == 3:
+                score += 0.75
+            elif explicit_strength == 2:
+                score += 0.25
+            elif explicit_strength == 1:
+                score += 0.08
+            else:
+                score -= 0.85
 
         # ── static heuristic adjustments (unchanged from original) ──
-        if preferred_cuisines and _contains_any(category, preferred_cuisines):
+        if not explicit_aliases and preferred_cuisines and _contains_any(category, preferred_cuisines):
             score += 0.15
-        elif _has_strong_preference_mismatch(row_text, preferred_cuisines):
+        elif not explicit_aliases and _has_strong_preference_mismatch(row_text, preferred_cuisines):
             score -= 0.25
 
         if liked_foods and _contains_any(f"{popular_food} {review_text}", liked_foods):
@@ -267,7 +498,8 @@ def retrieve_restaurants(
         score += min(row["num_reviews"] / 10000.0, 0.05)
 
         # ── NEW: learned profile score adjustment ──
-        score += _profile_score_adjustment(row_text, category, popular_food, user_profile)
+        if not explicit_aliases:
+            score += _profile_score_adjustment(row_text, category, popular_food, user_profile)
 
         scored.append((score, idx))
 
@@ -298,10 +530,40 @@ def retrieve_restaurants(
 
             if title in seen_titles:
                 continue
-            if _has_strong_preference_mismatch(row_text, preferred_cuisines):
+            explicit_strength = _explicit_match_strength(
+                query,
+                str(row["title"]).lower(),
+                category,
+                str(row["review_text"]).lower(),
+                str(row["popular_food"]).lower(),
+            )
+
+            if explicit_aliases and explicit_strength == 0:
                 continue
-            if strict and liked_foods and not _contains_any(row_text, liked_foods) and not _contains_any(category, preferred_cuisines):
+            if not explicit_aliases and _has_strong_preference_mismatch(row_text, preferred_cuisines):
                 continue
+            if (
+                strict
+                and not explicit_aliases
+                and liked_foods
+                and not _contains_any(row_text, liked_foods)
+                and not _contains_any(category, preferred_cuisines)
+            ):
+                continue
+
+            if explicit_aliases:
+                category_override = _explicit_category_override(
+                    query,
+                    str(row["title"]).lower(),
+                    category,
+                    str(row["review_text"]).lower(),
+                    str(row["popular_food"]).lower(),
+                )
+                if category_override:
+                    row["category"] = category_override
+                    category = category_override.lower()
+                if row.get("popular_food") and not _food_matches_category(str(row["popular_food"]), category):
+                    row["popular_food"] = ""
 
             row["retrieval_score"] = round(score, 4)
             results.append(row)
@@ -319,6 +581,9 @@ def retrieve_restaurants(
         results = _collect(scored, strict=False)
 
     # Last-resort fallback: drop cuisine filter too, return top scored rows.
+    if not results and explicit_aliases:
+        return []
+
     if not results:
         seen: set[str] = set()
         for score, idx in scored:

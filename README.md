@@ -24,10 +24,15 @@ All three modes share a persistent taste profile that captures preferences such 
 
 ## Milestone 3 Bilal Update
 
-- Added a modular Cook at Home backend in `src/cook_mode.py` that turns pantry ingredients, cuisine preferences, disliked foods/restrictions, budget, and occasion context into transparent LLM-generated recipe ideas. This mode is clearly framed as LLM + taste-profile generation because no recipe dataset is currently present in the repository.
-- Added a Cook at Home demo/evaluation harness in `scripts/run_cook_mode_demo.py`. By default it writes a no-API prompt preview to `results/cook_mode_demo_preview.md`; with `--generate`, it uses the local OpenAI key to produce real demo outputs.
-- Added a lightweight personalization vs. filter-bubble analysis in `src/filter_bubble.py` and `scripts/run_filter_bubble_analysis.py`. The analysis computes overlap, novelty, category diversity, entropy, and a bounded filter-bubble index from local restaurant metadata without inventing human scores.
-- Added a Milestone 3 evaluation harness in `src/evaluation.py` and `scripts/run_milestone3_evaluation.py`. It creates deterministic system-side metrics plus a human-scoring template for baseline, taste-profile, and RAG-style recommendation comparisons.
+- Added a modular Cook at Home backend in `src/cook_mode.py` that uses pantry ingredients, cuisine preferences, disliked foods/restrictions, budget, time, and occasion context to generate transparent recipe ideas. Because no recipe dataset is present, this mode is framed as LLM + taste-profile generation rather than recipe RAG.
+- Connected Cook at Home into the shared recommendation/app flow through `src/recommend.py` and `app.py`, including pantry persistence, recipe remixing, and per-recipe save/pass feedback behavior for multi-recipe outputs.
+- Added Cook Mode demo artifacts through `scripts/run_cook_mode_demo.py`, producing `results/cook_mode_demo_preview.md` and optional generated outputs for the final demo/report.
+- Added a personalization vs. filter-bubble analysis in `src/filter_bubble.py` and `scripts/run_filter_bubble_analysis.py`, with overlap, novelty, diversity, entropy, alignment, and filter-bubble metrics.
+- Added a Milestone 3 evaluation harness in `src/evaluation.py` and `scripts/run_milestone3_evaluation.py`, producing deterministic system-side metrics plus a blank human-scoring template so no evaluation scores are fabricated.
+- Added a Reddit/PRAW grounding artifact with Hoerim's validation support in `src/reddit_grounding.py` and `scripts/run_reddit_grounding_analysis.py`, producing report-ready community-signal outputs without changing the working Streamlit app.
+- Added compact recommendation trace/explainability panels in `app.py` that show each result's source and grounding path, evidence used, taste-profile match, inventory or pantry match, live-photo/hour availability, and data limitations for final-demo transparency.
+- Added an explicit-cuisine guard for Eat Out fallback search so current requests such as Pakistani/South Asian food are prioritized over stale taste-profile preferences when live Google Places results are unavailable.
+- Polished the Streamlit app integration for final demo stability, including Cook/Cocktail tab persistence after remix/save/pass actions and a clear fallback warning when Google Places photos are unavailable without `GOOGLE_PLACES_API_KEY`.
 
 ## Milestone 3 Hoerim Update
 - Improved `src/retrieval.py` to incorporate learned `cuisine_scores` from the taste profile into the embedding query and reranking stage, so retrieval results become more personalized as users provide accept/reject feedback.
@@ -36,6 +41,7 @@ All three modes share a persistent taste profile that captures preferences such 
 - Fixed a bug in `src/filter_bubble.py` where `filter_bubble_index` returned a misleading non-zero score for first-time users with no history. The function now correctly returns 0.0 when no prior session exists.
 - Added `weighted_profile_alignment` to `src/filter_bubble.py`, a continuous alignment metric using learned `cuisine_scores` and `food_scores` that improves as the user gives feedback, complementing the existing binary alignment ratio.
 - Extended `diversity_rerank` in `src/filter_bubble.py` to accept an optional `profile` argument, giving a small tiebreaking bonus to cuisine-preferred restaurants during diversity reranking.
+- Helped validate and debug the Milestone 3 personalization/evaluation logic around retrieval fallback behavior, profile-weighted alignment, filter-bubble measurement, and the Reddit/PRAW grounding artifact added with Bilal.
 
 ## Current Milestone 2 Scope
 
@@ -52,13 +58,14 @@ What is implemented:
 - LLM-powered restaurant selection and blurb generation from live results
 - A persistent taste profile stored as JSON, updated from user accept/reject feedback
 - A Streamlit UI covering Eat Out, Cook at Home, and Cocktail modes
+- A supplemental Reddit/PRAW grounding artifact for community-discussion signal analysis
 - Saved evaluation outputs for multiple sample queries
 
 What is not yet implemented:
 
-- Reddit/PRAW grounding pipeline
 - LangGraph orchestration across all modes
 - Recipe dataset grounding for Cook at Home
+- Full live Reddit-to-RAG integration inside the Streamlit app
 
 ## Recent Improvements
 
@@ -83,6 +90,7 @@ food-ai-companion-main/
 ├── scripts/
 │   ├── run_milestone3_evaluation.py
 │   ├── run_filter_bubble_analysis.py
+│   ├── run_reddit_grounding_analysis.py
 │   └── run_cook_mode_demo.py
 ├── data/
 │   ├── restaurants.csv
@@ -93,6 +101,7 @@ food-ai-companion-main/
 │   ├── data_loader.py
 │   ├── cook_mode.py
 │   ├── evaluation.py
+│   ├── reddit_grounding.py
 │   ├── recommend.py
 │   ├── retrieval.py
 │   ├── places.py
@@ -120,7 +129,12 @@ Create a local `.env` file in the project root:
 ```bash
 OPENAI_API_KEY=your_openai_key_here
 GOOGLE_PLACES_API_KEY=your_google_places_key_here
+REDDIT_CLIENT_ID=your_reddit_client_id_here
+REDDIT_CLIENT_SECRET=your_reddit_client_secret_here
+REDDIT_USER_AGENT=food-ai-companion-milestone3 by u/your_username
 ```
+
+The Reddit keys are only needed for the optional Reddit grounding artifact. The app and other evaluation scripts still run without them.
 
 ## How to Run
 
@@ -175,6 +189,18 @@ This creates:
 - `results/milestone3_evaluation_summary.md`
 
 The metrics are deterministic system-side checks over local restaurant metadata. The human-evaluation template is intentionally blank so the team can score actual generated outputs from `main.py` or the Streamlit demo without fabricating evaluator scores.
+
+### Reddit grounding artifact
+```bash
+python3 scripts/run_reddit_grounding_analysis.py
+```
+
+This creates:
+
+- `results/reddit_grounding_posts.csv`
+- `results/reddit_grounding_summary.md`
+
+If Reddit credentials are not configured, the script still writes a setup/preview summary and an empty CSV with headers. It does not fabricate Reddit posts or scores. With valid Reddit credentials, it collects public Reddit discussion signals, matches restaurant names against the local dataset, and summarizes cuisine/restaurant mention patterns for the Milestone 3 report.
 
 ## Pipeline Overview
 
@@ -243,7 +269,7 @@ The Milestone 2 pipeline evaluates multiple sample queries across four settings 
 ## Future Work
 
 - improve evaluation with clearer relevance, diversity, and consistency metrics
-- add grounding from Reddit food discussions via PRAW
+- connect the Reddit grounding artifact into the live RAG/ranking layer after more validation
 - extend the taste profile into a richer memory component with longer-term learning
 - connect all modes into one shared LangGraph orchestration workflow
 
