@@ -791,13 +791,17 @@ div[class*="block-container"] {
 [class*="st-key-cook_recipe_card_"] h3 { margin-top: 0 !important; }
 [class*="st-key-cook_recipe_card_"] .stExpander,
 [class*="st-key-cook_recipe_card_"] .stExpander details,
-[class*="st-key-cook_recipe_card_"] .stExpander [data-testid="stExpanderDetails"] {
+[class*="st-key-cook_recipe_card_"] .stExpander [data-testid="stExpanderDetails"],
+[class*="st-key-cook_recipe_card_"] .stExpander summary,
+[class*="st-key-cook_recipe_card_"] .stExpander details > summary,
+[class*="st-key-cook_recipe_card_"] .stExpander [data-testid="stExpanderToggleIcon"] {
     border: none !important;
     background: transparent !important;
-}
-[class*="st-key-cook_recipe_card_"] .stExpander summary,
-[class*="st-key-cook_recipe_card_"] .stExpander [data-testid="stExpanderToggleIcon"] {
     color: var(--ink-2) !important;
+}
+[class*="st-key-cook_recipe_card_"] .stExpander summary:hover {
+    background: transparent !important;
+    color: var(--ink) !important;
 }
 [class*="st-key-cook_recipe_card_"] .stExpander summary:hover {
     color: var(--ink) !important;
