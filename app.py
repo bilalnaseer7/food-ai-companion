@@ -236,13 +236,13 @@ a:hover { text-decoration: none; }
     position: relative !important;
     transition: all 0.3s ease !important;
 }
-[data-testid="stSidebar"] > div { padding: 24px 18px !important; }
+[data-testid="stSidebar"] > div { padding: 24px 20px !important; }
 [data-testid="stSidebar"] * { color: var(--ink) !important; }
 
 /* ── Brand ── */
-.brand { display: flex; align-items: center; gap: 15px; margin-top: -30px; padding-bottom: 18px; }
+.brand { display: flex; align-items: center; gap: 10px; margin-top: -30px; padding-bottom: 18px; }
 .brand-mark {
-    width: 13px; height: 13px; border-radius: 50%;
+    width: 13px; height: 13px; border-radius: 50%; margin-left: 5px;
     background: #FFD8A8;
     box-shadow:
         0 0 0 3px rgba(201,106,58,0.10),
