@@ -2,7 +2,9 @@ import os
 import math
 import hashlib
 import html as html_module
+import inspect
 import json
+import re
 from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
@@ -13,6 +15,7 @@ from openai import OpenAI
 
 from src.data_loader import load_reviews
 from src.recommend import rag_recommend, map_recommend
+from src.retrieval import find_static_cuisine_matches
 from src.taste_profile import load_profile, save_profile, update_profile
 from src.places import PRICE_LABEL
 
@@ -100,6 +103,19 @@ def get_client():
 @st.cache_data
 def get_df():
     return load_reviews(path="data/restaurants.csv", max_rows=3000)
+
+
+@st.cache_data
+def get_full_restaurant_df():
+    return load_reviews(path="data/restaurants.csv", max_rows=None)
+
+
+def compatible_form(*, key: str, border: bool = False, enter_to_submit: bool = True):
+    """Use Enter-to-submit when the installed Streamlit version supports it."""
+    kwargs = {"key": key, "border": border}
+    if "enter_to_submit" in inspect.signature(st.form).parameters:
+        kwargs["enter_to_submit"] = enter_to_submit
+    return st.form(**kwargs)
 
 
 st.markdown("""
@@ -914,6 +930,44 @@ div[class*="block-container"] {
 .card-feedback-done.acc { color: var(--sage-2); }
 .card-feedback-done.rej { color: var(--terracotta); }
 
+/* ── Recommendation trace ── */
+.trace-panel {
+    margin: -8px 0 18px;
+    padding: 10px 14px 12px;
+    border: 1px dashed var(--line-2);
+    border-radius: var(--radius);
+    background: rgba(255,255,255,0.50);
+    color: var(--ink-2);
+}
+.trace-panel summary {
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    list-style-position: inside;
+}
+.trace-panel dl {
+    display: grid;
+    grid-template-columns: minmax(128px, 0.28fr) 1fr;
+    gap: 7px 14px;
+    margin: 12px 0 0;
+}
+.trace-panel dt {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+}
+.trace-panel dd {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--ink-2);
+}
+
 /* ── Empty state ── */
 .empty {
     background: var(--card); border: 1px dashed var(--line-2);
@@ -1047,6 +1101,313 @@ def match_indicator(inventory, response_text):
     elif matched > 0:
         return f"{matched} of {total} items on hand", "warn"
     return None, None
+
+
+def _clean_trace_list(values, limit=5):
+    cleaned = []
+    seen = set()
+    for value in values or []:
+        text = " ".join(str(value or "").strip().split())
+        key = text.lower()
+        if text and key not in seen:
+            cleaned.append(text)
+            seen.add(key)
+        if len(cleaned) >= limit:
+            break
+    return cleaned
+
+
+def _trace_join(values, empty="none"):
+    values = _clean_trace_list(values)
+    return ", ".join(values) if values else empty
+
+
+def _clip_trace(value, limit=180):
+    text = " ".join(str(value or "").strip().split())
+    if len(text) <= limit:
+        return text
+    return text[: max(0, limit - 3)].rstrip() + "..."
+
+
+def _strip_trace_markdown(value, blank_if_none=False):
+    text = re.sub(r"[*_`]+", "", str(value or ""))
+    text = re.sub(r"^\s*[:\-–]+\s*", "", text)
+    text = " ".join(text.split())
+    if blank_if_none and text.lower() in {"none", "n/a", "na", "not applicable", "no"}:
+        return ""
+    return text
+
+
+def _profile_trace_matches(text):
+    profile = st.session_state.get("profile", {})
+    text_lower = str(text or "").lower()
+    preferred = _clean_trace_list(profile.get("preferred_cuisines", []), limit=8)
+    liked = _clean_trace_list(profile.get("liked_foods", []), limit=8)
+    disliked = _clean_trace_list(profile.get("disliked_foods", []), limit=8)
+
+    matched = []
+    for item in preferred + liked:
+        if item.lower() in text_lower:
+            matched.append(item)
+    conflicts = [item for item in disliked if item.lower() in text_lower]
+    return _clean_trace_list(matched, limit=6), _clean_trace_list(conflicts, limit=4)
+
+
+def _response_field_values(response_text, label):
+    pattern = rf"^\s*(?:[-*]\s*)?\*{{0,2}}{re.escape(label)}\*{{0,2}}\s*:\s*(.+)$"
+    values = re.findall(pattern, response_text or "", flags=re.IGNORECASE | re.MULTILINE)
+    cleaned = [_strip_trace_markdown(value, blank_if_none=True) for value in values]
+    return [_clip_trace(value, limit=140) for value in cleaned if value]
+
+
+def _fallback_generated_name(request_text, suffix):
+    base = _strip_trace_markdown(request_text)
+    base = re.sub(r"\b(make|give me|i want|suggest|recommend|recipe|cocktail|drink)\b", "", base, flags=re.IGNORECASE)
+    base = re.sub(r"[^a-zA-Z0-9 &,'-]+", " ", base)
+    base = " ".join(base.split()).strip(" ,-")
+    if not base:
+        return f"Generated {suffix}"
+    base = base[:52].strip(" ,-")
+    if suffix.lower() not in base.lower():
+        base = f"{base} {suffix}"
+    return base[:64].strip()
+
+
+def _clean_generated_name(value):
+    text = _strip_trace_markdown(value)
+    text = re.split(
+        r"\s+(?:WHY IT FITS|USES FROM PANTRY|MISSING OR SUBSTITUTE INGREDIENTS|QUICK STEPS|CAUTION|INGREDIENTS|METHOD|FLAVOR LOGIC)\b",
+        text,
+        maxsplit=1,
+        flags=re.IGNORECASE,
+    )[0]
+    return text.strip(" .:-")[:64]
+
+
+def extract_generated_item_name(response_text, kind, request_text=""):
+    labels = ["RECIPE"] if kind == "cook" else ["COCKTAIL", "COCKTAIL NAME", "DRINK", "DRINK NAME"]
+    for label in labels:
+        values = _response_field_values(response_text, label)
+        if values:
+            return _clean_generated_name(values[0])
+
+    heading_match = re.search(r"^#{1,3}\s+(.+)$", response_text or "", re.MULTILINE)
+    if heading_match:
+        return _clean_generated_name(heading_match.group(1))
+
+    bold_match = re.search(r"^\s*\*\*(?:Cocktail Name|Recipe|Drink):?\*\*\s*(.+)$", response_text or "", re.IGNORECASE | re.MULTILINE)
+    if bold_match:
+        return _clean_generated_name(bold_match.group(1))
+
+    suffix = "recipe" if kind == "cook" else "drink"
+    return _fallback_generated_name(request_text, suffix)
+
+
+def extract_generated_item_names(response_text, kind, request_text=""):
+    text = response_text or ""
+    if kind == "cook":
+        labels = ["RECIPE"]
+    else:
+        labels = ["COCKTAIL", "COCKTAIL NAME", "DRINK", "DRINK NAME"]
+
+    names = []
+    for label in labels:
+        pattern = (
+            rf"^\s*(?:\d+[.)]\s*)?(?:[-*]\s*)?\*{{0,2}}{re.escape(label)}\*{{0,2}}\s*:\s*"
+            rf"(.+?)(?=\s+\*{{0,2}}(?:WHY IT FITS|USES FROM PANTRY|MISSING OR SUBSTITUTE INGREDIENTS|"
+            rf"QUICK STEPS|CAUTION|INGREDIENTS|METHOD|FLAVOR LOGIC)\*{{0,2}}\s*:|$)"
+        )
+        names.extend(re.findall(pattern, text, flags=re.IGNORECASE | re.MULTILINE))
+
+    if not names:
+        names.extend(re.findall(r"^#{1,3}\s+(.+)$", text, flags=re.MULTILINE))
+
+    cleaned = []
+    seen = set()
+    for name in names:
+        value = _clean_generated_name(name)
+        key = value.lower()
+        if value and key not in seen:
+            cleaned.append(value)
+            seen.add(key)
+
+    if not cleaned:
+        cleaned = [extract_generated_item_name(text, kind, request_text)]
+    return cleaned[:5]
+
+
+def render_generated_option_feedback(kind, option_names):
+    tab = "cook" if kind == "cook" else "drink"
+    noun = "recipe" if kind == "cook" else "drink"
+    names = _clean_trace_list(option_names, limit=5)
+    if not names:
+        return
+
+    if len(names) > 1:
+        st.markdown(
+            f'<div class="field-label" style="margin-top:14px">Save a specific {noun}</div>',
+            unsafe_allow_html=True,
+        )
+
+    for idx, name in enumerate(names, start=1):
+        accepted = name in st.session_state.profile.get("accepted", [])
+        rejected = name in st.session_state.profile.get("rejected", [])
+        key_base = stable_widget_key(tab, name, idx)
+
+        label_col, pass_col, save_col = st.columns([3.4, 1, 1])
+        with label_col:
+            status = "Saved" if accepted else "Passed" if rejected else ""
+            status_html = f' <span style="color:#9A968D">· {html_module.escape(status)}</span>' if status else ""
+            st.markdown(f"**{idx}. {html_module.escape(name)}**{status_html}", unsafe_allow_html=True)
+        with pass_col:
+            if accepted:
+                st.write("")
+            elif rejected:
+                if st.button("Undo Pass", key=f"{tab}_option_undo_pass_{key_base}", use_container_width=True):
+                    st.session_state.active_tab = tab
+                    undo_card_feedback(name, False, tab=tab)
+                    st.rerun()
+            else:
+                if st.button("Pass", key=f"{tab}_option_pass_{key_base}", use_container_width=True):
+                    st.session_state.active_tab = tab
+                    apply_card_feedback(name, False, tab=tab)
+                    st.rerun()
+        with save_col:
+            if accepted:
+                if st.button("Undo Save", key=f"{tab}_option_undo_save_{key_base}", use_container_width=True):
+                    st.session_state.active_tab = tab
+                    undo_card_feedback(name, True, tab=tab)
+                    st.rerun()
+            elif rejected:
+                st.write("")
+            else:
+                if st.button("Save", key=f"{tab}_option_save_{key_base}", use_container_width=True):
+                    st.session_state.active_tab = tab
+                    apply_card_feedback(name, True, tab=tab)
+                    st.rerun()
+
+
+def render_trace_panel(rows, title="Why this recommendation?"):
+    visible = []
+    for label, value in rows:
+        if isinstance(value, (list, tuple, set)):
+            value = _trace_join(value)
+        value = _clip_trace(value, limit=260)
+        if value:
+            visible.append((label, value))
+    if not visible:
+        return
+
+    body = "".join(
+        f"<dt>{html_module.escape(label)}</dt><dd>{html_module.escape(value)}</dd>"
+        for label, value in visible
+    )
+    st.markdown(
+        f'<details class="trace-panel">'
+        f'<summary>{html_module.escape(title)}</summary>'
+        f'<dl>{body}</dl>'
+        f'</details>',
+        unsafe_allow_html=True,
+    )
+
+
+def _restaurant_source_label(row):
+    if row.get("match_source") == "static_exact_cuisine":
+        return "Static restaurant dataset exact cuisine match"
+    if row.get("match_source") == "static_sparse_cuisine_fallback":
+        return "Static restaurant dataset closest cuisine fallback"
+    if row.get("source") == "static_rag" or row.get("retrieval_score") is not None:
+        return "Static restaurant dataset + embedding retrieval/RAG fallback"
+    if row.get("fsq_id") or row.get("photo_url") or row.get("address"):
+        return "Live Google Places result ranked with LLM + taste profile context"
+    return "Recommendation result from the current app pipeline"
+
+
+def render_restaurant_trace(row, blurb=""):
+    categories = row.get("categories", []) or ([row.get("category")] if row.get("category") else [])
+    evidence_parts = []
+    if categories:
+        evidence_parts.append(f"category: {_trace_join(categories[:2])}")
+    if row.get("rating"):
+        reviews = row.get("total_tips", 0)
+        evidence_parts.append(f"rating: {row.get('rating')}" + (f" from {reviews} reviews" if reviews else ""))
+    if row.get("photo_url"):
+        evidence_parts.append("live photo available")
+    if row.get("open_now") is not None:
+        evidence_parts.append("live hours available")
+    if row.get("retrieval_score") is not None:
+        evidence_parts.append(f"retrieval score: {row.get('retrieval_score')}")
+    if row.get("popular_food"):
+        evidence_parts.append(f"popular food: {row.get('popular_food')}")
+    if row.get("match_note"):
+        evidence_parts.append(row.get("match_note"))
+
+    trace_text = " ".join([
+        row.get("name") or row.get("title", ""),
+        " ".join(categories),
+        str(row.get("popular_food", "")),
+        str(row.get("attributes", "")),
+        blurb,
+    ])
+    profile_matches, conflicts = _profile_trace_matches(trace_text)
+    source = _restaurant_source_label(row)
+    if "Google Places" in source:
+        photo_status = "photo shown from Google Places" if row.get("photo_url") else "photo not returned for this place"
+        hours_status = "hours available" if row.get("open_now") is not None else "hours not returned"
+        limitation = f"{photo_status}; {hours_status}. Verify live details before visiting."
+    elif "exact cuisine match" in source:
+        limitation = "Local static match; live photo, hours, and current availability require Google Places."
+    else:
+        limitation = "Static fallback has no live photo, live hours, or current availability data."
+    if conflicts:
+        limitation = f"Potential profile conflict detected: {_trace_join(conflicts)}."
+
+    render_trace_panel(
+        [
+            ("Source", source),
+            ("Evidence used", "; ".join(evidence_parts) if evidence_parts else "restaurant metadata and current query"),
+            ("Profile match", _trace_join(profile_matches, "no direct saved-preference tag matched")),
+            ("LLM rationale", blurb or "No generated blurb was available for this result."),
+            ("Limitation", limitation),
+        ]
+    )
+
+
+def render_generation_trace(kind, response_text, inventory, request_text):
+    inventory = _clean_trace_list(inventory, limit=12)
+    used_from_inventory = [
+        item for item in inventory
+        if item.lower() in str(response_text or "").lower()
+    ]
+    _, conflicts = _profile_trace_matches(response_text)
+
+    if kind == "cook":
+        explicit_used = _response_field_values(response_text, "USES FROM PANTRY")
+        missing = _response_field_values(response_text, "MISSING OR SUBSTITUTE INGREDIENTS")
+        cautions = _response_field_values(response_text, "CAUTION")
+        source = "LLM + taste profile generation; no recipe dataset/RAG grounding is claimed"
+        limitation = (
+            _trace_join(cautions[:2], "model-generated recipe idea; confirm allergens, doneness, and safety details")
+        )
+        rows = [
+            ("Source", source),
+            ("Request context", request_text or "not specified"),
+            ("Pantry matched", _trace_join(used_from_inventory) if used_from_inventory else _trace_join(explicit_used, "not explicitly listed")),
+            ("Missing/substitute", _trace_join(missing[:3], "none listed")),
+            ("Profile role", "Request and pantry are primary; saved taste profile is secondary context."),
+            ("Limitation", f"Potential conflict: {_trace_join(conflicts)}" if conflicts else limitation),
+        ]
+    else:
+        source = "LLM + bar inventory generation; no cocktail database/RAG grounding is claimed"
+        rows = [
+            ("Source", source),
+            ("Request context", request_text or "not specified"),
+            ("Inventory matched", _trace_join(used_from_inventory, "not explicitly listed")),
+            ("Profile role", "Requested vibe and bar inventory are primary; saved taste profile is secondary context."),
+            ("Limitation", f"Potential conflict: {_trace_join(conflicts)}" if conflicts else "Model-generated drink idea; confirm measurements and avoid ingredients you cannot consume."),
+        ]
+
+    render_trace_panel(rows)
 
 
 def refresh_preference_tags(profile):
@@ -1675,12 +2036,12 @@ def render_card(r, tab="eat", blurb=""):
     save_key = f"card_save_{card_id}"
     undo_state = "accept" if accepted else "reject"
     undo_key = f"card_undo_{undo_state}_{card_id}"
-    card_col, action_col = st.columns([8, 1.05], gap=None)
+    card_col, action_col = st.columns([8, 1.05], gap="small")
     cuisines = [cats[0]] if cats else None
     with card_col:
         st.markdown(html_block, unsafe_allow_html=True)
     with action_col:
-        with st.container(key=rail_key, height=280, border=False, gap=None):
+        with st.container(height=280, border=False):
             if accepted:
                 st.button(
                     "Undo Save",
@@ -1713,6 +2074,8 @@ def render_card(r, tab="eat", blurb=""):
                     args=(name, True, cuisines, tab, price_val),
                     use_container_width=True,
                 )
+    if tab == "eat":
+        render_restaurant_trace(r, blurb=blurb)
 
 
 # ── Skeleton ──────────────────────────────────────────────────────────────────
@@ -1736,17 +2099,45 @@ def curated_to_cards(rows):
     cards = []
     for r in rows[:5]:
         category = r.get("category", "")
+        popular_food = " ".join(str(r.get("popular_food", "") or "").split())
+        if popular_food:
+            blurb = f"Curated match for {popular_food}."
+        elif category:
+            blurb = f"Curated {category} match from the local restaurant dataset."
+        else:
+            blurb = "Curated match from the local restaurant dataset."
         cards.append({
             "name": r.get("title", ""),
             "address": "",
             "categories": [category] if category else [],
             "price": None,
             "rating": None,
-            "open_now": False,
+            "open_now": None,
             "total_tips": 0,
-            "blurb": f"Curated match for {r.get('popular_food', 'this craving')}.",
+            "blurb": blurb,
+            "source": "static_rag",
+            "popular_food": popular_food,
+            "retrieval_score": r.get("retrieval_score"),
+            "review_snippets": r.get("review_snippets", ""),
+            "match_source": r.get("match_source", ""),
+            "match_note": r.get("match_note", ""),
         })
     return cards
+
+
+def merge_curated_results(priority_rows, fallback_rows, top_k=5):
+    merged = []
+    seen = set()
+    for row in list(priority_rows or []) + list(fallback_rows or []):
+        title = str(row.get("title") or row.get("name") or "").strip()
+        key = title.lower()
+        if not key or key in seen:
+            continue
+        merged.append(row)
+        seen.add(key)
+        if len(merged) >= top_k:
+            break
+    return merged
 
 
 # ── Empty state ───────────────────────────────────────────────────────────────
@@ -1910,7 +2301,7 @@ def render_eat_tab(client, df):
     prefill = st.session_state.eat_prefill or ""
     st.session_state.eat_prefill = ""
 
-    with st.form(key="eat_form", enter_to_submit=True, border=False):
+    with compatible_form(key="eat_form", enter_to_submit=True, border=False):
         col1, col2 = st.columns([3, 1.2])
         with col1:
             st.markdown('<div class="field-label">What are you craving</div>', unsafe_allow_html=True)
@@ -1938,11 +2329,17 @@ def render_eat_tab(client, df):
                 render_skeletons(5)
 
         search_notes = []
+        retrieved = []
         try:
             _, retrieved = rag_recommend(client, query, st.session_state.profile, df, top_k=5)
         except Exception as e:
-            retrieved = []
             search_notes.append(f"Curated retrieval skipped: {e}")
+        try:
+            exact_static_matches = find_static_cuisine_matches(query, get_full_restaurant_df(), top_k=5)
+            if exact_static_matches:
+                retrieved = merge_curated_results(exact_static_matches, retrieved, top_k=5)
+        except Exception as e:
+            search_notes.append(f"Exact cuisine fallback skipped: {e}")
         st.session_state.eat_results = retrieved
         try:
             borough = zipcode if zipcode else "New York, NY"
@@ -2011,7 +2408,7 @@ def render_cook_tab(client):
     prefill = st.session_state.cook_prefill or ""
     st.session_state.cook_prefill = ""
 
-    with st.form(key="cook_form", enter_to_submit=True, border=False):
+    with compatible_form(key="cook_form", enter_to_submit=True, border=False):
         st.markdown('<div class="field-label">Tonight you want</div>', unsafe_allow_html=True)
         craving = st.text_input("craving", value=prefill, placeholder="something fast, something cozy, something to impress…", label_visibility="collapsed")
         st.markdown('<div class="field-label" style="margin-top:10px">In the pantry</div>', unsafe_allow_html=True)
@@ -2086,41 +2483,59 @@ def render_cook_tab(client):
             st.markdown(f'<div style="margin-bottom:12px">{match_html}</div>', unsafe_allow_html=True)
         with st.container():
             st.markdown(st.session_state.cook_response)
+        render_generation_trace(
+            "cook",
+            st.session_state.cook_response,
+            pantry,
+            st.session_state.cook_last_craving,
+        )
 
-        import re as _re
-        _name_m = _re.search(r'^#{1,3}\s+(.+)$', st.session_state.cook_response, _re.MULTILINE)
-        _recipe_name = _name_m.group(1).strip() if _name_m else "this recipe"
+        _recipe_names = extract_generated_item_names(
+            st.session_state.cook_response,
+            "cook",
+            st.session_state.cook_last_craving,
+        )
         _is_empty_msg = "pantry is empty" in st.session_state.cook_response.lower()
 
-        _cook_saved = _recipe_name in st.session_state.profile.get("accepted", [])
         if not _is_empty_msg:
-            c_pass, c_remix, c_save = st.columns([1, 1, 1])
-            if not _cook_saved:
-                with c_pass:
-                    if st.button("Pass", key="cook_pass", use_container_width=True):
-                        st.session_state.active_tab = "cook"
-                        apply_card_feedback(_recipe_name, False, tab="cook")
-                        st.session_state.cook_response = None
-                        st.rerun()
+            if len(_recipe_names) > 1:
+                render_generated_option_feedback("cook", _recipe_names)
+                _, c_remix, _ = st.columns([1, 1, 1])
                 with c_remix:
                     if st.button("Remix", key="cook_remix_toggle", use_container_width=True):
                         st.session_state.active_tab = "cook"
                         st.session_state.cook_remix_active = not st.session_state.cook_remix_active
                         st.rerun()
-            with c_save:
-                _save_label = "Undo Save" if _cook_saved else "Save"
-                _save_key = "cook_undo_save" if _cook_saved else "cook_save"
-                if st.button(_save_label, key=_save_key, use_container_width=True):
-                    st.session_state.active_tab = "cook"
-                    if _cook_saved:
-                        undo_card_feedback(_recipe_name, True, tab="cook")
-                    else:
-                        apply_card_feedback(_recipe_name, True, tab="cook")
-                        st.session_state.cook_remix_active = False
-                    st.rerun()
+            else:
+                _recipe_name = _recipe_names[0]
+                _cook_saved = _recipe_name in st.session_state.profile.get("accepted", [])
+                c_pass, c_remix, c_save = st.columns([1, 1, 1])
+                if not _cook_saved:
+                    with c_pass:
+                        if st.button("Pass", key="cook_pass", use_container_width=True):
+                            st.session_state.active_tab = "cook"
+                            apply_card_feedback(_recipe_name, False, tab="cook")
+                            st.session_state.cook_response = None
+                            st.rerun()
+                    with c_remix:
+                        if st.button("Remix", key="cook_remix_toggle", use_container_width=True):
+                            st.session_state.active_tab = "cook"
+                            st.session_state.cook_remix_active = not st.session_state.cook_remix_active
+                            st.rerun()
+                with c_save:
+                    _save_label = "Undo Save" if _cook_saved else "Save"
+                    _save_key = "cook_undo_save" if _cook_saved else "cook_save"
+                    if st.button(_save_label, key=_save_key, use_container_width=True):
+                        st.session_state.active_tab = "cook"
+                        if _cook_saved:
+                            undo_card_feedback(_recipe_name, True, tab="cook")
+                        else:
+                            apply_card_feedback(_recipe_name, True, tab="cook")
+                            st.session_state.cook_remix_active = False
+                        st.rerun()
 
         if st.session_state.cook_remix_active:
-            with st.form(key="cook_remix_form", enter_to_submit=True, border=False):
+            with compatible_form(key="cook_remix_form", enter_to_submit=True, border=False):
                 col1, col2 = st.columns([3, 1.2])
                 with col1:
                     remix_input = st.text_input("Add context", placeholder="make it spicier, fewer steps, vegetarian…", label_visibility="collapsed")
@@ -2139,7 +2554,7 @@ def render_cocktail_tab(client):
     prefill = st.session_state.drink_prefill or ""
     st.session_state.drink_prefill = ""
 
-    with st.form(key="cocktail_form", enter_to_submit=True, border=False):
+    with compatible_form(key="cocktail_form", enter_to_submit=True, border=False):
         st.markdown('<div class="field-label">The vibe</div>', unsafe_allow_html=True)
         vibe = st.text_input("vibe", value=prefill, placeholder="rainy night, pre-dinner, after a long week…", label_visibility="collapsed")
         st.markdown('<div class="field-label" style="margin-top:10px">Bar inventory</div>', unsafe_allow_html=True)
@@ -2222,40 +2637,59 @@ def render_cocktail_tab(client):
         )
         with st.container():
             st.markdown(cocktail_md)
+        render_generation_trace(
+            "drink",
+            st.session_state.cocktail_response,
+            bar,
+            st.session_state.drink_last_vibe,
+        )
 
-        _name_m2 = _re.search(r'^#{1,3}\s+(.+)$', cocktail_md, _re.MULTILINE)
-        _cocktail_name = _name_m2.group(1).strip() if _name_m2 else "this cocktail"
+        _cocktail_names = extract_generated_item_names(
+            cocktail_md,
+            "drink",
+            st.session_state.drink_last_vibe,
+        )
         _is_empty_bar = "bar is empty" in st.session_state.cocktail_response.lower()
 
-        _drink_saved = _cocktail_name in st.session_state.profile.get("accepted", [])
         if not _is_empty_bar:
-            d_pass, d_remix, d_save = st.columns([1, 1, 1])
-            if not _drink_saved:
-                with d_pass:
-                    if st.button("Pass", key="drink_pass", use_container_width=True):
-                        st.session_state.active_tab = "drink"
-                        apply_card_feedback(_cocktail_name, False, tab="drink")
-                        st.session_state.cocktail_response = None
-                        st.rerun()
+            if len(_cocktail_names) > 1:
+                render_generated_option_feedback("drink", _cocktail_names)
+                _, d_remix, _ = st.columns([1, 1, 1])
                 with d_remix:
                     if st.button("Remix", key="drink_remix_toggle", use_container_width=True):
                         st.session_state.active_tab = "drink"
                         st.session_state.drink_remix_active = not st.session_state.drink_remix_active
                         st.rerun()
-            with d_save:
-                _save_label = "Undo Save" if _drink_saved else "Save"
-                _save_key = "drink_undo_save" if _drink_saved else "drink_save"
-                if st.button(_save_label, key=_save_key, use_container_width=True):
-                    st.session_state.active_tab = "drink"
-                    if _drink_saved:
-                        undo_card_feedback(_cocktail_name, True, tab="drink")
-                    else:
-                        apply_card_feedback(_cocktail_name, True, tab="drink")
-                        st.session_state.drink_remix_active = False
-                    st.rerun()
+            else:
+                _cocktail_name = _cocktail_names[0]
+                _drink_saved = _cocktail_name in st.session_state.profile.get("accepted", [])
+                d_pass, d_remix, d_save = st.columns([1, 1, 1])
+                if not _drink_saved:
+                    with d_pass:
+                        if st.button("Pass", key="drink_pass", use_container_width=True):
+                            st.session_state.active_tab = "drink"
+                            apply_card_feedback(_cocktail_name, False, tab="drink")
+                            st.session_state.cocktail_response = None
+                            st.rerun()
+                    with d_remix:
+                        if st.button("Remix", key="drink_remix_toggle", use_container_width=True):
+                            st.session_state.active_tab = "drink"
+                            st.session_state.drink_remix_active = not st.session_state.drink_remix_active
+                            st.rerun()
+                with d_save:
+                    _save_label = "Undo Save" if _drink_saved else "Save"
+                    _save_key = "drink_undo_save" if _drink_saved else "drink_save"
+                    if st.button(_save_label, key=_save_key, use_container_width=True):
+                        st.session_state.active_tab = "drink"
+                        if _drink_saved:
+                            undo_card_feedback(_cocktail_name, True, tab="drink")
+                        else:
+                            apply_card_feedback(_cocktail_name, True, tab="drink")
+                            st.session_state.drink_remix_active = False
+                        st.rerun()
 
         if st.session_state.drink_remix_active:
-            with st.form(key="drink_remix_form", enter_to_submit=True, border=False):
+            with compatible_form(key="drink_remix_form", enter_to_submit=True, border=False):
                 col1, col2 = st.columns([3, 1.2])
                 with col1:
                     remix_input = st.text_input("Add context", placeholder="make it sweeter, no citrus, more spirit-forward…", label_visibility="collapsed")
