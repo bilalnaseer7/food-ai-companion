@@ -23,14 +23,6 @@ _VAGUE_BAR_INPUTS = {
     "full bar", "open bar", "no preference", "anything works",
 }
 
-_DEFAULT_BAR_INVENTORY = [
-    "Gin", "Vodka", "Light rum", "Dark rum", "Tequila", "Bourbon",
-    "Scotch", "Triple sec", "Sweet vermouth", "Dry vermouth",
-    "Campari", "Bitters", "Lemon juice", "Lime juice", "Orange juice",
-    "Simple syrup", "Soda water", "Tonic water", "Cola", "Ginger beer",
-]
-
-
 def _is_vague_inventory_item(value: str) -> bool:
     cleaned = re.sub(r"[^a-z0-9' ]", " ", str(value or "").lower())
     cleaned = " ".join(cleaned.split())
@@ -47,7 +39,7 @@ def normalize_bar_inventory(bar: list[str], client) -> list[str]:
         return bar
 
     if any(_is_vague_inventory_item(item) for item in bar):
-        return _DEFAULT_BAR_INVENTORY.copy()
+        return bar
 
     raw = ", ".join(bar)
     try:
@@ -82,10 +74,27 @@ def normalize_bar_inventory(bar: list[str], client) -> list[str]:
     return bar
 
 
+def is_vague_bar_inventory(bar_inventory: list[str]) -> bool:
+    return bool(bar_inventory) and all(_is_vague_inventory_item(item) for item in bar_inventory)
+
+
 @lru_cache(maxsize=128)
 def _search_by_ingredient(ingredient: str) -> list:
     try:
         r = requests.get(f"{_BASE}/filter.php", params={"i": ingredient}, timeout=5)
+        data = r.json()
+        drinks = data.get("drinks")
+        if not isinstance(drinks, list):
+            return []
+        return [d for d in drinks if isinstance(d, dict)]
+    except Exception:
+        return []
+
+
+@lru_cache(maxsize=128)
+def _search_by_name(query: str) -> list:
+    try:
+        r = requests.get(f"{_BASE}/search.php", params={"s": query}, timeout=5)
         data = r.json()
         drinks = data.get("drinks")
         if not isinstance(drinks, list):
@@ -153,10 +162,7 @@ def find_matching_cocktails(bar_inventory: list[str], top_k: int = 8) -> list[di
     ][:8]
 
     if not spirits or any(_is_vague_inventory_item(item) for item in spirits):
-        spirits = [
-            item for item in _DEFAULT_BAR_INVENTORY
-            if item.lower().strip() not in _SKIP_INGREDIENTS
-        ][:8]
+        return []
 
     id_to_meta: dict[str, dict] = {}
     for spirit in spirits:
@@ -202,6 +208,48 @@ def find_matching_cocktails(bar_inventory: list[str], top_k: int = 8) -> list[di
         })
 
     scored.sort(key=lambda x: x["coverage"], reverse=True)
+    return scored[:top_k]
+
+
+def find_cocktails_by_name(query: str, top_k: int = 8) -> list[dict]:
+    cleaned_query = " ".join(str(query or "").split())
+    if not cleaned_query:
+        return []
+
+    search_terms = [cleaned_query]
+    words = [
+        word for word in re.findall(r"[A-Za-z0-9']+", cleaned_query)
+        if len(word) > 2 and word.lower() not in _VAGUE_BAR_INPUTS
+    ]
+    search_terms.extend(words[:4])
+
+    seen = set()
+    scored = []
+    for term in search_terms:
+        for raw in _search_by_name(term):
+            cid = raw.get("idDrink", "")
+            if not cid or cid in seen:
+                continue
+            seen.add(cid)
+            details = _lookup_cocktail(cid) or raw
+            ingredients = _extract_ingredients(details)
+            if not ingredients:
+                continue
+            scored.append({
+                "id": cid,
+                "name": details.get("strDrink", ""),
+                "category": details.get("strCategory", ""),
+                "glass": details.get("strGlass", ""),
+                "instructions": (details.get("strInstructions") or "").strip(),
+                "ingredients": ingredients,
+                "ingredients_with_measures": _extract_ingredients_with_measures(details),
+                "thumbnail": details.get("strDrinkThumb", raw.get("strDrinkThumb", "")),
+                "have_count": 0,
+                "total_ingredients": len(ingredients),
+                "coverage": 0,
+            })
+            if len(scored) >= top_k:
+                return scored
     return scored[:top_k]
 
 

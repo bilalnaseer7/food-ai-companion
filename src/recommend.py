@@ -128,10 +128,18 @@ def recommend_cocktail(vibe: str, profile: dict, previous_response: str | None =
     if not bar:
         return "Your bar is empty. Add some spirits and mixers in the Cocktails tab."
 
-    from src.cocktail_db import find_matching_cocktails, format_for_prompt, normalize_bar_inventory
+    from src.cocktail_db import (
+        find_cocktails_by_name,
+        find_matching_cocktails,
+        format_for_prompt,
+        is_vague_bar_inventory,
+        normalize_bar_inventory,
+    )
     client_inst = OpenAI()
     bar = normalize_bar_inventory(bar, client_inst)
-    matched = find_matching_cocktails(bar, top_k=12)
+    matched = [] if is_vague_bar_inventory(bar) else find_matching_cocktails(bar, top_k=12)
+    if not matched:
+        matched = find_cocktails_by_name(vibe, top_k=12)
     grounding_block = format_for_prompt(matched)
     has_grounding = bool(matched)
 
