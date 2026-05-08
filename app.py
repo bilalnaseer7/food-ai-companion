@@ -789,7 +789,9 @@ div[class*="block-container"] {
 [class*="st-key-cook_recipe_card_"] h1,
 [class*="st-key-cook_recipe_card_"] h2,
 [class*="st-key-cook_recipe_card_"] h3 { margin-top: 0 !important; }
-[class*="st-key-cook_recipe_card_"] .stExpander {
+[class*="st-key-cook_recipe_card_"] .stExpander,
+[class*="st-key-cook_recipe_card_"] .stExpander details,
+[class*="st-key-cook_recipe_card_"] .stExpander [data-testid="stExpanderDetails"] {
     border: none !important;
     background: transparent !important;
 }
@@ -2499,7 +2501,7 @@ def render_cook_tab(client):
         if not st.session_state.cook_response:
             skel_placeholder = st.empty()
             with skel_placeholder.container():
-                render_skeletons(1)
+                render_skeletons(3)
 
         from src.recommend import recommend_recipe
         
@@ -2515,7 +2517,7 @@ def render_cook_tab(client):
     if st.session_state.cook_remix_pending:
         st.session_state.active_tab = "cook"
         if not st.session_state.cook_response:
-            render_skeletons(1)
+            render_skeletons(3)
         from src.recommend import recommend_recipe
         combined = st.session_state.cook_remix_pending
         st.session_state.cook_response = recommend_recipe(
