@@ -1333,7 +1333,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     overflow: hidden;
     max-height: 0;
     opacity: 0;
-    transition: max-height 0.3s ease, opacity 0.3s ease;
+    transition: max-height 0.6s ease, opacity 0.5s ease;
 }
 .trace-panel[open] dl {
     max-height: 800px;
