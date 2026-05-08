@@ -1,18 +1,150 @@
 {
-  "preferred_cuisines": [],
-  "liked_foods": [],
-  "disliked_foods": [],
-  "budget": "moderate",
+  "preferred_cuisines": [
+    "American restaurant",
+    "Restaurant",
+    "Fine dining restaurant"
+  ],
+  "liked_foods": [
+    "fine dining",
+    "American cuisine",
+    "rooftop dining",
+    "seafood",
+    "tasting menus",
+    "modern American",
+    "elegant ambiance",
+    "seasonal ingredients"
+  ],
+  "disliked_foods": [
+    "casual dining",
+    "diner food",
+    "low-budget options"
+  ],
+  "budget": "premium+",
   "online_order": "No",
   "occasion": "casual dinner",
-  "cuisine_scores": {},
-  "food_scores": {},
-  "accepted": [],
-  "rejected": [],
-  "history": [],
+  "cuisine_scores": {
+    "American restaurant": 0.75,
+    "Restaurant": 0.3,
+    "Diner": 0.15,
+    "Fine dining restaurant": 0.6,
+    "French restaurant": 0.15
+  },
+  "food_scores": {
+    "casual dining": -0.5,
+    "dinner vibes": -0.5,
+    "moderate budget": -0.8,
+    "American cuisine": -0.5
+  },
+  "accepted": [
+    "The Reading Room",
+    "CanteenM",
+    "The Mary Lane",
+    "The Landing",
+    "RH Rooftop Restaurant at RH New York",
+    "Diner 24 NYC",
+    "Frevo",
+    "Francie",
+    "Gramercy Tavern",
+    "Le Bernardin",
+    "Atera",
+    "Per Se",
+    "Luthun",
+    "Eleven Madison Park"
+  ],
+  "rejected": [
+    "Odd Sister"
+  ],
+  "history": [
+    {
+      "name": "The Reading Room",
+      "kind": "acc",
+      "tab": "eat"
+    },
+    {
+      "name": "Odd Sister",
+      "kind": "rej",
+      "tab": "eat"
+    },
+    {
+      "name": "CanteenM",
+      "kind": "acc",
+      "tab": "eat"
+    },
+    {
+      "name": "The Mary Lane",
+      "kind": "acc",
+      "tab": "eat"
+    },
+    {
+      "name": "The Landing",
+      "kind": "acc",
+      "tab": "eat"
+    },
+    {
+      "name": "RH Rooftop Restaurant at RH New York",
+      "kind": "acc",
+      "tab": "eat"
+    },
+    {
+      "name": "Diner 24 NYC",
+      "kind": "acc",
+      "tab": "eat"
+    },
+    {
+      "name": "Frevo",
+      "kind": "acc",
+      "tab": "eat"
+    },
+    {
+      "name": "Francie",
+      "kind": "acc",
+      "tab": "eat"
+    },
+    {
+      "name": "Gramercy Tavern",
+      "kind": "acc",
+      "tab": "eat"
+    },
+    {
+      "name": "Le Bernardin",
+      "kind": "acc",
+      "tab": "eat"
+    },
+    {
+      "name": "Atera",
+      "kind": "acc",
+      "tab": "eat"
+    },
+    {
+      "name": "Per Se",
+      "kind": "acc",
+      "tab": "eat"
+    },
+    {
+      "name": "Luthun",
+      "kind": "acc",
+      "tab": "eat"
+    },
+    {
+      "name": "Eleven Madison Park",
+      "kind": "acc",
+      "tab": "eat"
+    }
+  ],
   "tab_counts": {
-    "eat": 0,
+    "eat": 14,
     "cook": 0,
     "drink": 0
-  }
+  },
+  "removed_foods": [
+    "group gatherings",
+    "casual dining",
+    "dinner vibes",
+    "moderate budget",
+    "American cuisine"
+  ],
+  "inferred_budget_level": 3.99,
+  "inferred_budget_count": 24,
+  "bar_inventory": [],
+  "pantry": []
 }

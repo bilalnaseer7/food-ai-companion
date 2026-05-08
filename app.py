@@ -1249,6 +1249,7 @@ def handle_query_params():
         name = qp.get("name", "")
         tab = qp.get("tab", "eat")
         cuisine = qp.get("cuisine", "")
+        st.session_state.active_tab = tab
 
         if action in ("accept", "reject") and name:
             accepted = action == "accept"
@@ -1265,6 +1266,7 @@ def handle_query_params():
         elif action == "prefill":
             target = qp.get("tab", "eat")
             text = qp.get("text", "")
+            st.session_state.active_tab = target
             st.session_state[f"{target}_prefill"] = text
 
         elif action == "dismiss_hint":
@@ -1922,6 +1924,7 @@ def render_eat_tab(client, df):
     render_recent_strip()
 
     if run_search and query:
+        st.session_state.active_tab = "eat"
         refresh_preference_tags(st.session_state.profile)
         save_profile(st.session_state.profile)
 
@@ -2029,6 +2032,7 @@ def render_cook_tab(client):
     render_recent_strip()
 
     if run_cook and craving:
+        st.session_state.active_tab = "cook"
         pantry = [p.strip() for p in pantry_input.split(",") if p.strip()]
         st.session_state.profile["pantry"] = pantry
         refresh_preference_tags(st.session_state.profile)
@@ -2055,6 +2059,7 @@ def render_cook_tab(client):
         st.rerun()
 
     if st.session_state.cook_remix_pending:
+        st.session_state.active_tab = "cook"
         render_skeletons(1)
         from src.recommend import recommend_recipe
         combined = st.session_state.cook_remix_pending
@@ -2079,7 +2084,7 @@ def render_cook_tab(client):
         )
         if match_html:
             st.markdown(f'<div style="margin-bottom:12px">{match_html}</div>', unsafe_allow_html=True)
-        with st.container(key="llm_response_cook"):
+        with st.container():
             st.markdown(st.session_state.cook_response)
 
         import re as _re
@@ -2093,17 +2098,20 @@ def render_cook_tab(client):
             if not _cook_saved:
                 with c_pass:
                     if st.button("Pass", key="cook_pass", use_container_width=True):
+                        st.session_state.active_tab = "cook"
                         apply_card_feedback(_recipe_name, False, tab="cook")
                         st.session_state.cook_response = None
                         st.rerun()
                 with c_remix:
                     if st.button("Remix", key="cook_remix_toggle", use_container_width=True):
+                        st.session_state.active_tab = "cook"
                         st.session_state.cook_remix_active = not st.session_state.cook_remix_active
                         st.rerun()
             with c_save:
                 _save_label = "Undo Save" if _cook_saved else "Save"
                 _save_key = "cook_undo_save" if _cook_saved else "cook_save"
                 if st.button(_save_label, key=_save_key, use_container_width=True):
+                    st.session_state.active_tab = "cook"
                     if _cook_saved:
                         undo_card_feedback(_recipe_name, True, tab="cook")
                     else:
@@ -2118,6 +2126,7 @@ def render_cook_tab(client):
                     remix_input = st.text_input("Add context", placeholder="make it spicier, fewer steps, vegetarian…", label_visibility="collapsed")
                 with col2:
                     if st.form_submit_button("Remix Recipe →", type="primary", use_container_width=True) and remix_input:
+                        st.session_state.active_tab = "cook"
                         st.session_state.cook_remix_pending = f"{st.session_state.cook_last_craving}. {remix_input}"
                         st.session_state.cook_response = None
                         st.session_state.cook_remix_active = False
@@ -2151,6 +2160,7 @@ def render_cocktail_tab(client):
     render_recent_strip()
 
     if run_cocktail and vibe:
+        st.session_state.active_tab = "drink"
         bar = [b.strip() for b in bar_input.split(",") if b.strip()]
         st.session_state.profile["bar_inventory"] = bar
         refresh_preference_tags(st.session_state.profile)
@@ -2177,6 +2187,7 @@ def render_cocktail_tab(client):
         st.rerun()
 
     if st.session_state.drink_remix_pending:
+        st.session_state.active_tab = "drink"
         render_skeletons(1)
         from src.recommend import recommend_cocktail
         combined = st.session_state.drink_remix_pending
@@ -2209,7 +2220,7 @@ def render_cocktail_tab(client):
             count=1,
             flags=_re.IGNORECASE,
         )
-        with st.container(key="llm_response_cocktail"):
+        with st.container():
             st.markdown(cocktail_md)
 
         _name_m2 = _re.search(r'^#{1,3}\s+(.+)$', cocktail_md, _re.MULTILINE)
@@ -2222,17 +2233,20 @@ def render_cocktail_tab(client):
             if not _drink_saved:
                 with d_pass:
                     if st.button("Pass", key="drink_pass", use_container_width=True):
+                        st.session_state.active_tab = "drink"
                         apply_card_feedback(_cocktail_name, False, tab="drink")
                         st.session_state.cocktail_response = None
                         st.rerun()
                 with d_remix:
                     if st.button("Remix", key="drink_remix_toggle", use_container_width=True):
+                        st.session_state.active_tab = "drink"
                         st.session_state.drink_remix_active = not st.session_state.drink_remix_active
                         st.rerun()
             with d_save:
                 _save_label = "Undo Save" if _drink_saved else "Save"
                 _save_key = "drink_undo_save" if _drink_saved else "drink_save"
                 if st.button(_save_label, key=_save_key, use_container_width=True):
+                    st.session_state.active_tab = "drink"
                     if _drink_saved:
                         undo_card_feedback(_cocktail_name, True, tab="drink")
                     else:
@@ -2247,12 +2261,43 @@ def render_cocktail_tab(client):
                     remix_input = st.text_input("Add context", placeholder="make it sweeter, no citrus, more spirit-forward…", label_visibility="collapsed")
                 with col2:
                     if st.form_submit_button("Remix Drink  →", type="primary", use_container_width=True) and remix_input:
+                        st.session_state.active_tab = "drink"
                         st.session_state.drink_remix_pending = f"{st.session_state.drink_last_vibe}. {remix_input}"
                         st.session_state.cocktail_response = None
                         st.session_state.drink_remix_active = False
                         st.rerun()
     else:
         render_empty("drink")
+
+
+def restore_active_tab():
+    tab_index = {"eat": 0, "cook": 1, "drink": 2}.get(st.session_state.get("active_tab", "eat"), 0)
+    if tab_index == 0:
+        return
+
+    components.html(
+        f"""
+        <script>
+        (function() {{
+            const target = {tab_index};
+            function activateTab() {{
+                const tabs = Array.from(window.parent.document.querySelectorAll('[data-baseweb="tab"]'));
+                if (tabs.length > target) {{
+                    const tab = tabs[target];
+                    if (tab.getAttribute("aria-selected") !== "true") {{
+                        tab.click();
+                    }}
+                    return;
+                }}
+                window.setTimeout(activateTab, 50);
+            }}
+            window.setTimeout(activateTab, 0);
+        }})();
+        </script>
+        """,
+        height=0,
+        scrolling=False,
+    )
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -2269,6 +2314,7 @@ def main():
     df = get_df()
 
     tab_eat, tab_cook, tab_drink = st.tabs(["🍽️  Eat Out", "🍳  Cook", "🍸  Cocktails"])
+    restore_active_tab()
 
     with tab_eat:
         render_eat_tab(client, df)
