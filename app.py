@@ -2502,7 +2502,8 @@ def render_cook_tab(client):
 
     if st.session_state.cook_remix_pending:
         st.session_state.active_tab = "cook"
-        render_skeletons(1)
+        if not st.session_state.cook_response:
+            render_skeletons(1)
         from src.recommend import recommend_recipe
         combined = st.session_state.cook_remix_pending
         st.session_state.cook_response = recommend_recipe(
@@ -2662,7 +2663,8 @@ def render_cocktail_tab(client):
 
     if st.session_state.drink_remix_pending:
         st.session_state.active_tab = "drink"
-        render_skeletons(1)
+        if not st.session_state.cocktail_response:
+            render_skeletons(1)
         from src.recommend import recommend_cocktail
         combined = st.session_state.drink_remix_pending
         st.session_state.cocktail_response = recommend_cocktail(combined, st.session_state.profile, previous_response=st.session_state.cocktail_response)
