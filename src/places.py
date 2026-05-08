@@ -4,7 +4,6 @@ from typing import Optional
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY")
 SEARCH_URL   = "https://places.googleapis.com/v1/places:searchText"
-DETAILS_URL  = "https://places.googleapis.com/v1/places/{place_id}"
 PHOTO_URL    = "https://places.googleapis.com/v1/{photo_name}/media"
 GEOCODE_URL  = "https://maps.googleapis.com/maps/api/geocode/json"
 
@@ -40,7 +39,6 @@ SEARCH_FIELD_MASK = ",".join([
     "places.location",
 ])
 
-REVIEW_FIELD_MASK = "reviews,rating"
 
 def _api_key() -> str:
     key = os.getenv("GOOGLE_PLACES_API_KEY")
@@ -119,30 +117,6 @@ def search_restaurants(
         print(f"Google Places search error: {e}")
         return []
 
-
-def get_reviews(place_id: str, limit: int = 3) -> list[str]:
-    if not place_id:
-        return []
-
-    headers = {
-        "Content-Type":     "application/json",
-        "X-Goog-Api-Key":   _api_key(),
-        "X-Goog-FieldMask": REVIEW_FIELD_MASK,
-    }
-
-    try:
-        url = DETAILS_URL.format(place_id=place_id)
-        r = requests.get(url, headers=headers, timeout=10)
-        if r.status_code != 200:
-            return []
-        reviews = r.json().get("reviews", [])
-        return [
-            rev.get("text", {}).get("text", "")
-            for rev in reviews[:limit]
-            if rev.get("text", {}).get("text")
-        ]
-    except Exception:
-        return []
 
 
 def get_photo_uri(photo_name: str, max_width: int = 640) -> str:
@@ -300,34 +274,6 @@ def _parse_place(raw: dict) -> dict:
         "lng":               loc.get("longitude"),
     }
 
-
-def get_tips(fsq_id: str, limit: int = 2) -> list[str]:
-    return get_reviews(fsq_id, limit=limit)
-
-
-def format_for_prompt(restaurants: list[dict], fetch_tips: bool = True) -> str:
-    if not restaurants:
-        return "No restaurants found."
-
-    lines = ["## Nearby restaurants (Google Places)"]
-
-    for i, r in enumerate(restaurants):
-        price_str  = PRICE_LABEL.get(r["price"], "")
-        rating_str = f"{r['rating']}/5 ({r['total_tips']} reviews)" if r["rating"] else "unrated"
-        open_str   = " · open now" if r["open_now"] else ""
-        cats       = ", ".join(r["categories"][:2]) if r["categories"] else ""
-
-        lines.append(
-            f"\n- **{r['name']}** | {price_str} | {rating_str}{open_str}"
-            f"\n  {cats} · {r['address']}"
-        )
-
-        if fetch_tips and r["fsq_id"] and i < 3:
-            for review in get_tips(r["fsq_id"]):
-                snippet = review[:200] + "..." if len(review) > 200 else review
-                lines.append(f'  > "{snippet}"')
-
-    return "\n".join(lines)
 
 
 def price_sensitivity_to_tier(sensitivity: str) -> Optional[int]:
