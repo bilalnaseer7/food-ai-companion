@@ -3195,6 +3195,7 @@ def render_cocktail_tab(client):
                 st.markdown(st.session_state.cocktail_response)
         else:
             grounding = st.session_state.get("drink_grounding", [])
+            thumb_candidates = [c["thumbnail"] for c in grounding if c.get("thumbnail")]
             thumb_map = {
                 normalized_lookup_key(c.get("name", "")): c["thumbnail"]
                 for c in grounding
@@ -3206,6 +3207,8 @@ def render_cocktail_tab(client):
                 accepted = cocktail_name in st.session_state.profile.get("accepted", [])
                 rejected = cocktail_name in st.session_state.profile.get("rejected", [])
                 thumb_url = thumb_map.get(normalized_lookup_key(cocktail_name), "")
+                if not thumb_url and thumb_candidates:
+                    thumb_url = thumb_candidates[idx % len(thumb_candidates)]
 
                 with st.container(key=f"drink_recipe_card_{key_base}"):
                     why_clean = re.sub(r'\*+', '', cocktail_why).strip()
