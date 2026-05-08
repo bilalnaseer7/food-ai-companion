@@ -5,6 +5,8 @@ import html as html_module
 import inspect
 import json
 import re
+import base64
+import requests
 from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
@@ -108,6 +110,26 @@ def get_df():
 @st.cache_data
 def get_full_restaurant_df():
     return load_reviews(path="data/restaurants.csv", max_rows=None)
+
+
+@st.cache_data(show_spinner=False, ttl=60 * 60 * 24)
+def image_url_to_data_uri(url: str) -> str:
+    if not url:
+        return ""
+    try:
+        response = requests.get(
+            url,
+            timeout=8,
+            headers={"User-Agent": "FoodAI/1.0 (+https://streamlit.app)"},
+        )
+        response.raise_for_status()
+        content_type = response.headers.get("Content-Type", "image/jpeg").split(";")[0]
+        if not content_type.startswith("image/"):
+            return ""
+        encoded = base64.b64encode(response.content).decode("ascii")
+        return f"data:{content_type};base64,{encoded}"
+    except Exception:
+        return ""
 
 
 def compatible_form(*, key: str, border: bool = False, enter_to_submit: bool = True):
@@ -3209,15 +3231,16 @@ def render_cocktail_tab(client):
                 thumb_url = thumb_map.get(normalized_lookup_key(cocktail_name), "")
                 if not thumb_url and thumb_candidates:
                     thumb_url = thumb_candidates[idx % len(thumb_candidates)]
+                thumb_src = image_url_to_data_uri(thumb_url) or thumb_url
 
                 with st.container(key=f"drink_recipe_card_{key_base}"):
                     why_clean = re.sub(r'\*+', '', cocktail_why).strip()
                     status_class = "saved" if accepted else "passed" if rejected else ""
                     status_label = "Saved" if accepted else "Passed" if rejected else ""
                     thumb_html = (
-                        f'<img src="{html_module.escape(thumb_url, quote=True)}" alt="{html_module.escape(cocktail_name, quote=True)}" loading="lazy" '
+                        f'<img src="{html_module.escape(thumb_src, quote=True)}" alt="{html_module.escape(cocktail_name, quote=True)}" loading="lazy" referrerpolicy="no-referrer" '
                         f'onerror="this.remove(); this.parentElement.classList.remove(\'has-photo\');">'
-                        if thumb_url else ""
+                        if thumb_src else ""
                     )
                     why_html = (
                         f'<p class="drink-card-why">{html_module.escape(why_clean)}</p>'
