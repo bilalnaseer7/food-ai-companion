@@ -1675,12 +1675,12 @@ def render_card(r, tab="eat", blurb=""):
     save_key = f"card_save_{card_id}"
     undo_state = "accept" if accepted else "reject"
     undo_key = f"card_undo_{undo_state}_{card_id}"
-    card_col, action_col = st.columns([8, 1.05], gap=None)
+    card_col, action_col = st.columns([8, 1.05], gap="small")
     cuisines = [cats[0]] if cats else None
     with card_col:
         st.markdown(html_block, unsafe_allow_html=True)
     with action_col:
-        with st.container(key=rail_key, height=280, border=False, gap=None):
+        with st.container(height=280, border=False):
             if accepted:
                 st.button(
                     "Undo Save",
@@ -1910,7 +1910,7 @@ def render_eat_tab(client, df):
     prefill = st.session_state.eat_prefill or ""
     st.session_state.eat_prefill = ""
 
-    with st.form(key="eat_form", enter_to_submit=True, border=False):
+    with st.form(key="eat_form", border=False):
         col1, col2 = st.columns([3, 1.2])
         with col1:
             st.markdown('<div class="field-label">What are you craving</div>', unsafe_allow_html=True)
@@ -2011,7 +2011,7 @@ def render_cook_tab(client):
     prefill = st.session_state.cook_prefill or ""
     st.session_state.cook_prefill = ""
 
-    with st.form(key="cook_form", enter_to_submit=True, border=False):
+    with st.form(key="cook_form", border=False):
         st.markdown('<div class="field-label">Tonight you want</div>', unsafe_allow_html=True)
         craving = st.text_input("craving", value=prefill, placeholder="something fast, something cozy, something to impress…", label_visibility="collapsed")
         st.markdown('<div class="field-label" style="margin-top:10px">In the pantry</div>', unsafe_allow_html=True)
@@ -2120,7 +2120,7 @@ def render_cook_tab(client):
                     st.rerun()
 
         if st.session_state.cook_remix_active:
-            with st.form(key="cook_remix_form", enter_to_submit=True, border=False):
+            with st.form(key="cook_remix_form", border=False):
                 col1, col2 = st.columns([3, 1.2])
                 with col1:
                     remix_input = st.text_input("Add context", placeholder="make it spicier, fewer steps, vegetarian…", label_visibility="collapsed")
@@ -2139,7 +2139,7 @@ def render_cocktail_tab(client):
     prefill = st.session_state.drink_prefill or ""
     st.session_state.drink_prefill = ""
 
-    with st.form(key="cocktail_form", enter_to_submit=True, border=False):
+    with st.form(key="cocktail_form", border=False):
         st.markdown('<div class="field-label">The vibe</div>', unsafe_allow_html=True)
         vibe = st.text_input("vibe", value=prefill, placeholder="rainy night, pre-dinner, after a long week…", label_visibility="collapsed")
         st.markdown('<div class="field-label" style="margin-top:10px">Bar inventory</div>', unsafe_allow_html=True)
@@ -2255,7 +2255,7 @@ def render_cocktail_tab(client):
                     st.rerun()
 
         if st.session_state.drink_remix_active:
-            with st.form(key="drink_remix_form", enter_to_submit=True, border=False):
+            with st.form(key="drink_remix_form", border=False):
                 col1, col2 = st.columns([3, 1.2])
                 with col1:
                     remix_input = st.text_input("Add context", placeholder="make it sweeter, no citrus, more spirit-forward…", label_visibility="collapsed")
