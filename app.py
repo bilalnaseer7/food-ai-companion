@@ -240,7 +240,7 @@ a:hover { text-decoration: none; }
 [data-testid="stSidebar"] * { color: var(--ink) !important; }
 
 /* ── Brand ── */
-.brand { display: flex; align-items: center; gap: 10px; margin-top: -30px; padding-bottom: 18px; }
+.brand { display: flex; align-items: center; gap: 15px; margin-top: -30px; padding-bottom: 18px; }
 .brand-mark {
     width: 13px; height: 13px; border-radius: 50%;
     background: #FFD8A8;
