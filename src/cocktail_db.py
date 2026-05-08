@@ -4,6 +4,7 @@ import json
 import re
 import requests
 from functools import lru_cache
+from typing import Optional
 
 _BASE = "https://www.thecocktaildb.com/api/json/v1/1"
 
@@ -71,7 +72,7 @@ def _search_by_ingredient(ingredient: str) -> list:
 
 
 @lru_cache(maxsize=256)
-def _lookup_cocktail(cocktail_id: str) -> dict | None:
+def _lookup_cocktail(cocktail_id: str) -> Optional[dict]:
     try:
         r = requests.get(f"{_BASE}/lookup.php", params={"i": cocktail_id}, timeout=5)
         data = r.json()
