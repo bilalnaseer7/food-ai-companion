@@ -766,9 +766,28 @@ div[class*="block-container"] {
     background: var(--card) !important; font-weight: 500 !important;
 }
 [class*="st-key-cook_remix_toggle"] button:hover, [class*="st-key-drink_remix_toggle"] button:hover,
-[class*="st-key-cook_undo_save"] button:hover, [class*="st-key-drink_undo_save"] button:hover {
+[class*="st-key-cook_undo_save"] button:hover, [class*="st-key-drink_undo_save"] button:hover,
+[class*="st-key-cook_option_remix_"] button:hover {
     background: var(--bg-deep) !important; color: var(--ink) !important; border-color: var(--line) !important;
 }
+[class*="st-key-cook_option_remix_"] button {
+    color: var(--ink-2) !important; border-color: var(--line-2) !important;
+    background: var(--card) !important; font-weight: 500 !important;
+}
+
+/* ── Cook recipe cards ── */
+[class*="st-key-cook_recipe_card_"] > div {
+    background: var(--card) !important;
+    border: 1px solid var(--line) !important;
+    border-radius: var(--radius-lg) !important;
+    padding: 20px 22px 14px !important;
+    margin-bottom: 18px !important;
+}
+[class*="st-key-cook_recipe_card_"] p,
+[class*="st-key-cook_recipe_card_"] li { font-size: 14px !important; line-height: 1.65 !important; }
+[class*="st-key-cook_recipe_card_"] h1,
+[class*="st-key-cook_recipe_card_"] h2,
+[class*="st-key-cook_recipe_card_"] h3 { margin-top: 0 !important; }
 
 .card.combo {
     height: var(--result-card-height) !important;
@@ -1095,6 +1114,25 @@ def donut_svg(eat, cook, drink, total):
 </g>
 <text x="32" y="36" text-anchor="middle" class="donut-text">{total}</text>
 </svg>'''
+
+
+def _split_cook_recipes(response_text):
+    blocks = re.split(r'\n(?=\*{0,2}RECIPE\*{0,2}\s*:)', response_text.strip(), flags=re.IGNORECASE)
+    results = []
+    for block in blocks:
+        block = block.strip()
+        if not block:
+            continue
+        name_m = re.match(r'\*{0,2}RECIPE\*{0,2}\s*:\s*\*{0,2}(.+?)\*{0,2}\s*$', block, re.IGNORECASE | re.MULTILINE)
+        if not name_m:
+            continue
+        name = name_m.group(1).strip()
+        why_m = re.search(r'\*{0,2}WHY IT FITS\*{0,2}\s*:\s*(.+?)(?=\n\s*\*{0,2}[A-Z]|\Z)', block, re.IGNORECASE | re.DOTALL)
+        why = why_m.group(1).strip() if why_m else ""
+        results.append((name, why, block))
+    if not results:
+        return [(extract_generated_item_name(response_text, "cook"), "", response_text)]
+    return results
 
 
 def match_indicator(inventory, response_text):
@@ -1601,6 +1639,7 @@ def init_session():
         "cook_last_craving": "", "drink_last_vibe": "",
         "cook_remix_active": False, "drink_remix_active": False,
         "cook_remix_pending": None, "drink_remix_pending": None,
+        "cook_remix_card": None, "cook_remix_previous": None,
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -2466,92 +2505,106 @@ def render_cook_tab(client):
         render_skeletons(1)
         from src.recommend import recommend_recipe
         combined = st.session_state.cook_remix_pending
-        st.session_state.cook_response = recommend_recipe(combined, st.session_state.profile, client=client, previous_response=st.session_state.cook_response)
+        st.session_state.cook_response = recommend_recipe(
+            combined, st.session_state.profile, client=client,
+            previous_response=st.session_state.cook_remix_previous,
+        )
         st.session_state.cook_last_craving = combined
         st.session_state.cook_remix_pending = None
+        st.session_state.cook_remix_previous = None
         st.rerun()
 
     if st.session_state.cook_response:
         pantry = st.session_state.profile.get("pantry", [])
-        match_text, match_kind = match_indicator(pantry, st.session_state.cook_response)
-        match_html = ""
-        if match_text:
-            match_html = f'<span class="card-extra{" warn" if match_kind == "warn" else ""}"><span class="dot"></span>{match_text}</span>'
+        _is_empty_msg = "pantry is empty" in st.session_state.cook_response.lower()
 
+        n_recipes = len(_split_cook_recipes(st.session_state.cook_response))
+        recipe_label = f"{n_recipes} recipes" if n_recipes > 1 else "Your recipe"
         st.markdown(
             f'<div class="results-head">'
             f'<h2>{TAB_HEADING["cook"]}</h2>'
-            f'<span class="count">Your recipe</span>'
+            f'<span class="count">{recipe_label}</span>'
             f'</div>',
             unsafe_allow_html=True
         )
-        if match_html:
-            st.markdown(f'<div style="margin-bottom:12px">{match_html}</div>', unsafe_allow_html=True)
-        with st.container():
-            st.markdown(st.session_state.cook_response)
+
+        if _is_empty_msg:
+            with st.container():
+                st.markdown(st.session_state.cook_response)
+        else:
+            for idx, (recipe_name, recipe_why, recipe_block) in enumerate(_split_cook_recipes(st.session_state.cook_response)):
+                key_base = stable_widget_key("cook", recipe_name, idx)
+                accepted = recipe_name in st.session_state.profile.get("accepted", [])
+                rejected = recipe_name in st.session_state.profile.get("rejected", [])
+
+                with st.container(key=f"cook_recipe_card_{key_base}"):
+                    status_suffix = " · Saved" if accepted else " · Passed" if rejected else ""
+                    st.markdown(f"**{html_module.escape(recipe_name)}**{status_suffix}")
+                    if recipe_why:
+                        st.markdown(f'<p style="color:var(--ink-2);font-size:13px;margin:2px 0 10px">{html_module.escape(recipe_why)}</p>', unsafe_allow_html=True)
+                    with st.expander("Full recipe"):
+                        st.markdown(recipe_block)
+
+                    if accepted:
+                        if st.button("Undo Save", key=f"cook_option_undo_save_{key_base}", use_container_width=True):
+                            st.session_state.active_tab = "cook"
+                            undo_card_feedback(recipe_name, True, tab="cook")
+                            st.rerun()
+                    elif rejected:
+                        if st.button("Undo Pass", key=f"cook_option_undo_pass_{key_base}", use_container_width=True):
+                            st.session_state.active_tab = "cook"
+                            undo_card_feedback(recipe_name, False, tab="cook")
+                            st.rerun()
+                    else:
+                        c_pass, c_remix, c_save = st.columns([1, 1, 1])
+                        with c_pass:
+                            if st.button("Pass", key=f"cook_option_pass_{key_base}", use_container_width=True):
+                                st.session_state.active_tab = "cook"
+                                apply_card_feedback(recipe_name, False, tab="cook")
+                                st.rerun()
+                        with c_remix:
+                            is_remixing = (
+                                st.session_state.cook_remix_active
+                                and st.session_state.cook_remix_card == recipe_name
+                            )
+                            if st.button("Remix ↩" if is_remixing else "Remix", key=f"cook_option_remix_{key_base}", use_container_width=True):
+                                st.session_state.active_tab = "cook"
+                                if is_remixing:
+                                    st.session_state.cook_remix_active = False
+                                    st.session_state.cook_remix_card = None
+                                else:
+                                    st.session_state.cook_remix_active = True
+                                    st.session_state.cook_remix_card = recipe_name
+                                st.rerun()
+                        with c_save:
+                            if st.button("Save", key=f"cook_option_save_{key_base}", use_container_width=True):
+                                st.session_state.active_tab = "cook"
+                                apply_card_feedback(recipe_name, True, tab="cook")
+                                st.rerun()
+
+                if (
+                    st.session_state.cook_remix_active
+                    and st.session_state.cook_remix_card == recipe_name
+                ):
+                    with compatible_form(key=f"cook_remix_form_{key_base}", enter_to_submit=True, border=False):
+                        col1, col2 = st.columns([3, 1.2])
+                        with col1:
+                            remix_input = st.text_input("Add context", placeholder="make it spicier, fewer steps, vegetarian…", label_visibility="collapsed")
+                        with col2:
+                            if st.form_submit_button("Remix →", type="primary", use_container_width=True) and remix_input:
+                                st.session_state.active_tab = "cook"
+                                st.session_state.cook_remix_pending = f"{st.session_state.cook_last_craving}. Remix '{recipe_name}': {remix_input}"
+                                st.session_state.cook_remix_previous = recipe_block
+                                st.session_state.cook_remix_active = False
+                                st.session_state.cook_remix_card = None
+                                st.rerun()
+
         render_generation_trace(
             "cook",
             st.session_state.cook_response,
             pantry,
             st.session_state.cook_last_craving,
         )
-
-        _recipe_names = extract_generated_item_names(
-            st.session_state.cook_response,
-            "cook",
-            st.session_state.cook_last_craving,
-        )
-        _is_empty_msg = "pantry is empty" in st.session_state.cook_response.lower()
-
-        if not _is_empty_msg:
-            if len(_recipe_names) > 1:
-                render_generated_option_feedback("cook", _recipe_names)
-                _, c_remix, _ = st.columns([1, 1, 1])
-                with c_remix:
-                    if st.button("Remix", key="cook_remix_toggle", use_container_width=True):
-                        st.session_state.active_tab = "cook"
-                        st.session_state.cook_remix_active = not st.session_state.cook_remix_active
-                        st.rerun()
-            else:
-                _recipe_name = _recipe_names[0]
-                _cook_saved = _recipe_name in st.session_state.profile.get("accepted", [])
-                c_pass, c_remix, c_save = st.columns([1, 1, 1])
-                if not _cook_saved:
-                    with c_pass:
-                        if st.button("Pass", key="cook_pass", use_container_width=True):
-                            st.session_state.active_tab = "cook"
-                            apply_card_feedback(_recipe_name, False, tab="cook")
-                            st.session_state.cook_response = None
-                            st.rerun()
-                    with c_remix:
-                        if st.button("Remix", key="cook_remix_toggle", use_container_width=True):
-                            st.session_state.active_tab = "cook"
-                            st.session_state.cook_remix_active = not st.session_state.cook_remix_active
-                            st.rerun()
-                with c_save:
-                    _save_label = "Undo Save" if _cook_saved else "Save"
-                    _save_key = "cook_undo_save" if _cook_saved else "cook_save"
-                    if st.button(_save_label, key=_save_key, use_container_width=True):
-                        st.session_state.active_tab = "cook"
-                        if _cook_saved:
-                            undo_card_feedback(_recipe_name, True, tab="cook")
-                        else:
-                            apply_card_feedback(_recipe_name, True, tab="cook")
-                            st.session_state.cook_remix_active = False
-                        st.rerun()
-
-        if st.session_state.cook_remix_active:
-            with compatible_form(key="cook_remix_form", enter_to_submit=True, border=False):
-                col1, col2 = st.columns([3, 1.2])
-                with col1:
-                    remix_input = st.text_input("Add context", placeholder="make it spicier, fewer steps, vegetarian…", label_visibility="collapsed")
-                with col2:
-                    if st.form_submit_button("Remix Recipe →", type="primary", use_container_width=True) and remix_input:
-                        st.session_state.active_tab = "cook"
-                        st.session_state.cook_remix_pending = f"{st.session_state.cook_last_craving}. {remix_input}"
-                        st.session_state.cook_response = None
-                        st.session_state.cook_remix_active = False
-                        st.rerun()
     else:
         render_empty("cook")
 
