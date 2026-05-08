@@ -2168,6 +2168,7 @@ def init_session():
         "eat_prefill": "", "cook_prefill": "", "drink_prefill": "",
         "active_tab": "eat",
         "cook_last_craving": "", "drink_last_vibe": "",
+        "cook_response_version": "", "drink_response_version": "",
         "cook_remix_active": False, "drink_remix_active": False,
         "cook_remix_pending": None, "drink_remix_pending": None,
         "cook_remix_card": None, "cook_remix_previous": None,
@@ -3037,6 +3038,7 @@ def render_cook_tab(client):
         
         response = recommend_recipe(craving, st.session_state.profile, client=client)
         st.session_state.cook_response = response
+        st.session_state.cook_response_version = stable_widget_key("cook_response", response)
         st.session_state.cook_last_craving = craving
         st.session_state.cook_remix_active = False
 
@@ -3054,6 +3056,7 @@ def render_cook_tab(client):
             combined, st.session_state.profile, client=client,
             previous_response=st.session_state.cook_remix_previous,
         )
+        st.session_state.cook_response_version = stable_widget_key("cook_response", st.session_state.cook_response)
         st.session_state.cook_last_craving = combined
         st.session_state.cook_remix_pending = None
         st.session_state.cook_remix_previous = None
@@ -3096,7 +3099,8 @@ def render_cook_tab(client):
                     )
                     if why_clean:
                         st.markdown(f'<p class="cook-card-why">{html_module.escape(why_clean)}</p>', unsafe_allow_html=True)
-                    with st.expander("Full recipe"):
+                    cook_expander_key = f"cook_recipe_expander_{st.session_state.cook_response_version}_{key_base}"
+                    with st.expander("Full recipe", expanded=False, key=cook_expander_key):
                         st.markdown(_format_cook_recipe_for_expander(recipe_block), unsafe_allow_html=True)
 
                     if accepted:
@@ -3207,6 +3211,7 @@ def render_cocktail_tab(client):
 
         response, grounding = recommend_cocktail(vibe, st.session_state.profile)
         st.session_state.cocktail_response = response
+        st.session_state.drink_response_version = stable_widget_key("drink_response", response)
         st.session_state.drink_grounding = grounding
         st.session_state.drink_last_vibe = vibe
         st.session_state.drink_remix_active = False
@@ -3224,6 +3229,7 @@ def render_cocktail_tab(client):
         combined = st.session_state.drink_remix_pending
         response, grounding = recommend_cocktail(combined, st.session_state.profile, previous_response=st.session_state.cocktail_response)
         st.session_state.cocktail_response = response
+        st.session_state.drink_response_version = stable_widget_key("drink_response", response)
         st.session_state.drink_grounding = grounding
         st.session_state.drink_last_vibe = combined
         st.session_state.drink_remix_pending = None
@@ -3303,7 +3309,8 @@ def render_cocktail_tab(client):
                         unsafe_allow_html=True,
                     )
 
-                    with st.expander("Full recipe"):
+                    drink_expander_key = f"drink_recipe_expander_{st.session_state.drink_response_version}_{key_base}"
+                    with st.expander("Full recipe", expanded=False, key=drink_expander_key):
                         st.markdown(_format_cocktail_recipe_for_expander(cocktail_block), unsafe_allow_html=True)
 
                     if accepted:
