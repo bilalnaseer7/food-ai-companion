@@ -143,7 +143,7 @@ def build_cook_prompt(context: dict) -> tuple[str, str]:
         "1. <step>\n"
         "2. <step>\n"
         "... (include all steps needed to complete the dish)\n"
-        "CAUTION: <short note if the recipe depends on missing ingredients, otherwise 'None'>\n\n"
+        "Only add a CAUTION line if the recipe genuinely depends on a missing ingredient.\n\n"
         "Be thorough: include a complete ingredients list and all steps. "
         "Keep the recommendations realistic for a home cook and avoid unsupported claims."
     )

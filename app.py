@@ -2559,7 +2559,8 @@ def render_cook_tab(client):
                     if why_clean:
                         st.markdown(f'<p style="color:var(--ink-2);font-size:13px;margin:2px 0 10px">{html_module.escape(why_clean)}</p>', unsafe_allow_html=True)
                     with st.expander("Full recipe"):
-                        st.markdown(recipe_block)
+                        clean_block = re.sub(r'(?im)^\*{0,2}CAUTION\*{0,2}\s*:\s*none\.?\s*$\n?', '', recipe_block)
+                        st.markdown(clean_block)
 
                     if accepted:
                         if st.button("Undo Save", key=f"cook_option_undo_save_{key_base}", use_container_width=True):
