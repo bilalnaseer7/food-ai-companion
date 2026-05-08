@@ -783,12 +783,8 @@ div[class*="block-container"] {
     padding: 18px 20px 14px !important;
     margin-bottom: 0 !important;
     overflow: hidden !important;
-    gap: 0 !important;
 }
-[class*="st-key-cook_recipe_card_"] [data-testid="stElementContainer"] {
-    margin-bottom: 0 !important;
-    padding-bottom: 0 !important;
-}
+
 div:has(> [class*="st-key-cook_recipe_card_"]) {
     gap: 16px !important;
     margin-bottom: 0 !important;
@@ -2150,8 +2146,6 @@ def render_card(r, tab="eat", blurb=""):
                     args=(name, True, cuisines, tab, price_val),
                     use_container_width=True,
                 )
-    if tab == "eat":
-        render_restaurant_trace(r, blurb=blurb)
 
 
 # ── Skeleton ──────────────────────────────────────────────────────────────────
@@ -2616,6 +2610,8 @@ def render_cook_tab(client):
                                 apply_card_feedback(recipe_name, True, tab="cook")
                                 st.rerun()
 
+                    render_generation_trace("cook", recipe_block, pantry, st.session_state.cook_last_craving)
+
                 if (
                     st.session_state.cook_remix_active
                     and st.session_state.cook_remix_card == recipe_name
@@ -2633,12 +2629,6 @@ def render_cook_tab(client):
                                 st.session_state.cook_remix_card = None
                                 st.rerun()
 
-        render_generation_trace(
-            "cook",
-            st.session_state.cook_response,
-            pantry,
-            st.session_state.cook_last_craving,
-        )
     else:
         render_empty("cook")
 
