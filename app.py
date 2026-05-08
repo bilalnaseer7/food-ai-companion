@@ -3099,7 +3099,7 @@ def render_cook_tab(client):
                     )
                     if why_clean:
                         st.markdown(f'<p class="cook-card-why">{html_module.escape(why_clean)}</p>', unsafe_allow_html=True)
-                    with st.expander("Full recipe", expanded=False, key=f"cook_recipe_expander_{st.session_state.cook_response_version}_{key_base}"):
+                    with st.expander("Full recipe", expanded=False):
                         st.markdown(_format_cook_recipe_for_expander(recipe_block), unsafe_allow_html=True)
 
                     if accepted:
@@ -3308,7 +3308,7 @@ def render_cocktail_tab(client):
                         unsafe_allow_html=True,
                     )
 
-                    with st.expander("Full recipe", expanded=False, key=f"drink_recipe_expander_{st.session_state.drink_response_version}_{key_base}"):
+                    with st.expander("Full recipe", expanded=False):
                         st.markdown(_format_cocktail_recipe_for_expander(cocktail_block), unsafe_allow_html=True)
 
                     if accepted:
