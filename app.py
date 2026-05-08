@@ -805,6 +805,12 @@ div:has(> [class*="st-key-cook_recipe_card_"]) {
     border: none !important;
     background: transparent !important;
 }
+[class*="st-key-cook_recipe_card_"] .stExpander summary {
+    background: var(--bg) !important;
+    border-radius: var(--radius-sm) !important;
+    border: 1px solid var(--line) !important;
+    padding: 8px 12px !important;
+}
 [class*="st-key-cook_recipe_card_"] .stExpander summary,
 [class*="st-key-cook_recipe_card_"] .stExpander [data-testid="stExpanderToggleIcon"] {
     color: var(--ink-2) !important;
@@ -812,8 +818,19 @@ div:has(> [class*="st-key-cook_recipe_card_"]) {
 [class*="st-key-cook_recipe_card_"] .stExpander summary:hover {
     color: var(--ink) !important;
 }
-[class*="st-key-cook_recipe_card_"] .stExpander summary:hover {
-    color: var(--ink) !important;
+[class*="st-key-cook_recipe_card_"] .stExpander details[open] [data-testid="stExpanderDetails"] {
+    margin: 0 !important;
+    padding: 6px 0 0 0 !important;
+}
+[class*="st-key-cook_recipe_card_"] .stExpander details[open] [data-testid="stElementContainer"] {
+    margin-bottom: -2.5rem !important;
+    padding-bottom: 0 !important;
+}
+[class*="st-key-cook_recipe_card_"] .stExpander details[open] div {
+    gap: 0 !important;
+}
+[class*="st-key-cook_recipe_card_"] .trace-panel {
+    margin-top: 0 !important;
 }
 
 .card.combo {
@@ -987,7 +1004,7 @@ div:has(> [class*="st-key-cook_recipe_card_"]) {
     margin: -8px 0 18px;
     padding: 10px 14px 12px;
     border: 1px dashed var(--line-2);
-    border-radius: var(--radius);
+    border-radius: var(--radius-sm);
     background: rgba(255,255,255,0.50);
     color: var(--ink-2);
 }
