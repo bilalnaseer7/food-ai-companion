@@ -17,6 +17,25 @@ _SKIP_INGREDIENTS = {
     "grenadine", "bitters", "angostura bitters", "peach bitters",
 }
 
+_VAGUE_BAR_INPUTS = {
+    "any", "anything", "whatever", "surprise me", "dealer's choice",
+    "dealers choice", "the basics", "basics", "basic", "well stocked",
+    "full bar", "open bar", "no preference", "anything works",
+}
+
+_DEFAULT_BAR_INVENTORY = [
+    "Gin", "Vodka", "Light rum", "Dark rum", "Tequila", "Bourbon",
+    "Scotch", "Triple sec", "Sweet vermouth", "Dry vermouth",
+    "Campari", "Bitters", "Lemon juice", "Lime juice", "Orange juice",
+    "Simple syrup", "Soda water", "Tonic water", "Cola", "Ginger beer",
+]
+
+
+def _is_vague_inventory_item(value: str) -> bool:
+    cleaned = re.sub(r"[^a-z0-9' ]", " ", str(value or "").lower())
+    cleaned = " ".join(cleaned.split())
+    return cleaned in _VAGUE_BAR_INPUTS
+
 
 def normalize_bar_inventory(bar: list[str], client) -> list[str]:
     """
@@ -26,6 +45,9 @@ def normalize_bar_inventory(bar: list[str], client) -> list[str]:
     """
     if not bar:
         return bar
+
+    if any(_is_vague_inventory_item(item) for item in bar):
+        return _DEFAULT_BAR_INVENTORY.copy()
 
     raw = ", ".join(bar)
     try:
@@ -52,7 +74,9 @@ def normalize_bar_inventory(bar: list[str], client) -> list[str]:
         text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text, flags=re.MULTILINE).strip()
         parsed = json.loads(text)
         if isinstance(parsed, list) and all(isinstance(i, str) for i in parsed):
-            return [i.strip() for i in parsed if i.strip()]
+            cleaned = [i.strip() for i in parsed if i.strip()]
+            if cleaned and not any(_is_vague_inventory_item(item) for item in cleaned):
+                return cleaned
     except Exception:
         pass
     return bar
@@ -127,6 +151,12 @@ def find_matching_cocktails(bar_inventory: list[str], top_k: int = 8) -> list[di
         item for item in bar_inventory
         if item.lower().strip() not in _SKIP_INGREDIENTS
     ][:8]
+
+    if not spirits or any(_is_vague_inventory_item(item) for item in spirits):
+        spirits = [
+            item for item in _DEFAULT_BAR_INVENTORY
+            if item.lower().strip() not in _SKIP_INGREDIENTS
+        ][:8]
 
     id_to_meta: dict[str, dict] = {}
     for spirit in spirits:

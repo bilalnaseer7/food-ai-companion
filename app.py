@@ -132,6 +132,37 @@ def image_url_to_data_uri(url: str) -> str:
         return ""
 
 
+def cocktail_placeholder_image_data_uri(name: str) -> str:
+    digest = hashlib.md5(str(name or "cocktail").encode("utf-8")).hexdigest()
+    color_a = ["#E89570", "#D86D55", "#C9A227", "#7A9E7E"][int(digest[0], 16) % 4]
+    color_b = ["#B0552E", "#6A2A2C", "#8C7016", "#4F6F58"][int(digest[1], 16) % 4]
+    accent = ["#F8D7A8", "#F3B48E", "#E8E1C8", "#D5E4C8"][int(digest[2], 16) % 4]
+    svg = f"""
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 760">
+      <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="{color_a}"/>
+          <stop offset="1" stop-color="{color_b}"/>
+        </linearGradient>
+        <radialGradient id="glow" cx="42%" cy="34%" r="48%">
+          <stop offset="0" stop-color="{accent}" stop-opacity=".9"/>
+          <stop offset=".58" stop-color="{accent}" stop-opacity=".24"/>
+          <stop offset="1" stop-color="{accent}" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <rect width="440" height="760" fill="url(#bg)"/>
+      <rect width="440" height="760" fill="url(#glow)"/>
+      <path d="M118 130h204l-78 150h-48L118 130Z" fill="rgba(255,255,255,.22)" stroke="rgba(255,255,255,.58)" stroke-width="7" stroke-linejoin="round"/>
+      <path d="M151 158h138l-51 96h-36l-51-96Z" fill="rgba(255,255,255,.28)"/>
+      <path d="M220 280v195" stroke="rgba(255,255,255,.62)" stroke-width="9" stroke-linecap="round"/>
+      <path d="M150 500h140" stroke="rgba(255,255,255,.62)" stroke-width="10" stroke-linecap="round"/>
+      <circle cx="287" cy="156" r="20" fill="rgba(255,255,255,.54)"/>
+      <path d="M110 608c58-34 163-35 220 0" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="24" stroke-linecap="round"/>
+    </svg>
+    """
+    return "data:image/svg+xml;charset=utf-8," + quote(" ".join(svg.split()), safe=":/;,=%#()")
+
+
 def compatible_form(*, key: str, border: bool = False, enter_to_submit: bool = True):
     """Use Enter-to-submit when the installed Streamlit version supports it."""
     kwargs = {"key": key, "border": border}
@@ -3231,7 +3262,11 @@ def render_cocktail_tab(client):
                 thumb_url = thumb_map.get(normalized_lookup_key(cocktail_name), "")
                 if not thumb_url and thumb_candidates:
                     thumb_url = thumb_candidates[idx % len(thumb_candidates)]
-                thumb_src = image_url_to_data_uri(thumb_url) or thumb_url
+                thumb_src = (
+                    image_url_to_data_uri(thumb_url)
+                    or thumb_url
+                    or cocktail_placeholder_image_data_uri(cocktail_name)
+                )
 
                 with st.container(key=f"drink_recipe_card_{key_base}"):
                     why_clean = re.sub(r'\*+', '', cocktail_why).strip()
