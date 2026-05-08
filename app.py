@@ -242,7 +242,7 @@ a:hover { text-decoration: none; }
 /* ── Brand ── */
 .brand { display: flex; align-items: center; gap: 10px; margin-top: -30px; padding-bottom: 18px; }
 .brand-mark {
-    width: 13px; height: 13px; border-radius: 50%; margin-left: 5px;
+    width: 13px; height: 13px; border-radius: 50%; margin-left: 6px;
     background: #FFD8A8;
     box-shadow:
         0 0 0 3px rgba(201,106,58,0.10),
