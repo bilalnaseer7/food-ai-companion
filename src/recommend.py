@@ -61,7 +61,7 @@ def profile_recommend(client: OpenAI, query: str, user_profile: dict) -> str:
     user_prompt = (
         f"User request: {query}\n\n"
         f"User taste profile:\n{_profile_to_text(user_profile)}\n\n"
-        "Recommend 3 NYC restaurant options or restaurant types that best fit this profile. "
+        "Recommend 5 NYC restaurant options or restaurant types that best fit this profile when possible. "
         "For each one, explain why it matches the profile."
     )
 
@@ -105,7 +105,8 @@ def rag_recommend(client: OpenAI, query: str, user_profile: dict, df, top_k: int
         f"User request: {query}\n\n"
         f"User taste profile:\n{_profile_to_text(user_profile)}\n\n"
         f"Retrieved restaurant evidence:\n{context_text}\n\n"
-        "Pick the best 3 restaurants from the retrieved records.\n\n"
+        "Pick the best 5 restaurants from the retrieved records when 5 viable options are available; "
+        "return fewer only if the retrieved records do not contain 5 reasonable matches.\n\n"
         "For each recommendation, provide:\n"
         "1. Restaurant name\n"
         "2. Why it matches the user's request\n"
@@ -118,44 +119,6 @@ def rag_recommend(client: OpenAI, query: str, user_profile: dict, df, top_k: int
     answer = _chat(client, system_prompt, user_prompt)
     return answer, retrieved
 
-def map_recommend(client: OpenAI, query: str, user_profile: dict, borough: str = "manhattan") -> tuple[str, list]:
-    from src.places import search_restaurants, format_for_prompt
- 
-    restaurants = search_restaurants(
-        query=query,
-        borough=borough,
-        price=None,
-        limit=8,
-    )
- 
-    restaurant_block = format_for_prompt(restaurants, fetch_tips=True)
- 
-    system_prompt = (
-        "You are a restaurant recommendation assistant for New York City. "
-        "You must recommend only from the live restaurant data provided below. "
-        "Use the user's taste profile and the retrieved evidence together. "
-        "Treat budget as general comfort context, not a hard filter; explicit user intent such as Michelin, tasting menu, splurge, cheap eats, or casual should override the stored budget. "
-        "If the user asks for walking distance, interpret that as less than 1 mile from the requested location. "
-        "Do not invent restaurants outside the retrieved list."
-    )
- 
-    user_prompt = (
-        f"User request: {query}\n\n"
-        f"User taste profile:\n{_profile_to_text(user_profile)}\n\n"
-        f"{restaurant_block}\n\n"
-        "Pick the best 5 restaurants from the list above. "
-        "For each recommendation, provide:\n"
-        "1. Restaurant name\n"
-        "2. Why it matches the user's request\n"
-        "3. Why it matches the taste profile\n"
-        "4. One short detail from the user tips if available\n\n"
-        "Use the budget to understand the user's usual comfort zone, but do not let it override explicit price or occasion cues in the current request.\n\n"
-        "Then include one short overall summary comparing why the top choice is strongest."
-    )
- 
-    answer = _chat(client, system_prompt, user_prompt)
-    return answer, restaurants
-
 def recommend_recipe(craving: str, profile: dict, client: OpenAI | None = None, previous_response: str | None = None) -> str:
     return generate_cook_recommendations(client, craving, profile, previous_response=previous_response)
 
@@ -165,10 +128,12 @@ def recommend_cocktail(vibe: str, profile: dict, previous_response: str | None =
     if not bar:
         return "Your bar is empty. Add some spirits and mixers in the Cocktails tab."
 
-    system_prompt = (
-        "You are a creative bartender. Generate a cocktail from the user's available spirits and mixers. "
-        "If a classic ingredient is missing, find a lateral substitute and explain the flavor logic briefly."
-    )
+    from src.cocktail_db import find_matching_cocktails, format_for_prompt, normalize_bar_inventory
+    client_inst = OpenAI()
+    bar = normalize_bar_inventory(bar, client_inst)
+    matched = find_matching_cocktails(bar, top_k=12)
+    grounding_block = format_for_prompt(matched)
+    has_grounding = bool(matched)
 
     previous = str(previous_response or "").strip()
     previous_block = (
@@ -176,14 +141,48 @@ def recommend_cocktail(vibe: str, profile: dict, previous_response: str | None =
         if previous else ""
     )
 
-    user_prompt = (
-        f"Vibe: {vibe}\n"
-        f"Available: {', '.join(bar)}\n"
-        f"{previous_block}\n"
-        "Create a drink with exact measurements, substitution rationale if needed, and an optional garnish."
+    system_prompt = (
+        "You are a thoughtful craft bartender with access to CocktailDB recipe data. "
+        + (
+            "Prefer recommending cocktails from the grounded records below; use their exact "
+            "ingredient lists as the base recipe, but expand terse instructions into a complete, "
+            "practical method without changing the drink. "
+            if has_grounding else ""
+        )
+        + "Choose drinks that genuinely match the requested vibe and available bar. "
+        "If a classic ingredient is missing, suggest a lateral substitute and explain the flavor logic briefly. "
+        "Do not recommend a poor fit just because it shares one ingredient."
     )
 
-    return _chat(OpenAI(), system_prompt, user_prompt)
+    grounding_section = (
+        f"\nCocktailDB grounded records (prefer these):\n{grounding_block}\n"
+        if has_grounding else ""
+    )
+
+    user_prompt = (
+        f"Vibe: {vibe}\n"
+        f"Available bar: {', '.join(bar)}\n"
+        f"{grounding_section}"
+        f"{previous_block}\n"
+        "Recommend 3 cocktails when the bar inventory and CocktailDB candidates can support 3 distinct, good-fit options; "
+        "return fewer only if there are not 3 viable cocktails. "
+        "For each, use this exact structure so the app can format it:\n"
+        "COCKTAIL: <name>\n"
+        "WHY IT FITS: <1 concise sentence for the card only; do not repeat this idea elsewhere>\n"
+        "GLASS: <glassware>\n"
+        "ICE: <ice style, or 'None'>\n"
+        "INGREDIENTS:\n"
+        "- <measure> <ingredient>\n"
+        "METHOD:\n"
+        "1. <complete bartender step, including chill/shake/stir/build, strain, and top if relevant>\n"
+        "GARNISH: <optional garnish or 'None'>\n"
+        "SUBSTITUTIONS: <missing ingredients and substitutes with brief flavor logic, or 'None'>\n"
+        "NOTE: <one useful serving or balance note, or 'None'>\n\n"
+        "Use exact measures. Make the recipe complete enough to mix from directly. "
+        "Keep COCKTAIL and WHY IT FITS as plain parser labels only; the full recipe should stand on its own."
+    )
+
+    return _chat(client_inst, system_prompt, user_prompt), matched
 
 def combined_recommend(client: OpenAI, query: str, user_profile: dict, csv_results: list, fsq_results: list) -> tuple[str, list]:
     csv_block = "\n".join([

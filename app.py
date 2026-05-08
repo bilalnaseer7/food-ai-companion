@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 from src.data_loader import load_reviews
-from src.recommend import rag_recommend, map_recommend
+from src.recommend import rag_recommend
 from src.retrieval import find_static_cuisine_matches
 from src.taste_profile import load_profile, save_profile, update_profile
 from src.places import PRICE_LABEL
@@ -55,7 +55,7 @@ PROFILE_PATH = "data/taste_profile.json"
 PROFILE_RESET_MARKER = "data/.profile_reset"
 
 QUICK_STARTS = {
-    "eat":  ["something cozy", "date night", "wood-fired anything", "walking distance"],
+    "eat":  ["something cozy", "michelin star","wood-fired anything", "walking distance"],
     "cook": ["25 min weeknight", "use up the salmon", "one-pot", "something to impress"],
     "drink": ["rainy night", "pre-dinner aperitivo", "smoky and bitter", "low-ABV refresher"],
 }
@@ -150,6 +150,7 @@ st.markdown("""
     --radius-sm: 8px; --radius: 14px; --radius-lg: 20px; --radius-pill: 999px;
     --result-card-height: 300px;
     --result-card-action-height: 150px;
+    --drink-card-image-width: 220px;
     --serif: 'DM Serif Display', Georgia, serif;
     --sans: 'DM Sans', system-ui, sans-serif;
     --mono: 'IBM Plex Mono', ui-monospace, monospace;
@@ -767,10 +768,12 @@ div[class*="block-container"] {
 }
 [class*="st-key-cook_remix_toggle"] button:hover, [class*="st-key-drink_remix_toggle"] button:hover,
 [class*="st-key-cook_undo_save"] button:hover, [class*="st-key-drink_undo_save"] button:hover,
-[class*="st-key-cook_option_remix_"] button:hover {
+[class*="st-key-cook_option_remix_"] button:hover,
+[class*="st-key-drink_option_remix_"] button:hover {
     background: var(--bg-deep) !important; color: var(--ink) !important; border-color: var(--line) !important;
 }
-[class*="st-key-cook_option_remix_"] button {
+[class*="st-key-cook_option_remix_"] button,
+[class*="st-key-drink_option_remix_"] button {
     color: var(--ink-2) !important; border-color: var(--line-2) !important;
     background: var(--card) !important; font-weight: 500 !important;
 }
@@ -795,6 +798,30 @@ div:has(> [class*="st-key-cook_recipe_card_"]) {
 [class*="st-key-cook_recipe_card_"] h1,
 [class*="st-key-cook_recipe_card_"] h2,
 [class*="st-key-cook_recipe_card_"] h3 { margin-top: 0 !important; }
+.cook-card-title {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 22px;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    margin: 0;
+    color: var(--ink);
+}
+.cook-card-status {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+}
+.cook-card-status.saved { color: var(--sage-2); }
+.cook-card-status.passed { color: var(--terracotta); }
+.cook-card-why {
+    color: var(--ink-2);
+    font-size: 13.5px;
+    line-height: 1.55;
+    margin: 4px 0 16px;
+}
 [class*="st-key-cook_recipe_card_"] .stExpander,
 [class*="st-key-cook_recipe_card_"] .stExpander *,
 [class*="st-key-cook_recipe_card_"] .stExpander details,
@@ -820,17 +847,245 @@ div:has(> [class*="st-key-cook_recipe_card_"]) {
 }
 [class*="st-key-cook_recipe_card_"] .stExpander details[open] [data-testid="stExpanderDetails"] {
     margin: 0 !important;
-    padding: 6px 0 0 0 !important;
+    padding: 16px 0 0 0 !important;
 }
 [class*="st-key-cook_recipe_card_"] .stExpander details[open] [data-testid="stElementContainer"] {
-    margin-bottom: -2.5rem !important;
-    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 20px !important;
 }
 [class*="st-key-cook_recipe_card_"] .stExpander details[open] div {
     gap: 0 !important;
 }
+.cook-recipe-details {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.45;
+}
+.cook-recipe-row { margin: 0; }
+.cook-recipe-row b,
+.cook-recipe-section b { font-weight: 600; }
+.cook-recipe-section { margin: 0; }
+.cook-recipe-section-title { margin: 0 0 5px; }
+.cook-recipe-details ul,
+.cook-recipe-details ol {
+    margin: 0;
+    padding-left: 20px;
+}
+.cook-recipe-details li {
+    margin: 0 0 4px !important;
+    padding-left: 2px;
+    line-height: 1.45 !important;
+}
+.cook-recipe-details li:last-child { margin-bottom: 0 !important; }
 [class*="st-key-cook_recipe_card_"] .trace-panel {
     margin-top: 0 !important;
+}
+
+/* ── Drink recipe cards (same treatment as cook) ── */
+[class*="st-key-drink_recipe_card_"] {
+    background: var(--card) !important;
+    border: 1px solid var(--line) !important;
+    border-radius: var(--radius-lg) !important;
+    padding: 0 0 16px 0 !important;
+    margin-bottom: 0 !important;
+    overflow: hidden !important;
+    position: relative !important;
+}
+div:has(> [class*="st-key-drink_recipe_card_"]) {
+    gap: 16px !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+}
+[class*="st-key-drink_recipe_card_"] p,
+[class*="st-key-drink_recipe_card_"] li { font-size: 14px !important; line-height: 1.65 !important; }
+[class*="st-key-drink_recipe_card_"] h1,
+[class*="st-key-drink_recipe_card_"] h2,
+[class*="st-key-drink_recipe_card_"] h3 { margin-top: 0 !important; }
+[class*="st-key-drink_recipe_card_"] > div,
+[class*="st-key-drink_recipe_card_"] [data-testid="stVerticalBlock"] {
+    gap: 0 !important;
+}
+[class*="st-key-drink_recipe_card_"] > div,
+[class*="st-key-drink_recipe_card_"] [data-testid="stVerticalBlock"],
+[class*="st-key-drink_recipe_card_"] [data-testid="stElementContainer"] {
+    background: transparent !important;
+    position: relative !important;
+    z-index: 2 !important;
+}
+[class*="st-key-drink_recipe_card_"] [data-testid="stElementContainer"]:has(.drink-card-layout) {
+    position: static !important;
+    z-index: auto !important;
+}
+.drink-card-layout {
+    min-height: 128px;
+    background: transparent;
+}
+.drink-card-image {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: var(--drink-card-image-width);
+    overflow: hidden;
+    background: linear-gradient(135deg, #E89570 0%, #B0552E 100%);
+    z-index: 1;
+}
+.drink-card-image img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center center;
+}
+.drink-card-image .ph {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(0,0,0,0.35);
+}
+.drink-card-image.has-photo .ph { display: none; }
+.drink-card-body {
+    position: relative;
+    z-index: 2;
+    min-width: 0;
+    margin-left: var(--drink-card-image-width);
+    padding: 12px 18px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+.drink-card-title-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+}
+.drink-card-title {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 22px;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    margin: 0;
+    color: var(--ink);
+}
+.drink-card-status {
+    flex-shrink: 0;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+}
+.drink-card-status.saved { color: var(--sage-2); }
+.drink-card-status.passed { color: var(--terracotta); }
+.drink-card-why {
+    color: var(--ink-2);
+    font-size: 13.5px;
+    line-height: 1.55;
+    margin: 0;
+}
+[class*="st-key-drink_recipe_card_"] .stExpander,
+[class*="st-key-drink_recipe_card_"] .trace-panel {
+    margin-left: calc(var(--drink-card-image-width) + 18px) !important;
+    margin-right: 18px !important;
+    width: calc(100% - var(--drink-card-image-width) - 36px) !important;
+    max-width: calc(100% - var(--drink-card-image-width) - 36px) !important;
+    box-sizing: border-box !important;
+}
+[class*="st-key-drink_recipe_card_"] [data-testid="stHorizontalBlock"] {
+    margin-left: calc(var(--drink-card-image-width) + 18px) !important;
+    margin-right: 18px !important;
+    width: calc(100% - var(--drink-card-image-width) - 36px) !important;
+    max-width: calc(100% - var(--drink-card-image-width) - 36px) !important;
+    box-sizing: border-box !important;
+}
+[class*="st-key-drink_recipe_card_"] .stExpander,
+[class*="st-key-drink_recipe_card_"] .stExpander *,
+[class*="st-key-drink_recipe_card_"] .stExpander details,
+[class*="st-key-drink_recipe_card_"] .stExpander details *,
+[class*="st-key-drink_recipe_card_"] .stExpander summary,
+[class*="st-key-drink_recipe_card_"] .stExpander [data-testid="stExpanderDetails"],
+[class*="st-key-drink_recipe_card_"] .stExpander [data-testid="stExpanderDetails"] > div {
+    border: none !important;
+    background: transparent !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+[class*="st-key-drink_recipe_card_"] .stExpander details,
+[class*="st-key-drink_recipe_card_"] .stExpander summary,
+[class*="st-key-drink_recipe_card_"] .stExpander [data-testid="stExpanderDetails"],
+[class*="st-key-drink_recipe_card_"] .stExpander [data-testid="stExpanderDetails"] > div {
+    width: 100% !important;
+}
+[class*="st-key-drink_recipe_card_"] .stExpander summary {
+    background: var(--bg) !important;
+    border-radius: var(--radius-sm) !important;
+    border: 1px solid var(--line) !important;
+    padding: 8px 12px !important;
+}
+[class*="st-key-drink_recipe_card_"] .stExpander summary,
+[class*="st-key-drink_recipe_card_"] .stExpander [data-testid="stExpanderToggleIcon"] {
+    color: var(--ink-2) !important;
+}
+[class*="st-key-drink_recipe_card_"] .stExpander summary:hover { color: var(--ink) !important; }
+[class*="st-key-drink_recipe_card_"] .stExpander details[open] [data-testid="stExpanderDetails"] {
+    margin: 0 !important;
+    padding: 16px 0 0 0 !important;
+}
+[class*="st-key-drink_recipe_card_"] .stExpander details[open] [data-testid="stElementContainer"] {
+    margin-bottom: 0 !important;
+    padding-bottom: 20px !important;
+}
+[class*="st-key-drink_recipe_card_"] .stExpander details[open] div { gap: 0 !important; }
+.cocktail-recipe-details {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.45;
+}
+.cocktail-recipe-row {
+    margin: 0;
+}
+.cocktail-recipe-row b,
+.cocktail-recipe-section b {
+    font-weight: 600;
+}
+.cocktail-recipe-section {
+    margin: 0;
+}
+.cocktail-recipe-section-title {
+    margin: 0 0 5px;
+}
+.cocktail-recipe-details ul,
+.cocktail-recipe-details ol {
+    margin: 0;
+    padding-left: 20px;
+}
+.cocktail-recipe-details li {
+    margin: 0 0 4px !important;
+    padding-left: 2px;
+    line-height: 1.45 !important;
+}
+.cocktail-recipe-details li:last-child {
+    margin-bottom: 0 !important;
+}
+            
+[class*="st-key-drink_recipe_card_"] .trace-panel {
+    margin-top: 0 !important;
+    margin-bottom: 16px !important;
 }
 
 .card.combo {
@@ -1179,6 +1434,159 @@ def _split_cook_recipes(response_text):
     return results
 
 
+def _format_cook_recipe_for_expander(recipe_block):
+    text = str(recipe_block or "").strip()
+    if not text:
+        return ""
+
+    text = re.sub(r'(?im)^\s*\*{0,2}RECIPE\*{0,2}\s*:\s*.+\n?', '', text)
+    text = re.sub(
+        r'(?ims)^\s*\*{0,2}WHY IT FITS\*{0,2}\s*:\s*.*?(?=^\s*\*{0,2}(?:USES FROM PANTRY|MISSING OR SUBSTITUTE INGREDIENTS|INGREDIENTS|STEPS|CAUTION)\*{0,2}\s*:|\Z)',
+        '',
+        text,
+    )
+    text = re.sub(r'(?im)^\s*\*{0,2}CAUTION\*{0,2}\s*:\s*none\.?\s*$', '', text)
+
+    labels = ["USES FROM PANTRY", "MISSING OR SUBSTITUTE INGREDIENTS", "INGREDIENTS", "STEPS", "CAUTION"]
+    label_pattern = "|".join(re.escape(label) for label in labels)
+    pattern = (
+        r'(?ims)^\s*\*{0,2}(' + label_pattern + r')\*{0,2}\s*:\s*'
+        r'(.*?)(?=^\s*\*{0,2}(?:' + label_pattern + r')\*{0,2}\s*:|\Z)'
+    )
+    sections = {
+        label.upper(): " ".join(value.strip().split()) if label.upper() not in {"INGREDIENTS", "STEPS"} else value.strip()
+        for label, value in re.findall(pattern, text)
+    }
+
+    def esc(value):
+        cleaned = re.sub(r'[*_`]+', '', str(value or ""))
+        cleaned = re.sub(r'^\s*[-–—]+\s*$', '', cleaned)
+        return html_module.escape(cleaned.strip())
+
+    def clean_scalar(value):
+        cleaned = re.sub(r'[*_`]+', '', str(value or ""))
+        cleaned = re.sub(r'^\s*[:\-–—]+\s*', '', cleaned)
+        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+        return cleaned
+
+    def list_items(value, ordered=False):
+        lines = []
+        for line in str(value or "").splitlines():
+            line = re.sub(r'^\s*(?:[-*]\s*|\d+[.)]\s*)', '', line).strip()
+            line = re.sub(r'[*_`]+', '', line).strip()
+            if re.fullmatch(r'[-–—]+', line):
+                continue
+            if line:
+                lines.append(f"<li>{esc(line)}</li>")
+        if not lines:
+            return ""
+        tag = "ol" if ordered else "ul"
+        return f"<{tag}>{''.join(lines)}</{tag}>"
+
+    parts = ['<div class="cook-recipe-details">']
+    for label, pretty in [
+        ("USES FROM PANTRY", "Uses from pantry"),
+        ("MISSING OR SUBSTITUTE INGREDIENTS", "Missing or substitute ingredients"),
+    ]:
+        value = clean_scalar(sections.get(label, ""))
+        if value and value.lower() not in {"none", "n/a", "na"}:
+            parts.append(f'<p class="cook-recipe-row"><b>{pretty}:</b> {esc(value)}</p>')
+
+    ingredients_html = list_items(sections.get("INGREDIENTS", ""))
+    if ingredients_html:
+        parts.append(f'<div class="cook-recipe-section"><p class="cook-recipe-section-title"><b>Ingredients</b></p>{ingredients_html}</div>')
+
+    steps_html = list_items(sections.get("STEPS", ""), ordered=True)
+    if steps_html:
+        parts.append(f'<div class="cook-recipe-section"><p class="cook-recipe-section-title"><b>Steps</b></p>{steps_html}</div>')
+
+    caution = clean_scalar(sections.get("CAUTION", ""))
+    if caution and caution.lower() not in {"none", "n/a", "na"}:
+        parts.append(f'<p class="cook-recipe-row"><b>Caution:</b> {esc(caution)}</p>')
+
+    parts.append("</div>")
+    return "".join(parts)
+
+
+def _split_cocktail_recipes(response_text):
+    blocks = re.split(r'\n(?=\*{0,2}COCKTAIL\*{0,2}\s*:)', response_text.strip(), flags=re.IGNORECASE)
+    results = []
+    for block in blocks:
+        block = block.strip()
+        if not block:
+            continue
+        name_m = re.match(r'\*{0,2}COCKTAIL\*{0,2}\s*:\s*\*{0,2}(.+?)\*{0,2}\s*$', block, re.IGNORECASE | re.MULTILINE)
+        if not name_m:
+            continue
+        name = name_m.group(1).strip()
+        why_m = re.search(r'\*{0,2}WHY IT FITS\*{0,2}\s*:\s*(.+?)(?=\n\s*\*{0,2}[A-Z]|\Z)', block, re.IGNORECASE | re.DOTALL)
+        why = why_m.group(1).strip() if why_m else ""
+        results.append((name, why, block))
+    if not results:
+        return [(extract_generated_item_name(response_text, "drink"), "", response_text)]
+    return results
+
+
+def _format_cocktail_recipe_for_expander(cocktail_block):
+    text = str(cocktail_block or "").strip()
+    if not text:
+        return ""
+
+    # The model returns parser labels for card extraction; hide those in the expander.
+    text = re.sub(r'(?im)^\s*\*{0,2}COCKTAIL\*{0,2}\s*:\s*.+\n?', '', text)
+    text = re.sub(
+        r'(?ims)^\s*\*{0,2}WHY IT FITS\*{0,2}\s*:\s*.*?(?=^\s*\*{0,2}(?:GLASS|ICE|INGREDIENTS|METHOD|GARNISH|SUBSTITUTIONS|NOTE)\*{0,2}\s*:|\Z)',
+        '',
+        text,
+    )
+
+    labels = ["GLASS", "ICE", "INGREDIENTS", "METHOD", "GARNISH", "SUBSTITUTIONS", "NOTE"]
+    pattern = (
+        r'(?ims)^\s*\*{0,2}(' + "|".join(labels) + r')\*{0,2}\s*:\s*'
+        r'(.*?)(?=^\s*\*{0,2}(?:' + "|".join(labels) + r')\*{0,2}\s*:|\Z)'
+    )
+    sections = {
+        label.upper(): " ".join(value.strip().split()) if label.upper() not in {"INGREDIENTS", "METHOD"} else value.strip()
+        for label, value in re.findall(pattern, text)
+    }
+
+    def esc(value):
+        return html_module.escape(str(value or "").strip())
+
+    def list_items(value, ordered=False):
+        lines = []
+        for line in str(value or "").splitlines():
+            line = re.sub(r'^\s*(?:[-*]\s*|\d+[.)]\s*)', '', line).strip()
+            if line:
+                lines.append(f"<li>{esc(line)}</li>")
+        if not lines:
+            return ""
+        tag = "ol" if ordered else "ul"
+        return f"<{tag}>{''.join(lines)}</{tag}>"
+
+    parts = ['<div class="cocktail-recipe-details">']
+    for label, pretty in [("GLASS", "Glass"), ("ICE", "Ice")]:
+        value = sections.get(label, "")
+        if value and value.lower() not in {"none", "n/a", "na"}:
+            parts.append(f'<p class="cocktail-recipe-row"><b>{pretty}:</b> {esc(value)}</p>')
+
+    ingredients_html = list_items(sections.get("INGREDIENTS", ""))
+    if ingredients_html:
+        parts.append(f'<div class="cocktail-recipe-section"><p class="cocktail-recipe-section-title"><b>Ingredients</b></p>{ingredients_html}</div>')
+
+    method_html = list_items(sections.get("METHOD", ""), ordered=True)
+    if method_html:
+        parts.append(f'<div class="cocktail-recipe-section"><p class="cocktail-recipe-section-title"><b>Method</b></p>{method_html}</div>')
+
+    for label, pretty in [("GARNISH", "Garnish"), ("SUBSTITUTIONS", "Substitutions"), ("NOTE", "Note")]:
+        value = sections.get(label, "")
+        if value and value.lower() not in {"none", "n/a", "na"}:
+            parts.append(f'<p class="cocktail-recipe-row"><b>{pretty}:</b> {esc(value)}</p>')
+
+    parts.append("</div>")
+    return "".join(parts)
+
+
 def match_indicator(inventory, response_text):
     if not inventory or not response_text:
         return None, None
@@ -1486,13 +1894,35 @@ def render_generation_trace(kind, response_text, inventory, request_text):
             ("Limitation", f"Potential conflict: {_trace_join(conflicts)}" if conflicts else limitation),
         ]
     else:
-        source = "LLM + bar inventory generation; no cocktail database/RAG grounding is claimed"
+        grounding = st.session_state.get("drink_grounding", []) or []
+        generated_names = extract_generated_item_names(response_text, "drink", request_text)
+        generated_keys = {name.lower() for name in generated_names}
+        grounded_match = next(
+            (item for item in grounding if str(item.get("name", "")).lower() in generated_keys),
+            None,
+        )
+        if grounded_match:
+            source = "CocktailDB grounded recipe + LLM ranking/formatting from bar inventory"
+            evidence = (
+                f"{grounded_match.get('name')} from CocktailDB; "
+                f"{grounded_match.get('have_count', 0)}/{grounded_match.get('total_ingredients', 0)} ingredients matched"
+            )
+            limitation = "CocktailDB provides recipe grounding; confirm measures and substitutions before mixing."
+        elif grounding:
+            source = "CocktailDB candidate retrieval + LLM selection from bar inventory"
+            evidence = f"{len(grounding)} CocktailDB candidates retrieved; selected recipe may be adapted."
+            limitation = "LLM may adapt from retrieved candidates; confirm measures and substitutions before mixing."
+        else:
+            source = "LLM + bar inventory generation; no CocktailDB record was retrieved"
+            evidence = "No CocktailDB candidates were available for this bar inventory."
+            limitation = "Model-generated drink idea; confirm measurements and avoid ingredients you cannot consume."
         rows = [
             ("Source", source),
+            ("CocktailDB evidence", evidence),
             ("Request context", request_text or "not specified"),
             ("Inventory matched", _trace_join(used_from_inventory, "not explicitly listed")),
             ("Profile role", "Requested vibe and bar inventory are primary; saved taste profile is secondary context."),
-            ("Limitation", f"Potential conflict: {_trace_join(conflicts)}" if conflicts else "Model-generated drink idea; confirm measurements and avoid ingredients you cannot consume."),
+            ("Limitation", f"Potential conflict: {_trace_join(conflicts)}" if conflicts else limitation),
         ]
 
     render_trace_panel(rows)
@@ -1684,6 +2114,7 @@ def init_session():
         "cook_remix_active": False, "drink_remix_active": False,
         "cook_remix_pending": None, "drink_remix_pending": None,
         "cook_remix_card": None, "cook_remix_previous": None,
+        "drink_remix_card": None, "drink_grounding": [],
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -2415,32 +2846,48 @@ def render_eat_tab(client, df):
             with skel_placeholder.container():
                 render_skeletons(5)
 
+        from concurrent.futures import ThreadPoolExecutor
+        from src.places import search_restaurants, geocode_location
+
         search_notes = []
+        borough = zipcode if zipcode else "New York, NY"
+
+        def _run_rag():
+            _, results = rag_recommend(client, query, st.session_state.profile, df, top_k=5)
+            return results
+
+        def _run_places():
+            origin = geocode_location(zipcode + " New York") if zipcode else (40.7128, -74.0060)
+            restaurants = search_restaurants(query=query, borough=borough, limit=8)
+            return origin, restaurants
+
         retrieved = []
-        try:
-            _, retrieved = rag_recommend(client, query, st.session_state.profile, df, top_k=5)
-        except Exception as e:
-            search_notes.append(f"Curated retrieval skipped: {e}")
+        fsq_restaurants = []
+        origin = (40.7128, -74.0060)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            rag_future = pool.submit(_run_rag)
+            places_future = pool.submit(_run_places)
+
+            try:
+                retrieved = rag_future.result()
+            except Exception as e:
+                search_notes.append(f"Curated retrieval skipped: {e}")
+            try:
+                origin, fsq_restaurants = places_future.result()
+            except Exception as e:
+                search_notes.append(f"Live Places search skipped: {e}")
+
         try:
             exact_static_matches = find_static_cuisine_matches(query, get_full_restaurant_df(), top_k=5)
             if exact_static_matches:
                 retrieved = merge_curated_results(exact_static_matches, retrieved, top_k=5)
         except Exception as e:
             search_notes.append(f"Exact cuisine fallback skipped: {e}")
+
         st.session_state.eat_results = retrieved
-        try:
-            borough = zipcode if zipcode else "New York, NY"
-            if zipcode:
-                from src.places import geocode_location
-                origin = geocode_location(zipcode + " New York")
-            else:
-                origin = (40.7128, -74.0060)
-            st.session_state.eat_search_origin = origin
-            _, fsq_restaurants = map_recommend(client, query, st.session_state.profile, borough=borough)
-            st.session_state.eat_fsq_results = fsq_restaurants
-        except Exception as e:
-            st.session_state.eat_fsq_results = []
-            search_notes.append(f"Live Places search skipped: {e}")
+        st.session_state.eat_search_origin = origin
+        st.session_state.eat_fsq_results = fsq_restaurants
 
         selected = []
         response = ""
@@ -2483,8 +2930,6 @@ def render_eat_tab(client, df):
             f'</div>',
             unsafe_allow_html=True
         )
-        if st.session_state.get("eat_search_notes"):
-            st.warning("Live Google Places results were unavailable. Showing static dataset matches — photos require a valid GOOGLE_PLACES_API_KEY.")
         for r in results:
             render_card(r, tab="eat", blurb=r.get("blurb", ""))
     else:
@@ -2581,25 +3026,36 @@ def render_cook_tab(client):
                 rejected = recipe_name in st.session_state.profile.get("rejected", [])
 
                 with st.container(key=f"cook_recipe_card_{key_base}"):
-                    status_suffix = " · Saved" if accepted else " · Passed" if rejected else ""
+                    status_class = "saved" if accepted else "passed" if rejected else ""
+                    status_label = "Saved" if accepted else "Passed" if rejected else ""
+                    status_html = (
+                        f' <span class="cook-card-status {status_class}">{html_module.escape(status_label)}</span>'
+                        if status_label else ""
+                    )
                     why_clean = re.sub(r'\*+', '', recipe_why).strip()
-                    st.markdown(f"**{html_module.escape(recipe_name)}**{status_suffix}")
+                    st.markdown(
+                        f'<h3 class="cook-card-title">{html_module.escape(recipe_name)}{status_html}</h3>',
+                        unsafe_allow_html=True,
+                    )
                     if why_clean:
-                        st.markdown(f'<p style="color:var(--ink-2);font-size:13px;margin:2px 0 10px">{html_module.escape(why_clean)}</p>', unsafe_allow_html=True)
+                        st.markdown(f'<p class="cook-card-why">{html_module.escape(why_clean)}</p>', unsafe_allow_html=True)
                     with st.expander("Full recipe"):
-                        clean_block = re.sub(r'(?im)^\*{0,2}CAUTION\*{0,2}\s*:\s*none\.?\s*$\n?', '', recipe_block)
-                        st.markdown(clean_block)
+                        st.markdown(_format_cook_recipe_for_expander(recipe_block), unsafe_allow_html=True)
 
                     if accepted:
-                        if st.button("Undo Save", key=f"cook_option_undo_save_{key_base}", use_container_width=True):
-                            st.session_state.active_tab = "cook"
-                            undo_card_feedback(recipe_name, True, tab="cook")
-                            st.rerun()
+                        _, _, c_save = st.columns([1, 1, 1])
+                        with c_save:
+                            if st.button("Undo Save", key=f"cook_option_undo_save_{key_base}", use_container_width=True):
+                                st.session_state.active_tab = "cook"
+                                undo_card_feedback(recipe_name, True, tab="cook")
+                                st.rerun()
                     elif rejected:
-                        if st.button("Undo Pass", key=f"cook_option_undo_pass_{key_base}", use_container_width=True):
-                            st.session_state.active_tab = "cook"
-                            undo_card_feedback(recipe_name, False, tab="cook")
-                            st.rerun()
+                        c_pass, _, _ = st.columns([1, 1, 1])
+                        with c_pass:
+                            if st.button("Undo Pass", key=f"cook_option_undo_pass_{key_base}", use_container_width=True):
+                                st.session_state.active_tab = "cook"
+                                undo_card_feedback(recipe_name, False, tab="cook")
+                                st.rerun()
                     else:
                         c_pass, c_remix, c_save = st.columns([1, 1, 1])
                         with c_pass:
@@ -2688,14 +3144,16 @@ def render_cocktail_tab(client):
         if not st.session_state.cocktail_response:
             skel_placeholder = st.empty()
             with skel_placeholder.container():
-                render_skeletons(1)
+                render_skeletons(3)
 
         from src.recommend import recommend_cocktail
-        
-        response = recommend_cocktail(vibe, st.session_state.profile)
+
+        response, grounding = recommend_cocktail(vibe, st.session_state.profile)
         st.session_state.cocktail_response = response
+        st.session_state.drink_grounding = grounding
         st.session_state.drink_last_vibe = vibe
         st.session_state.drink_remix_active = False
+        st.session_state.drink_remix_card = None
 
         if skel_placeholder:
             skel_placeholder.empty()
@@ -2704,103 +3162,140 @@ def render_cocktail_tab(client):
     if st.session_state.drink_remix_pending:
         st.session_state.active_tab = "drink"
         if not st.session_state.cocktail_response:
-            render_skeletons(1)
+            render_skeletons(3)
         from src.recommend import recommend_cocktail
         combined = st.session_state.drink_remix_pending
-        st.session_state.cocktail_response = recommend_cocktail(combined, st.session_state.profile, previous_response=st.session_state.cocktail_response)
+        response, grounding = recommend_cocktail(combined, st.session_state.profile, previous_response=st.session_state.cocktail_response)
+        st.session_state.cocktail_response = response
+        st.session_state.drink_grounding = grounding
         st.session_state.drink_last_vibe = combined
         st.session_state.drink_remix_pending = None
         st.rerun()
 
     if st.session_state.cocktail_response:
         bar = st.session_state.profile.get("bar_inventory", [])
-        match_text, match_kind = match_indicator(bar, st.session_state.cocktail_response)
-        match_html = ""
-        if match_text:
-            match_html = f'<span class="card-extra{" warn" if match_kind == "warn" else ""}"><span class="dot"></span>{match_text}</span>'
+        _is_empty_bar = "bar is empty" in st.session_state.cocktail_response.lower()
 
+        n_drinks = len(_split_cocktail_recipes(st.session_state.cocktail_response))
+        drink_label = f"{n_drinks} cocktails" if n_drinks > 1 else "Your cocktail"
         st.markdown(
             f'<div class="results-head">'
             f'<h2>{TAB_HEADING["drink"]}</h2>'
-            f'<span class="count">Your drink</span>'
+            f'<span class="count">{drink_label}</span>'
             f'</div>',
             unsafe_allow_html=True
         )
-        if match_html:
-            st.markdown(f'<div style="margin-bottom:12px">{match_html}</div>', unsafe_allow_html=True)
-        import re as _re
-        cocktail_md = _re.sub(
-            r"^\*{0,2}Cocktail Name:?\*{0,2}\s*\*{0,2}([^*\n]+)\*{0,2}",
-            lambda m: "### " + m.group(1).strip(),
-            st.session_state.cocktail_response.lstrip(),
-            count=1,
-            flags=_re.IGNORECASE,
-        )
-        with st.container():
-            st.markdown(cocktail_md)
-        render_generation_trace(
-            "drink",
-            st.session_state.cocktail_response,
-            bar,
-            st.session_state.drink_last_vibe,
-        )
 
-        _cocktail_names = extract_generated_item_names(
-            cocktail_md,
-            "drink",
-            st.session_state.drink_last_vibe,
-        )
-        _is_empty_bar = "bar is empty" in st.session_state.cocktail_response.lower()
+        if _is_empty_bar:
+            with st.container():
+                st.markdown(st.session_state.cocktail_response)
+        else:
+            grounding = st.session_state.get("drink_grounding", [])
+            thumb_map = {c["name"].lower(): c["thumbnail"] for c in grounding if c.get("thumbnail")}
 
-        if not _is_empty_bar:
-            if len(_cocktail_names) > 1:
-                render_generated_option_feedback("drink", _cocktail_names)
-                _, d_remix, _ = st.columns([1, 1, 1])
-                with d_remix:
-                    if st.button("Remix", key="drink_remix_toggle", use_container_width=True):
-                        st.session_state.active_tab = "drink"
-                        st.session_state.drink_remix_active = not st.session_state.drink_remix_active
-                        st.rerun()
-            else:
-                _cocktail_name = _cocktail_names[0]
-                _drink_saved = _cocktail_name in st.session_state.profile.get("accepted", [])
-                d_pass, d_remix, d_save = st.columns([1, 1, 1])
-                if not _drink_saved:
-                    with d_pass:
-                        if st.button("Pass", key="drink_pass", use_container_width=True):
-                            st.session_state.active_tab = "drink"
-                            apply_card_feedback(_cocktail_name, False, tab="drink")
-                            st.session_state.cocktail_response = None
-                            st.rerun()
-                    with d_remix:
-                        if st.button("Remix", key="drink_remix_toggle", use_container_width=True):
-                            st.session_state.active_tab = "drink"
-                            st.session_state.drink_remix_active = not st.session_state.drink_remix_active
-                            st.rerun()
-                with d_save:
-                    _save_label = "Undo Save" if _drink_saved else "Save"
-                    _save_key = "drink_undo_save" if _drink_saved else "drink_save"
-                    if st.button(_save_label, key=_save_key, use_container_width=True):
-                        st.session_state.active_tab = "drink"
-                        if _drink_saved:
-                            undo_card_feedback(_cocktail_name, True, tab="drink")
-                        else:
-                            apply_card_feedback(_cocktail_name, True, tab="drink")
-                            st.session_state.drink_remix_active = False
-                        st.rerun()
+            for idx, (cocktail_name, cocktail_why, cocktail_block) in enumerate(_split_cocktail_recipes(st.session_state.cocktail_response)):
+                key_base = stable_widget_key("drink", cocktail_name, idx)
+                accepted = cocktail_name in st.session_state.profile.get("accepted", [])
+                rejected = cocktail_name in st.session_state.profile.get("rejected", [])
+                thumb_url = thumb_map.get(cocktail_name.lower(), "")
 
-        if st.session_state.drink_remix_active:
-            with compatible_form(key="drink_remix_form", enter_to_submit=True, border=False):
-                col1, col2 = st.columns([3, 1.2])
-                with col1:
-                    remix_input = st.text_input("Add context", placeholder="make it sweeter, no citrus, more spirit-forward…", label_visibility="collapsed")
-                with col2:
-                    if st.form_submit_button("Remix Drink  →", type="primary", use_container_width=True) and remix_input:
-                        st.session_state.active_tab = "drink"
-                        st.session_state.drink_remix_pending = f"{st.session_state.drink_last_vibe}. {remix_input}"
-                        st.session_state.cocktail_response = None
-                        st.session_state.drink_remix_active = False
-                        st.rerun()
+                with st.container(key=f"drink_recipe_card_{key_base}"):
+                    why_clean = re.sub(r'\*+', '', cocktail_why).strip()
+                    status_class = "saved" if accepted else "passed" if rejected else ""
+                    status_label = "Saved" if accepted else "Passed" if rejected else ""
+                    thumb_html = (
+                        f'<img src="{html_module.escape(thumb_url, quote=True)}" alt="{html_module.escape(cocktail_name, quote=True)}" loading="lazy" '
+                        f'onerror="this.remove(); this.parentElement.classList.remove(\'has-photo\');">'
+                        if thumb_url else ""
+                    )
+                    why_html = (
+                        f'<p class="drink-card-why">{html_module.escape(why_clean)}</p>'
+                        if why_clean else ""
+                    )
+                    status_html = (
+                        f'<span class="drink-card-status {status_class}">{html_module.escape(status_label)}</span>'
+                        if status_label else ""
+                    )
+
+                    st.markdown(
+                        f'<div class="drink-card-layout">'
+                        f'<div class="drink-card-image{" has-photo" if thumb_url else ""}">'
+                        f'{thumb_html}'
+                        f'<span class="ph">mixed / drink</span>'
+                        f'</div>'
+                        f'<div class="drink-card-body">'
+                        f'<div class="drink-card-title-row">'
+                        f'<h3 class="drink-card-title">{html_module.escape(cocktail_name)}</h3>'
+                        f'{status_html}'
+                        f'</div>'
+                        f'{why_html}'
+                        f'</div>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+
+                    with st.expander("Full recipe"):
+                        st.markdown(_format_cocktail_recipe_for_expander(cocktail_block), unsafe_allow_html=True)
+
+                    if accepted:
+                        _, _, c_save = st.columns([1, 1, 1])
+                        with c_save:
+                            if st.button("Undo Save", key=f"drink_option_undo_save_{key_base}", use_container_width=True):
+                                st.session_state.active_tab = "drink"
+                                undo_card_feedback(cocktail_name, True, tab="drink")
+                                st.rerun()
+                    elif rejected:
+                        c_pass, _, _ = st.columns([1, 1, 1])
+                        with c_pass:
+                            if st.button("Undo Pass", key=f"drink_option_undo_pass_{key_base}", use_container_width=True):
+                                st.session_state.active_tab = "drink"
+                                undo_card_feedback(cocktail_name, False, tab="drink")
+                                st.rerun()
+                    else:
+                        c_pass, c_remix, c_save = st.columns([1, 1, 1])
+                        with c_pass:
+                            if st.button("Pass", key=f"drink_option_pass_{key_base}", use_container_width=True):
+                                st.session_state.active_tab = "drink"
+                                apply_card_feedback(cocktail_name, False, tab="drink")
+                                st.rerun()
+                        with c_remix:
+                            is_remixing = (
+                                st.session_state.drink_remix_active
+                                and st.session_state.drink_remix_card == cocktail_name
+                            )
+                            if st.button("Remix ↩" if is_remixing else "Remix", key=f"drink_option_remix_{key_base}", use_container_width=True):
+                                st.session_state.active_tab = "drink"
+                                if is_remixing:
+                                    st.session_state.drink_remix_active = False
+                                    st.session_state.drink_remix_card = None
+                                else:
+                                    st.session_state.drink_remix_active = True
+                                    st.session_state.drink_remix_card = cocktail_name
+                                st.rerun()
+                        with c_save:
+                            if st.button("Save", key=f"drink_option_save_{key_base}", use_container_width=True):
+                                st.session_state.active_tab = "drink"
+                                apply_card_feedback(cocktail_name, True, tab="drink")
+                                st.rerun()
+
+                    render_generation_trace("drink", cocktail_block, bar, st.session_state.drink_last_vibe)
+
+                if (
+                    st.session_state.drink_remix_active
+                    and st.session_state.drink_remix_card == cocktail_name
+                ):
+                    with compatible_form(key=f"drink_remix_form_{key_base}", enter_to_submit=True, border=False):
+                        col1, col2 = st.columns([3, 1.2])
+                        with col1:
+                            remix_input = st.text_input("Add context", placeholder="make it sweeter, no citrus, more spirit-forward…", label_visibility="collapsed")
+                        with col2:
+                            if st.form_submit_button("Remix  →", type="primary", use_container_width=True) and remix_input:
+                                st.session_state.active_tab = "drink"
+                                st.session_state.drink_remix_pending = f"{st.session_state.drink_last_vibe}. {remix_input}"
+                                st.session_state.cocktail_response = None
+                                st.session_state.drink_remix_active = False
+                                st.session_state.drink_remix_card = None
+                                st.rerun()
     else:
         render_empty("drink")
 
