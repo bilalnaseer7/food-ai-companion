@@ -783,6 +783,11 @@ div[class*="block-container"] {
     padding: 18px 20px 14px !important;
     margin-bottom: 0 !important;
     overflow: hidden !important;
+    gap: 0 !important;
+}
+[class*="st-key-cook_recipe_card_"] [data-testid="stElementContainer"] {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
 }
 div:has(> [class*="st-key-cook_recipe_card_"]) {
     gap: 16px !important;
