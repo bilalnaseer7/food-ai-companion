@@ -1805,7 +1805,7 @@ def _format_cook_recipe_for_expander(recipe_block):
         if value and value.lower() not in {"none", "n/a", "na"}:
             parts.append(f'<p class="cook-recipe-row"><b>{pretty}:</b> {esc(value)}</p>')
 
-    servings = clean_scalar(sections.get("SERVINGS", ""))
+    servings = clean_scalar(sections.get("SERVINGS", "")).rstrip(".")
     if servings:
         parts.append(f'<p class="cook-recipe-row"><b>Servings:</b> {esc(servings)}</p>')
 
