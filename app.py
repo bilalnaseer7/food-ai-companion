@@ -4055,6 +4055,7 @@ def _infer_companion_action(client, messages):
         "If a clarification answer says 'recipe' after an original drink/cocktail phrase, choose drink because Cocktails are recipes too. "
         "If the answer says 'cocktail', 'drink', 'bar', 'gin', 'tonic', 'g+t', or a known mixed drink, choose drink. "
         "Ask clarify when the request could mean multiple tabs or the target/result is unclear. "
+        "Specifically: 'I want X', 'I'm craving X', or 'I feel like X' where X is a food or cuisine with no eat-out or cook signal must always return clarify — e.g. 'I want jap curry' → clarify: 'Are you looking to eat out or cook it at home?'. "
         "Use none for questions about existing results, reviews, ratings, hours, price, vibe, general food questions, and restaurant recommendations the companion can answer from its knowledge.\n\n"
         f"Conversation:\n{conversation}"
     )
