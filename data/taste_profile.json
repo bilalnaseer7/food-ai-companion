@@ -7,17 +7,18 @@
   "liked_foods": [
     "fine dining",
     "American cuisine",
-    "rooftop dining",
+    "elegant dining",
     "seafood",
+    "seasonal ingredients",
+    "rooftop dining",
     "tasting menus",
-    "modern American",
-    "elegant ambiance",
-    "seasonal ingredients"
+    "modern American"
   ],
   "disliked_foods": [
     "casual dining",
     "diner food",
-    "low-budget options"
+    "low-budget meals",
+    "French cuisine"
   ],
   "budget": "premium+",
   "online_order": "No",
@@ -145,6 +146,10 @@
   ],
   "inferred_budget_level": 3.99,
   "inferred_budget_count": 24,
-  "bar_inventory": [],
-  "pantry": []
+  "bar_inventory": [
+    "the basics"
+  ],
+  "pantry": [
+    "all"
+  ]
 }

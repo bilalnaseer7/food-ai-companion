@@ -25,6 +25,7 @@ SEARCH_FIELD_MASK = ",".join([
     "places.userRatingCount",
     "places.priceLevel",
     "places.regularOpeningHours",
+    "places.currentOpeningHours",
     "places.businessStatus",
     "places.photos",
     "places.liveMusic",
@@ -148,9 +149,10 @@ def _fmt_time(h: int, m: int) -> str:
 
 def _closes_at_str(periods: list) -> str:
     from datetime import datetime
+    from zoneinfo import ZoneInfo
     if not periods:
         return ""
-    now = datetime.now()
+    now = datetime.now(ZoneInfo("America/New_York"))
     google_today = (now.weekday() + 1) % 7
     google_yesterday = (google_today - 1) % 7
     current_mins = now.hour * 60 + now.minute
@@ -178,9 +180,10 @@ def _closes_at_str(periods: list) -> str:
 
 def _next_open_str(periods: list) -> str:
     from datetime import datetime
+    from zoneinfo import ZoneInfo
     if not periods:
         return ""
-    now = datetime.now()
+    now = datetime.now(ZoneInfo("America/New_York"))
     # Google: 0=Sunday … 6=Saturday; Python weekday: 0=Monday … 6=Sunday
     google_today = (now.weekday() + 1) % 7
     current_mins = now.hour * 60 + now.minute
@@ -218,10 +221,15 @@ def _parse_place(raw: dict) -> dict:
     open_now = None
     next_open = ""
     closes_at = ""
-    hours = raw.get("regularOpeningHours", {})
+    hours = raw.get("regularOpeningHours") or raw.get("currentOpeningHours") or {}
     if hours:
         open_now = hours.get("openNow")
-        periods = hours.get("periods", [])
+        # currentOpeningHours tends to have richer period data; use it if available
+        periods = (
+            (raw.get("currentOpeningHours") or {}).get("periods")
+            or hours.get("periods")
+            or []
+        )
         if open_now is False:
             next_open = _next_open_str(periods)
         elif open_now is True:
