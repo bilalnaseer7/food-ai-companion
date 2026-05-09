@@ -1498,7 +1498,6 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 	}
 	[data-testid="stChatInputTextArea"] {
 	    border-radius: var(--radius-pill) !important;
-	    padding: 0 52px 0 18px !important;
 	    background: transparent !important;
 	    border: none !important;
 	    box-shadow: none !important;
