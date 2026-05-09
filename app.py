@@ -1431,8 +1431,8 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     width: 100% !important;
     max-width: 100% !important;
     margin-left: 0 !important;
-    background: var(--bg) !important;
-    border: 1px solid var(--line-2) !important;
+    background: transparent !important;
+    border: none !important;
 }
 [data-testid="stChatMessage"]:has([aria-label*="from user"]),
 [data-testid="stChatMessage"]:has([aria-label*="from human"]) {
@@ -1440,20 +1440,20 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     max-width: 65% !important;
     margin-left: auto !important;
     margin-right: 0 !important;
-    background: var(--bg-deep) !important;
+    background: #ffffff !important;
     border: 1px solid var(--line) !important;
 }
+[data-testid="stChatMessage"] *,
 [data-testid="stChatMessage"] .stMarkdown,
-[data-testid="stChatMessageContent"] {
+[data-testid="stChatMessage"] .stMarkdown p,
+[data-testid="stChatMessage"] .stMarkdown div,
+[data-testid="stChatMessageContent"],
+[data-testid="stChatMessageContent"] * {
+    background: transparent !important;
     font-family: var(--sans) !important;
     font-size: 14px !important;
     line-height: 1.6 !important;
     color: var(--ink) !important;
-    background: transparent !important;
-}
-[data-testid="stChatMessage"] .stMarkdown p,
-[data-testid="stChatMessage"] .stMarkdown div {
-    background: transparent !important;
 }
 
 .companion-title {
