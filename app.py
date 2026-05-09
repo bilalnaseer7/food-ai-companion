@@ -1478,7 +1478,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 	    box-shadow: none !important;
 	    padding: 8px 0 0 !important;
 	    width: 100% !important;
-	    height: 80px !important;
+	    height: 100px !important;
 	}
 	[data-testid="stChatInput"] > div {
 	    width: 100% !important;
