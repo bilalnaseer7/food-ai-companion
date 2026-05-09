@@ -1449,6 +1449,11 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     font-size: 14px !important;
     line-height: 1.6 !important;
     color: var(--ink) !important;
+    background: transparent !important;
+}
+[data-testid="stChatMessage"] .stMarkdown p,
+[data-testid="stChatMessage"] .stMarkdown div {
+    background: transparent !important;
 }
 
 .companion-title {
@@ -3588,11 +3593,11 @@ def render_companion(client):
 
             with st.container(height=480, border=False, key="companion_msgs"):
                 for msg in msgs:
-                    with st.chat_message(msg["role"]):
+                    with st.chat_message(msg["role"], avatar=None):
                         st.write(msg["content"])
                 if msgs and msgs[-1]["role"] == "user":
                     full = [{"role": "system", "content": _companion_system_prompt()}] + msgs
-                    with st.chat_message("assistant"):
+                    with st.chat_message("assistant", avatar=None):
                         response = st.write_stream(_stream_companion(client, full))
                     msgs.append({"role": "assistant", "content": response})
                     st.session_state.companion_messages = msgs
