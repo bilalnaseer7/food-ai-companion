@@ -1469,8 +1469,8 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 }
 [class*="st-key-companion_msgs"] > div,
 [class*="st-key-companion_msgs"] [data-testid="stVerticalBlockBorderWrapper"] {
-    height: calc(70vh - 140px) !important;
-    max-height: calc(70vh - 140px) !important;
+    height: calc(70vh - 135px) !important;
+    max-height: calc(70vh - 135px) !important;
 }
 	[data-testid="stChatInput"] {
 	    background: transparent !important;
