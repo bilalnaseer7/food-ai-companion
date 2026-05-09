@@ -1415,6 +1415,34 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 
 /* Hide form submit's default appearance when used as a chip */
 .stForm [data-testid="stFormSubmitButton"] { background: transparent !important; padding: 0 !important; border: none !important; box-shadow: none !important; }
+
+/* ── Companion floating widget ── */
+[class*="st-key-companion_float"] {
+    position: fixed !important;
+    bottom: 24px !important;
+    right: 24px !important;
+    z-index: 9998 !important;
+    width: fit-content !important;
+    height: 0 !important;
+    overflow: visible !important;
+}
+[class*="st-key-companion_float"] [data-testid="stPopoverButton"] {
+    width: 52px !important;
+    height: 52px !important;
+    border-radius: 50% !important;
+    padding: 0 !important;
+    font-size: 22px !important;
+    background: var(--terracotta) !important;
+    color: white !important;
+    border: none !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.22) !important;
+    min-height: 0 !important;
+    line-height: 1 !important;
+}
+[class*="st-key-companion_float"] [data-testid="stPopoverButton"]:hover {
+    background: var(--terracotta-dark, #a8503c) !important;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.28) !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -2173,6 +2201,7 @@ def init_session():
         "cook_remix_pending": None, "drink_remix_pending": None,
         "cook_remix_card": None, "cook_remix_previous": None,
         "drink_remix_card": None, "drink_grounding": [],
+        "companion_messages": [],
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -3404,6 +3433,67 @@ def restore_active_tab():
     )
 
 
+# ── Companion ─────────────────────────────────────────────────────────────────
+def _companion_system_prompt():
+    profile = st.session_state.get("profile", {})
+    liked     = ", ".join(profile.get("liked_foods", [])[:8])      or "not set"
+    disliked  = ", ".join(profile.get("disliked_foods", [])[:5])   or "not set"
+    cuisines  = ", ".join(profile.get("preferred_cuisines", [])[:5]) or "not set"
+    budget    = profile.get("budget", "not set")
+    accepted  = ", ".join(profile.get("accepted", [])[:10])        or "none yet"
+    return (
+        "You are a personal food companion inside a food discovery app. "
+        "Be warm, specific, and concise — like a knowledgeable foodie friend.\n\n"
+        f"User profile:\n"
+        f"- Likes: {liked}\n"
+        f"- Dislikes: {disliked}\n"
+        f"- Cuisines: {cuisines}\n"
+        f"- Budget: {budget}\n"
+        f"- Saved: {accepted}\n\n"
+        "Help them discover food, decide what to eat or cook, and make the most of their dining. "
+        "Keep responses under 120 words. No markdown headers or bullet overload."
+    )
+
+
+def _stream_companion(client, messages):
+    stream = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages,
+        stream=True,
+        max_tokens=200,
+        temperature=0.7,
+    )
+    for chunk in stream:
+        delta = chunk.choices[0].delta.content
+        if delta:
+            yield delta
+
+
+def render_companion(client):
+    with st.container(key="companion_float"):
+        with st.popover("💬", use_container_width=False):
+            col_title, col_clear = st.columns([3, 1])
+            with col_title:
+                st.markdown("**Your Food Companion**")
+            with col_clear:
+                if st.button("Clear", key="companion_clear", use_container_width=True):
+                    st.session_state.companion_messages = []
+                    st.rerun()
+
+            msgs = st.session_state.companion_messages
+            for msg in msgs:
+                with st.chat_message(msg["role"]):
+                    st.write(msg["content"])
+
+            if prompt := st.chat_input("Ask about food…", key="companion_chat_input"):
+                msgs.append({"role": "user", "content": prompt})
+                full = [{"role": "system", "content": _companion_system_prompt()}] + msgs
+                with st.chat_message("assistant"):
+                    response = st.write_stream(_stream_companion(client, full))
+                msgs.append({"role": "assistant", "content": response})
+                st.session_state.companion_messages = msgs
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main():
     init_session()
@@ -3428,6 +3518,8 @@ def main():
 
     with tab_drink:
         render_cocktail_tab(client)
+
+    render_companion(client)
 
 
 if __name__ == "__main__":
