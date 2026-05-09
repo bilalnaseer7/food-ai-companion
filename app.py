@@ -4204,6 +4204,7 @@ def render_companion(client):
                     with st.chat_message(msg["role"], avatar=None):
                         st.write(msg["content"])
                 if msgs and msgs[-1]["role"] == "user":
+                    render_companion_autoscroll_if_new_messages()
                     import json as _json
                     user_text = msgs[-1].get("content", "")
                     pending = st.session_state.get("companion_pending_search")
