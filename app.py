@@ -1496,6 +1496,10 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     min-height: 0 !important;
     line-height: 1 !important;
 }
+[class*="st-key-companion_float"] button [data-testid="stIconMaterial"] {
+    font-size: 36px !important;
+    text-align: center !important;
+}
 
 [class*="st-key-companion_float"] button:hover {
     background: var(--terracotta-2, #a8503c) !important;
@@ -3756,16 +3760,12 @@ def render_companion(client):
 
     if st.session_state.get("companion_is_open", False):
         with st.container(key="companion_panel"):
-            col_title, col_clear, col_close = st.columns([3, 0.75, 0.32])
+            col_title, col_clear, col_close = st.columns([3, 0.75])
             with col_title:
                 st.markdown('<p class="companion-title">Food Companion</p>', unsafe_allow_html=True)
             with col_clear:
                 if st.button("Clear", key="companion_clear", use_container_width=True):
                     st.session_state.companion_messages = [{"role": "assistant", "content": "Hi, what are you in the mood for?"}]
-                    st.rerun()
-            with col_close:
-                if st.button(":material/close:", key="companion_close", use_container_width=True):
-                    st.session_state.companion_is_open = False
                     st.rerun()
 
             msgs = st.session_state.companion_messages
