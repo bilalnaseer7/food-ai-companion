@@ -629,6 +629,8 @@ div[class*="block-container"] {
 [data-testid="stFormSubmitButton"] button p {
     color: #fff !important;
 }
+            
+[data-testid="companion_clear"] button
 
 .suggest-chip { color: var(--ink-2) !important; }
 
@@ -1499,13 +1501,21 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     max-width: none !important;
     height: auto !important;
     max-height: 70vh !important;
-    overflow-y: auto !important;
+    overflow: hidden !important;
     background: #ffffff !important;
 }
 [data-testid="stPopoverBody"] > div,
 [data-testid="stPopoverBody"] [data-testid="stVerticalBlockBorderWrapper"],
 [data-testid="stPopoverBody"] [data-testid="stVerticalBlock"] {
     background: #ffffff !important;
+}
+/* messages scroll; input stays pinned below */
+[class*="st-key-companion_msgs"],
+[class*="st-key-companion_msgs"] > div,
+[class*="st-key-companion_msgs"] [data-testid="stVerticalBlockBorderWrapper"] {
+    max-height: calc(70vh - 190px) !important;
+    overflow-y: auto !important;
+    height: auto !important;
 }
 	[data-testid="stChatInput"] {
 	    background: transparent !important;
@@ -3021,7 +3031,13 @@ def render_eat_tab(client, df):
 
     render_recent_strip()
 
+    _ct_eat = st.session_state.pop("companion_search_trigger", None)
+    if _ct_eat and _ct_eat.get("tab") == "eat":
+        run_search = True
+        query = _ct_eat["query"]
+
     if run_search and query:
+        st.session_state.eat_last_query = query
         st.session_state.active_tab = "eat"
         refresh_preference_tags(st.session_state.profile)
         save_profile(st.session_state.profile)
@@ -3148,6 +3164,11 @@ def render_cook_tab(client):
             run_cook = st.form_submit_button("Suggest recipes  →", type="primary", use_container_width=True)
 
     render_recent_strip()
+
+    _ct_cook = st.session_state.pop("companion_search_trigger", None)
+    if _ct_cook and _ct_cook.get("tab") == "cook":
+        run_cook = True
+        craving = _ct_cook["query"]
 
     if run_cook and craving:
         st.session_state.active_tab = "cook"
@@ -3320,6 +3341,11 @@ def render_cocktail_tab(client):
             run_cocktail = st.form_submit_button("Suggest cocktails  →", type="primary", use_container_width=True)
 
     render_recent_strip()
+
+    _ct_drink = st.session_state.pop("companion_search_trigger", None)
+    if _ct_drink and _ct_drink.get("tab") == "drink":
+        run_cocktail = True
+        vibe = _ct_drink["query"]
 
     if run_cocktail and vibe:
         st.session_state.active_tab = "drink"
@@ -3543,6 +3569,30 @@ def _companion_system_prompt():
     cuisines  = ", ".join(profile.get("preferred_cuisines", [])[:5]) or "not set"
     budget    = profile.get("budget", "not set")
     accepted  = ", ".join(profile.get("accepted", [])[:10])        or "none yet"
+
+    ctx = []
+    eat_results = st.session_state.get("eat_fsq_results") or []
+    if eat_results:
+        last_q = st.session_state.get("eat_last_query", "your search")
+        snippets = "; ".join(
+            f"{r.get('name','')} — {(r.get('blurb') or '')[:80]}"
+            for r in eat_results[:5] if r.get("name")
+        )
+        ctx.append(f"Eat Out results for '{last_q}': {snippets}")
+        llm = (st.session_state.get("eat_llm_response") or "")[:200]
+        if llm:
+            ctx.append(f"Ranking note: {llm}")
+
+    cook_resp = st.session_state.get("cook_response") or ""
+    if cook_resp:
+        ctx.append(f"Cook results for '{st.session_state.get('cook_last_craving','')}': {cook_resp[:400]}")
+
+    cocktail_resp = st.session_state.get("cocktail_response") or ""
+    if cocktail_resp:
+        ctx.append(f"Cocktail results for '{st.session_state.get('drink_last_vibe','')}': {cocktail_resp[:400]}")
+
+    results_section = ("\n\nCurrent app results:\n" + "\n".join(ctx)) if ctx else ""
+
     return (
         "You are a personal food companion inside a food discovery app. "
         "Be warm, specific, and concise — like a knowledgeable foodie friend.\n\n"
@@ -3551,10 +3601,41 @@ def _companion_system_prompt():
         f"- Dislikes: {disliked}\n"
         f"- Cuisines: {cuisines}\n"
         f"- Budget: {budget}\n"
-        f"- Saved: {accepted}\n\n"
-        "Help them discover food, decide what to eat or cook, and make the most of their dining. "
-        "Keep responses under 120 words. No markdown headers or bullet overload."
+        f"- Saved: {accepted}"
+        f"{results_section}\n\n"
+        "You can answer questions about the current results. Do NOT suggest restaurants or recipes yourself — "
+        "instead trigger a search when the user wants to find something. "
+        "Keep responses under 150 words. No markdown headers."
     )
+
+
+_SEARCH_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "search",
+            "description": (
+                "Trigger a search in the food app. Use this when the user wants to find restaurants, "
+                "recipes to cook, or cocktails. Do NOT use for follow-up questions about existing results."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "tab": {
+                        "type": "string",
+                        "enum": ["eat", "cook", "drink"],
+                        "description": "eat = find restaurants, cook = find recipes, drink = find cocktails"
+                    },
+                    "query": {
+                        "type": "string",
+                        "description": "The search query distilled from the user message"
+                    }
+                },
+                "required": ["tab", "query"]
+            }
+        }
+    }
+]
 
 
 def _stream_companion(client, messages):
@@ -3574,7 +3655,7 @@ def _stream_companion(client, messages):
 def render_companion(client):
     with st.container(key="companion_float"):
         with st.popover(":material/chat_bubble:", use_container_width=False):
-            col_title, col_clear = st.columns([3, 1])
+            col_title, col_clear = st.columns([3, 0.5])
             with col_title:
                 st.markdown('<p class="companion-title">Food Companion</p>', unsafe_allow_html=True)
             with col_clear:
@@ -3589,15 +3670,38 @@ def render_companion(client):
                     with st.chat_message(msg["role"], avatar=None):
                         st.write(msg["content"])
                 if msgs and msgs[-1]["role"] == "user":
+                    import json as _json
                     full = [{"role": "system", "content": _companion_system_prompt()}] + msgs
-                    with st.chat_message("assistant", avatar=None):
-                        response = st.write_stream(_stream_companion(client, full))
-                    msgs.append({"role": "assistant", "content": response})
-                    st.session_state.companion_messages = msgs
+                    detection = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=full,
+                        tools=_SEARCH_TOOLS,
+                        tool_choice="auto",
+                        max_tokens=60,
+                    )
+                    tool_calls = detection.choices[0].message.tool_calls
+                    if tool_calls:
+                        args = _json.loads(tool_calls[0].function.arguments)
+                        tab = args["tab"]
+                        query = args["query"]
+                        tab_label = {"eat": "Eat Out", "cook": "Cook", "drink": "Cocktails"}[tab]
+                        confirm = f"Searching **{tab_label}** for: *{query}*"
+                        with st.chat_message("assistant", avatar=None):
+                            st.write(confirm)
+                        msgs.append({"role": "assistant", "content": confirm})
+                        st.session_state.companion_messages = msgs
+                        st.session_state.companion_search_trigger = {"tab": tab, "query": query}
+                        st.rerun()
+                    else:
+                        with st.chat_message("assistant", avatar=None):
+                            response = st.write_stream(_stream_companion(client, full))
+                        msgs.append({"role": "assistant", "content": response})
+                        st.session_state.companion_messages = msgs
 
             if prompt := st.chat_input("Ask Food Companion Anything", key="companion_chat_input"):
                 st.session_state.companion_messages.append({"role": "user", "content": prompt})
                 st.rerun()
+
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
