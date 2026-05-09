@@ -4144,10 +4144,10 @@ def _start_companion_remix(action: dict) -> tuple[bool, str]:
     return False, "I couldn't find that result to remix."
 
 
-def _companion_rag_context(query: str, profile: dict, client) -> str:
+def _companion_rag_context(query: str, client) -> str:
     try:
         from src.retrieval import retrieve_restaurants
-        results = retrieve_restaurants(query=query, user_profile=profile, df=get_df(), client=client, top_k=4)
+        results = retrieve_restaurants(query=query, user_profile={}, df=get_df(), client=client, top_k=4)
         if not results:
             return ""
         lines = []
@@ -4526,7 +4526,7 @@ def render_companion(client):
                             }
                             request_companion_extended_autoscroll()
                         else:
-                            rag_ctx = _companion_rag_context(user_text, st.session_state.get("profile", {}), client)
+                            rag_ctx = _companion_rag_context(user_text, client)
                             system_content = full[0]["content"] + rag_ctx
                             if rag_ctx:
                                 system_content += "\n\nEnd your response with one short sentence offering to run a full search for more options."
