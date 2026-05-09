@@ -1496,10 +1496,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     min-height: 0 !important;
     line-height: 1 !important;
 }
-[class*="st-key-companion_float"] [data-testid="stPopoverButton"] svg {
-    width: 48px !important;
-    height: 48px !important;
-}
+
 [class*="st-key-companion_float"] [data-testid="stPopoverButton"]:hover {
     background: var(--terracotta-2, #a8503c) !important;
     box-shadow: 0 6px 20px var(--terracotta) !important;
