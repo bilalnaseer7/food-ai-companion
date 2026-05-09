@@ -1582,13 +1582,15 @@ document.addEventListener('keydown', function(e) {
 }, true);
 
 (function openCompanion() {
-    if (sessionStorage.getItem('companionOpened')) return;
     var attempts = 0;
     var interval = setInterval(function() {
         var btn = document.querySelector('[class*="st-key-companion_float"] [data-testid="stPopoverButton"]');
         if (btn) {
-            btn.click();
-            sessionStorage.setItem('companionOpened', '1');
+            var shouldOpen = !sessionStorage.getItem('companionOpened') || document.getElementById('fac-open-now');
+            if (shouldOpen && btn.getAttribute('aria-expanded') !== 'true') {
+                btn.click();
+                sessionStorage.setItem('companionOpened', '1');
+            }
             clearInterval(interval);
         } else if (++attempts > 20) {
             clearInterval(interval);
@@ -3696,7 +3698,26 @@ def _stream_companion(client, messages):
             yield delta
 
 
+def _companion_check_new_results():
+    eat_v  = (st.session_state.get("eat_llm_response")  or "")[:60]
+    cook_v = st.session_state.get("cook_response_version")  or ""
+    drink_v = st.session_state.get("drink_response_version") or ""
+    sig = (eat_v, cook_v, drink_v)
+    last = st.session_state.get("companion_last_sig", ("", "", ""))
+    if sig != last and any(sig):
+        msg = "How are the recommendations? Let me know if you'd like to refine them or explore something different."
+        msgs = st.session_state.companion_messages
+        if not msgs or msgs[-1].get("content") != msg:
+            msgs.append({"role": "assistant", "content": msg})
+            st.session_state.companion_messages = msgs
+        st.session_state.companion_open_now = True
+    st.session_state.companion_last_sig = sig
+
+
 def render_companion(client):
+    _companion_check_new_results()
+    if st.session_state.pop("companion_open_now", False):
+        st.markdown('<div id="fac-open-now" style="display:none"></div>', unsafe_allow_html=True)
     with st.container(key="companion_float"):
         with st.popover(":material/chat_bubble:", use_container_width=False):
             col_title, col_clear = st.columns([3, 0.75])
