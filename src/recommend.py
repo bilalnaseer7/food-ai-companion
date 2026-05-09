@@ -140,6 +140,8 @@ def infer_cocktail_search_terms(client: OpenAI, vibe: str, bar_inventory: list[s
                     "content": (
                         "Infer CocktailDB cocktail name search targets from a user's mood/vibe. "
                         "Return JSON only: an array of 4 to 8 classic or common cocktail names. "
+                        "Make the list specific to the vibe/request and vary style, base spirit, and texture. "
+                        "Do not default to Margarita, Daiquiri, or Martini unless they genuinely fit the vibe. "
                         "Do not echo vague words from the user. Prefer likely CocktailDB names, e.g. "
                         "Negroni, Old Fashioned, Margarita, Daiquiri, Martini, Mojito, Manhattan, "
                         "Whiskey Sour, Tom Collins, Mai Tai, Cosmopolitan, Boulevardier, Rob Roy."

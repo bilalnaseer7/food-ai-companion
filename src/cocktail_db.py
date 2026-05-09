@@ -227,10 +227,15 @@ def find_cocktails_by_name(search_terms: list[str] | str, top_k: int = 8) -> lis
     if not cleaned_terms:
         return []
 
+    term_results = [_search_by_name(term) for term in cleaned_terms]
     seen = set()
     scored = []
-    for term in cleaned_terms:
-        for raw in _search_by_name(term):
+    max_depth = max((len(results) for results in term_results), default=0)
+    for idx in range(max_depth):
+        for results in term_results:
+            if idx >= len(results):
+                continue
+            raw = results[idx]
             cid = raw.get("idDrink", "")
             if not cid or cid in seen:
                 continue
