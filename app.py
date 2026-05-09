@@ -1543,6 +1543,22 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     overflow: visible !important;
     height: auto !important;
 }
+[class*="st-key-companion_autoscroll"] {
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+[class*="st-key-companion_autoscroll"] iframe,
+[class*="st-key-companion_autoscroll"] [data-testid="stIFrame"] {
+    display: block !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    border: 0 !important;
+}
 	[data-testid="stChatInput"] {
 	    background: transparent !important;
 	    border: none !important;
@@ -3839,11 +3855,12 @@ def render_companion_autoscroll():
         })();
         </script>
         """.replace("__SCROLL_NONCE__", json.dumps(stable_widget_key("companion_scroll", messages, datetime.now(EASTERN_TZ).isoformat())))
-    components.html(
-        scroll_script,
-        height=0,
-        scrolling=False,
-    )
+    with st.container(key="companion_autoscroll"):
+        components.html(
+            scroll_script,
+            height=0,
+            scrolling=False,
+        )
 
 
 def render_companion_autoscroll_if_new_messages():
