@@ -1416,6 +1416,41 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 /* Hide form submit's default appearance when used as a chip */
 .stForm [data-testid="stFormSubmitButton"] { background: transparent !important; padding: 0 !important; border: none !important; box-shadow: none !important; }
 
+/* ── Companion chat messages ── */
+[data-testid="stPopoverBody"] .stChatMessage img { display: none !important; }
+[data-testid="stPopoverBody"] .stChatMessage [data-testid="stChatMessageAvatarContainer"],
+[data-testid="stPopoverBody"] .stChatMessage [data-testid="stChatMessageAvatarUser"],
+[data-testid="stPopoverBody"] .stChatMessage [data-testid="stChatMessageAvatarAssistant"] {
+    display: none !important;
+}
+[data-testid="stPopoverBody"] .stChatMessage[data-testid*="assistant"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    background: var(--bg) !important;
+    border: 1px solid var(--line-2) !important;
+    border-radius: var(--radius) !important;
+    padding: 12px 16px !important;
+    margin-bottom: 8px !important;
+}
+[data-testid="stPopoverBody"] .stChatMessage[data-testid*="user"] {
+    width: 65% !important;
+    max-width: 65% !important;
+    margin-left: auto !important;
+    margin-right: 0 !important;
+    background: var(--bg-deep) !important;
+    border: 1px solid var(--line) !important;
+    border-radius: var(--radius) !important;
+    padding: 10px 14px !important;
+    margin-bottom: 8px !important;
+}
+[data-testid="stPopoverBody"] .stChatMessage .stMarkdown {
+    font-family: var(--sans) !important;
+    font-size: 14px !important;
+    line-height: 1.6 !important;
+    color: var(--ink) !important;
+}
+
 .companion-title {
     font-family: var(--serif) !important;
     font-size: 22px !important;
@@ -1439,7 +1474,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 [class*="st-key-companion_float"] [data-testid="stPopoverButton"] {
     width: 70px !important;
     height: 55px !important;
-    border-radius: 45% !important;
+    border-radius: 40% !important;
     padding: 0 !important;
     font-size: 22px !important;
     background: var(--terracotta) !important;
@@ -2270,7 +2305,7 @@ def init_session():
         "cook_remix_pending": None, "drink_remix_pending": None,
         "cook_remix_card": None, "cook_remix_previous": None,
         "drink_remix_card": None, "drink_grounding": [],
-        "companion_messages": [],
+        "companion_messages": [{"role": "assistant", "content": "Hi — what are you in the mood for?"}],
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -3546,7 +3581,7 @@ def render_companion(client):
                 st.markdown('<p class="companion-title">Food Companion</p>', unsafe_allow_html=True)
             with col_clear:
                 if st.button("Clear", key="companion_clear", use_container_width=True):
-                    st.session_state.companion_messages = []
+                    st.session_state.companion_messages = [{"role": "assistant", "content": "Hi — what are you in the mood for?"}]
                     st.rerun()
 
             msgs = st.session_state.companion_messages
