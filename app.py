@@ -3657,9 +3657,13 @@ def _companion_system_prompt():
         ctx.append(f"Cocktail results for '{st.session_state.get('drink_last_vibe','')}': {cocktail_resp[:400]}")
 
     results_section = ("\n\nCurrent app results:\n" + "\n".join(ctx)) if ctx else ""
+    active_tab = st.session_state.get("active_tab", "eat")
+    tab_label = {"eat": "Eat Out (restaurants)", "cook": "Cook (home recipes)", "drink": "Cocktails (drink recipes)"}.get(active_tab, active_tab)
 
     return (
-        "You are a personal food companion inside a food discovery app. "
+        "You are a personal food companion inside a food discovery app with three tabs: "
+        "Eat Out (restaurants), Cook (home food recipes), Cocktails (drink recipes).\n"
+        f"The user is currently on: {tab_label}.\n\n"
         "Be warm, specific, and concise — like a knowledgeable foodie friend.\n\n"
         f"User profile:\n"
         f"- Likes: {liked}\n"
@@ -3693,7 +3697,11 @@ _SEARCH_TOOLS = [
                     "tab": {
                         "type": "string",
                         "enum": ["eat", "cook", "drink"],
-                        "description": "eat = find restaurants, cook = find recipes, drink = find cocktails"
+                        "description": (
+                            "eat = find restaurants to dine out at. "
+                            "cook = find food recipes to cook at home (dishes, meals — NOT drinks or cocktails). "
+                            "drink = find cocktail and drink recipes (use this for ANY cocktail, mixed drink, or beverage request)."
+                        )
                     },
                     "query": {
                         "type": "string",
@@ -3779,6 +3787,7 @@ def render_companion(client):
                         msgs.append({"role": "assistant", "content": confirm})
                         st.session_state.companion_messages = msgs
                         st.session_state.companion_search_trigger = {"tab": tab, "query": query}
+                        st.session_state.active_tab = tab
                         st.rerun()
                     else:
                         with st.chat_message("assistant", avatar=None):
