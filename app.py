@@ -2413,6 +2413,7 @@ def init_session():
         "companion_is_open": True,
         "companion_pending_search": None,
         "companion_scroll_requested": True,
+        "eat_zip": "",
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -3116,6 +3117,8 @@ def render_empty(tab):
 def render_eat_tab(client, df):
     prefill = st.session_state.eat_prefill or ""
     st.session_state.eat_prefill = ""
+    if "eat_zip_field" not in st.session_state:
+        st.session_state.eat_zip_field = st.session_state.get("eat_zip", "")
 
     with compatible_form(key="eat_form", enter_to_submit=True, border=False):
         col1, col2 = st.columns([3, 1.2])
@@ -3125,7 +3128,7 @@ def render_eat_tab(client, df):
             render_suggest_chips("eat")
         with col2:
             st.markdown('<div class="field-label">Zip Code</div>', unsafe_allow_html=True)
-            zipcode = st.text_input("zip", placeholder="Searching all NYC", label_visibility="collapsed")
+            zipcode = st.text_input("zip", placeholder="Searching all NYC", label_visibility="collapsed", key="eat_zip_field")
             run_search = st.form_submit_button("Find restaurants  →", type="primary", use_container_width=True)
 
     render_recent_strip()
@@ -3135,8 +3138,11 @@ def render_eat_tab(client, df):
         st.session_state.pop("companion_search_trigger", None)
         run_search = True
         query = _ct_eat["query"]
+        zipcode = _ct_eat.get("zip", zipcode)
+        st.session_state.eat_zip_field = zipcode
 
     if run_search and query:
+        st.session_state.eat_zip = zipcode
         st.session_state.eat_last_query = query
         st.session_state.active_tab = "eat"
         refresh_preference_tags(st.session_state.profile)
@@ -3244,6 +3250,8 @@ def render_eat_tab(client, df):
 def render_cook_tab(client):
     prefill = st.session_state.cook_prefill or ""
     st.session_state.cook_prefill = ""
+    if "cook_pantry_field" not in st.session_state:
+        st.session_state.cook_pantry_field = ", ".join(st.session_state.profile.get("pantry", []))
 
     with compatible_form(key="cook_form", enter_to_submit=True, border=False):
         st.markdown('<div class="field-label">Tonight you want</div>', unsafe_allow_html=True)
@@ -3251,10 +3259,10 @@ def render_cook_tab(client):
         st.markdown('<div class="field-label" style="margin-top:10px">In the pantry</div>', unsafe_allow_html=True)
         pantry_input = st.text_area(
             "pantry",
-            value=", ".join(st.session_state.profile.get("pantry", [])),
             placeholder="just dump it all here",
             label_visibility="collapsed",
             height=70,
+            key="cook_pantry_field",
         )
         
         col1, col2 = st.columns([3, 1.2])
@@ -3270,6 +3278,9 @@ def render_cook_tab(client):
         st.session_state.pop("companion_search_trigger", None)
         run_cook = True
         craving = _ct_cook["query"]
+        if _ct_cook.get("pantry"):
+            pantry_input = _ct_cook["pantry"]
+            st.session_state.cook_pantry_field = pantry_input
 
     if run_cook and craving:
         st.session_state.active_tab = "cook"
@@ -3422,6 +3433,8 @@ def render_cook_tab(client):
 def render_cocktail_tab(client):
     prefill = st.session_state.drink_prefill or ""
     st.session_state.drink_prefill = ""
+    if "drink_bar_field" not in st.session_state:
+        st.session_state.drink_bar_field = ", ".join(st.session_state.profile.get("bar_inventory", []))
 
     with compatible_form(key="cocktail_form", enter_to_submit=True, border=False):
         st.markdown('<div class="field-label">The vibe</div>', unsafe_allow_html=True)
@@ -3429,10 +3442,10 @@ def render_cocktail_tab(client):
         st.markdown('<div class="field-label" style="margin-top:10px">Bar inventory</div>', unsafe_allow_html=True)
         bar_input = st.text_area(
             "bar",
-            value=", ".join(st.session_state.profile.get("bar_inventory", [])),
             placeholder="tell me what you've got, or try 'the basics'",
             label_visibility="collapsed",
             height=70,
+            key="drink_bar_field",
         )
         col1, col2 = st.columns([3, 1.2])
         
@@ -3448,6 +3461,9 @@ def render_cocktail_tab(client):
         st.session_state.pop("companion_search_trigger", None)
         run_cocktail = True
         vibe = _ct_drink["query"]
+        if _ct_drink.get("bar"):
+            bar_input = _ct_drink["bar"]
+            st.session_state.drink_bar_field = bar_input
 
     if run_cocktail and vibe:
         st.session_state.active_tab = "drink"
@@ -3777,6 +3793,44 @@ def _looks_like_current_result_question(text: str) -> bool:
     return any(name and name.lower() in lowered for name in result_names)
 
 
+def _companion_missing_search_context(tab: str):
+    if tab == "eat" and not (st.session_state.get("eat_zip_field") or st.session_state.get("eat_zip") or "").strip():
+        return "zip", "What zip code should I search near?"
+    pantry_text = (st.session_state.get("cook_pantry_field") or "").strip()
+    if tab == "cook" and not pantry_text and not st.session_state.get("profile", {}).get("pantry"):
+        return "pantry", "What pantry items should I work with?"
+    bar_text = (st.session_state.get("drink_bar_field") or "").strip()
+    if tab == "drink" and not bar_text and not st.session_state.get("profile", {}).get("bar_inventory"):
+        return "bar", "What bar items do you have?"
+    return None, None
+
+
+def _companion_search_trigger_from_pending(pending: dict) -> dict:
+    trigger = {"tab": pending["tab"], "query": pending["query"]}
+    zip_value = pending.get("zip") or st.session_state.get("eat_zip_field") or st.session_state.get("eat_zip")
+    pantry_value = pending.get("pantry") or st.session_state.get("cook_pantry_field")
+    bar_value = pending.get("bar") or st.session_state.get("drink_bar_field")
+    if zip_value:
+        trigger["zip"] = zip_value
+    if pantry_value:
+        trigger["pantry"] = pantry_value
+    if bar_value:
+        trigger["bar"] = bar_value
+    return trigger
+
+
+def _companion_confirm_text(pending: dict) -> str:
+    tab_label = {"eat": "Eat Out", "cook": "Cook", "drink": "Cocktails"}[pending["tab"]]
+    extra = ""
+    if pending.get("zip"):
+        extra = f" near {pending['zip']}"
+    elif pending.get("pantry"):
+        extra = f" using: {pending['pantry']}"
+    elif pending.get("bar"):
+        extra = f" using: {pending['bar']}"
+    return f"Would you like me to search **{tab_label}** for: *{pending['query']}*{extra}?"
+
+
 def _interpret_search_confirmation(client, pending: dict, user_text: str) -> dict:
     import json as _json
 
@@ -3925,10 +3979,35 @@ def render_companion(client):
                     import json as _json
                     user_text = msgs[-1].get("content", "")
                     pending = st.session_state.get("companion_pending_search")
-                    confirmation = _interpret_search_confirmation(client, pending, user_text) if pending else None
-                    if pending and confirmation["action"] in {"confirm", "revise"}:
+                    confirmation = (
+                        _interpret_search_confirmation(client, pending, user_text)
+                        if pending and not pending.get("needs")
+                        else None
+                    )
+                    if pending and pending.get("needs"):
+                        needed = pending["needs"]
+                        value = user_text.strip()
+                        pending[needed] = value
+                        if needed == "zip":
+                            st.session_state.eat_zip = value
+                            st.session_state.eat_zip_field = value
+                        elif needed == "pantry":
+                            st.session_state.cook_pantry_field = value
+                        elif needed == "bar":
+                            st.session_state.drink_bar_field = value
+                        pending.pop("needs", None)
+                        st.session_state.companion_pending_search = pending
+                        reply = _companion_confirm_text(pending)
+                        with st.chat_message("assistant", avatar=None):
+                            st.write(reply)
+                        msgs.append({"role": "assistant", "content": reply})
+                        st.session_state.companion_messages = msgs
+                        request_companion_autoscroll()
+                    elif pending and confirmation["action"] in {"confirm", "revise"}:
                         tab = pending["tab"]
-                        query = confirmation["query"] if confirmation["action"] == "revise" and confirmation["query"] else pending["query"]
+                        if confirmation["action"] == "revise" and confirmation["query"]:
+                            pending["query"] = confirmation["query"]
+                        query = pending["query"]
                         tab_label = {"eat": "Eat Out", "cook": "Cook", "drink": "Cocktails"}[tab]
                         notice = f"Searching **{tab_label}** for: *{query}*"
                         with st.chat_message("assistant", avatar=None):
@@ -3937,7 +4016,7 @@ def render_companion(client):
                         st.session_state.companion_messages = msgs
                         request_companion_autoscroll()
                         st.session_state.companion_pending_search = None
-                        st.session_state.companion_search_trigger = {"tab": tab, "query": query}
+                        st.session_state.companion_search_trigger = _companion_search_trigger_from_pending(pending)
                         st.session_state.active_tab = tab
                         st.session_state.companion_tab_switch = {"eat": 0, "cook": 1, "drink": 2}[tab]
                         st.rerun()
@@ -3981,14 +4060,19 @@ def render_companion(client):
                             args = _json.loads(tool_calls[0].function.arguments)
                             tab = args["tab"]
                             query = args["query"]
-                            tab_label = {"eat": "Eat Out", "cook": "Cook", "drink": "Cocktails"}[tab]
-                            confirm = f"Would you like me to search **{tab_label}** for: *{query}*?"
+                            needed, question = _companion_missing_search_context(tab)
+                            pending_search = {"tab": tab, "query": query}
+                            if needed:
+                                pending_search["needs"] = needed
+                                confirm = question
+                            else:
+                                confirm = _companion_confirm_text(pending_search)
                             with st.chat_message("assistant", avatar=None):
                                 st.write(confirm)
                             msgs.append({"role": "assistant", "content": confirm})
                             st.session_state.companion_messages = msgs
                             request_companion_autoscroll()
-                            st.session_state.companion_pending_search = {"tab": tab, "query": query}
+                            st.session_state.companion_pending_search = pending_search
                         else:
                             with st.chat_message("assistant", avatar=None):
                                 response = st.write_stream(_stream_companion(client, full))
