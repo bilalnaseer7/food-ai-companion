@@ -1432,7 +1432,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     max-width: 100% !important;
     margin-left: 0 !important;
     background: transparent !important;
-    border: none !important;
+    border: 1px solid var(--line-2) !important;
 }
 [data-testid="stChatMessage"]:has([aria-label*="from user"]),
 [data-testid="stChatMessage"]:has([aria-label*="from human"]) {
@@ -1441,7 +1441,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     margin-left: auto !important;
     margin-right: 0 !important;
     background: #ffffff !important;
-    border: 1px solid var(--line) !important;
+    border: 1px solid var(--terracotta) !important;
 }
 [data-testid="stChatMessage"] *,
 [data-testid="stChatMessage"] .stMarkdown,
