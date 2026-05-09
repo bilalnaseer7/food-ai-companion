@@ -1428,6 +1428,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 }
 [data-testid="stChatMessage"]:has([aria-label*="from assistant"]),
 [data-testid="stChatMessage"]:has([aria-label*="from ai"]) {
+    width: fit-content !important;
     max-width: 100% !important;
     margin-left: 0 !important;
     background: transparent !important;
@@ -1435,6 +1436,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 }
 [data-testid="stChatMessage"]:has([aria-label*="from user"]),
 [data-testid="stChatMessage"]:has([aria-label*="from human"]) {
+    width: fit-content !important;
     max-width: 65% !important;
     margin-left: auto !important;
     margin-right: 0 !important;
