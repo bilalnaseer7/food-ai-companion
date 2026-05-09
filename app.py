@@ -4169,6 +4169,7 @@ def _companion_check_new_results():
         if not msgs or msgs[-1].get("content") != msg:
             msgs.append({"role": "assistant", "content": msg})
             st.session_state.companion_messages = msgs
+            st.session_state.pop("companion_scroll_sig", None)
             request_companion_autoscroll()
         st.session_state.companion_is_open = True
     st.session_state.companion_last_sig = sig
@@ -4186,14 +4187,18 @@ def render_companion_autoscroll():
         (function() {
             const doc = window.parent.document;
             function scrollDown() {
-                const root = doc.querySelector('[class*="st-key-companion_msgs"]');
-                if (!root) return false;
-                const nodes = [root, ...root.querySelectorAll('*')];
-                nodes.forEach((node) => {
-                    const overflow = node.scrollHeight - node.clientHeight;
-                    if (overflow > 0) {
-                        node.scrollTop = node.scrollHeight;
-                    }
+                const roots = Array.from(doc.querySelectorAll('[class*="st-key-companion_msgs"]'))
+                    .filter((root) => root.isConnected && root.clientHeight > 0);
+                if (!roots.length) return false;
+                roots.forEach((root) => {
+                    const nodes = [root, ...root.querySelectorAll('*')];
+                    nodes.forEach((node) => {
+                        const overflow = node.scrollHeight - node.clientHeight;
+                        if (overflow > 0) {
+                            node.style.scrollBehavior = "auto";
+                            node.scrollTop = node.scrollHeight;
+                        }
+                    });
                 });
                 return true;
             }
