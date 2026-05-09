@@ -1484,7 +1484,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     height: 0 !important;
     overflow: visible !important;
 }
-[class*="st-key-companion_float"] [data-testid="stPopoverButton"] {
+[class*="st-key-companion_float"] button {
     width: 70px !important;
     height: 55px !important;
     border-radius: 40% !important;
@@ -1497,11 +1497,15 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     line-height: 1 !important;
 }
 
-[class*="st-key-companion_float"] [data-testid="stPopoverButton"]:hover {
+[class*="st-key-companion_float"] button:hover {
     background: var(--terracotta-2, #a8503c) !important;
     box-shadow: 0 6px 20px var(--terracotta) !important;
 }
-[data-testid="stPopoverBody"] {
+[class*="st-key-companion_panel"] {
+    position: fixed !important;
+    bottom: 178px !important;
+    right: 40px !important;
+    z-index: 99998 !important;
     width: 30vw !important;
     min-width: 320px !important;
     max-width: none !important;
@@ -1509,11 +1513,25 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     max-height: 70vh !important;
     overflow: visible !important;
     background: #ffffff !important;
+    border: 1px solid var(--line) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 18px 50px rgba(0,0,0,0.18) !important;
+    padding: 18px !important;
 }
-[data-testid="stPopoverBody"] > div,
-[data-testid="stPopoverBody"] [data-testid="stVerticalBlockBorderWrapper"],
-[data-testid="stPopoverBody"] [data-testid="stVerticalBlock"] {
+[class*="st-key-companion_panel"] > div,
+[class*="st-key-companion_panel"] [data-testid="stVerticalBlockBorderWrapper"],
+[class*="st-key-companion_panel"] [data-testid="stVerticalBlock"] {
     background: #ffffff !important;
+}
+[class*="st-key-companion_panel"] [data-testid="column"] {
+    padding: 0 !important;
+}
+[class*="st-key-companion_close"] button {
+    width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    border-radius: 999px !important;
+    padding: 0 !important;
 }
 /* messages scroll; input stays pinned below */
 [class*="st-key-companion_msgs"] {
@@ -1589,32 +1607,6 @@ function scrollCompanionToBottom() {
 // Run after every Streamlit rerun — React finishes patching within ~400ms
 setTimeout(scrollCompanionToBottom, 400);
 setTimeout(scrollCompanionToBottom, 800);
-
-(function openCompanion() {
-    var attempts = 0;
-    var interval = setInterval(function() {
-        var btn = document.querySelector('[class*="st-key-companion_float"] [data-testid="stPopoverButton"]');
-        if (btn) {
-            // Track open/close state so reruns can restore it
-            var mo = new MutationObserver(function() {
-                sessionStorage.setItem('companionOpen', btn.getAttribute('aria-expanded') === 'true' ? '1' : '0');
-            });
-            mo.observe(btn, { attributes: true, attributeFilter: ['aria-expanded'] });
-
-            var wasOpen = sessionStorage.getItem('companionOpen') === '1';
-            var firstVisit = !sessionStorage.getItem('companionOpened');
-            var forceOpen = !!document.getElementById('fac-open-now');
-            if ((firstVisit || wasOpen || forceOpen) && btn.getAttribute('aria-expanded') !== 'true') {
-                btn.click();
-                sessionStorage.setItem('companionOpened', '1');
-                setTimeout(scrollCompanionToBottom, 400);
-            }
-            clearInterval(interval);
-        } else if (++attempts > 20) {
-            clearInterval(interval);
-        }
-    }, 150);
-})();
 
 (function watchMessages() {
     var observer = new MutationObserver(function() { scrollCompanionToBottom(); });
@@ -2387,6 +2379,7 @@ def init_session():
         "cook_remix_card": None, "cook_remix_previous": None,
         "drink_remix_card": None, "drink_grounding": [],
         "companion_messages": [{"role": "assistant", "content": "Hi, what are you in the mood for?"}],
+        "companion_is_open": True,
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -3750,22 +3743,29 @@ def _companion_check_new_results():
         if not msgs or msgs[-1].get("content") != msg:
             msgs.append({"role": "assistant", "content": msg})
             st.session_state.companion_messages = msgs
-        st.session_state.companion_open_now = True
+        st.session_state.companion_is_open = True
     st.session_state.companion_last_sig = sig
 
 
 def render_companion(client):
     _companion_check_new_results()
-    if st.session_state.pop("companion_open_now", False):
-        st.markdown('<div id="fac-open-now" style="display:none"></div>', unsafe_allow_html=True)
     with st.container(key="companion_float"):
-        with st.popover(":material/chat_bubble:", use_container_width=False):
-            col_title, col_clear = st.columns([3, 0.75])
+        if st.button(":material/chat_bubble:", key="companion_toggle", use_container_width=False):
+            st.session_state.companion_is_open = not st.session_state.get("companion_is_open", False)
+            st.rerun()
+
+    if st.session_state.get("companion_is_open", False):
+        with st.container(key="companion_panel"):
+            col_title, col_clear, col_close = st.columns([3, 0.75, 0.32])
             with col_title:
                 st.markdown('<p class="companion-title">Food Companion</p>', unsafe_allow_html=True)
             with col_clear:
                 if st.button("Clear", key="companion_clear", use_container_width=True):
                     st.session_state.companion_messages = [{"role": "assistant", "content": "Hi, what are you in the mood for?"}]
+                    st.rerun()
+            with col_close:
+                if st.button(":material/close:", key="companion_close", use_container_width=True):
+                    st.session_state.companion_is_open = False
                     st.rerun()
 
             msgs = st.session_state.companion_messages
