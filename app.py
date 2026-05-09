@@ -2305,7 +2305,7 @@ def init_session():
         "cook_remix_pending": None, "drink_remix_pending": None,
         "cook_remix_card": None, "cook_remix_previous": None,
         "drink_remix_card": None, "drink_grounding": [],
-        "companion_messages": [{"role": "assistant", "content": "Hi — what are you in the mood for?"}],
+        "companion_messages": [{"role": "assistant", "content": "Hi, what are you in the mood for?"}],
     }
     for k, v in defaults.items():
         if k not in st.session_state:
