@@ -1514,7 +1514,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     min-width: 320px !important;
     max-width: none !important;
     height: auto !important;
-    max-height: 71vh !important;
+    max-height: 72vh !important;
     overflow: visible !important;
     background: #ffffff !important;
     border: 1px solid var(--line) !important;
@@ -1528,13 +1528,6 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     background: #ffffff !important;
 }
 [class*="st-key-companion_panel"] [data-testid="column"] {
-    padding: 0 !important;
-}
-[class*="st-key-companion_close"] button {
-    width: 34px !important;
-    height: 34px !important;
-    min-height: 34px !important;
-    border-radius: 999px !important;
     padding: 0 !important;
 }
 /* messages scroll; input stays pinned below */
