@@ -1419,7 +1419,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 /* ── Companion floating widget ── */
 [class*="st-key-companion_float"] {
     position: fixed !important;
-    bottom: 154px !important;
+    bottom: 100px !important;
     right: 24px !important;
     z-index: 99999 !important;
     width: fit-content !important;
@@ -1443,14 +1443,13 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     background: var(--terracotta-dark, #a8503c) !important;
     box-shadow: 0 6px 20px rgba(0,0,0,0.28) !important;
 }
-[class*="st-key-companion_float"] [data-testid="stPopoverContent"] {
+[data-testid="stPopoverBody"] {
     width: 25vw !important;
     min-width: 320px !important;
+    max-width: none !important;
     height: 66vh !important;
+    max-height: none !important;
     overflow-y: auto !important;
-}
-[class*="st-key-companion_float"] [data-testid="stPopoverContent"] > div {
-    min-height: 100% !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -3480,7 +3479,7 @@ def _stream_companion(client, messages):
 
 def render_companion(client):
     with st.container(key="companion_float"):
-        with st.popover("💬", use_container_width=False):
+        with st.popover(":material/chat_bubble:", use_container_width=False):
             col_title, col_clear = st.columns([3, 1])
             with col_title:
                 st.markdown("**Your Food Companion**")
