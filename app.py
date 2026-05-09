@@ -1437,9 +1437,9 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     overflow: visible !important;
 }
 [class*="st-key-companion_float"] [data-testid="stPopoverButton"] {
-    width: 52px !important;
-    height: 52px !important;
-    border-radius: 50% !important;
+    width: 70px !important;
+    height: 55px !important;
+    border-radius: 45% !important;
     padding: 0 !important;
     font-size: 22px !important;
     background: var(--terracotta) !important;
@@ -1450,14 +1450,14 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     line-height: 1 !important;
 }
 [class*="st-key-companion_float"] [data-testid="stPopoverButton"]:hover {
-    background: var(--terracotta-dark, #a8503c) !important;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.28) !important;
+    background: var(--terracotta-2, #a8503c) !important;
+    box-shadow: 0 6px 20px var(--terracotta) !important;
 }
 [data-testid="stPopoverBody"] {
-    width: 25vw !important;
+    width: 30vw !important;
     min-width: 320px !important;
     max-width: none !important;
-    height: 66vh !important;
+    height: 70vh !important;
     max-height: none !important;
     overflow: hidden !important;
     background: #ffffff !important;
@@ -1467,15 +1467,47 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 [data-testid="stPopoverBody"] [data-testid="stVerticalBlock"] {
     background: #ffffff !important;
 }
-[data-testid="stChatInput"] {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 8px 0 0 !important;
-}
-[data-testid="stChatInputTextArea"] {
-    border-radius: 12px !important;
-}
+	[data-testid="stChatInput"] {
+	    background: transparent !important;
+	    border: none !important;
+	    box-shadow: none !important;
+	    padding: 8px 0 0 !important;
+	    width: 100% !important;
+	}
+	[data-testid="stChatInput"] > div {
+	    width: 100% !important;
+	    max-width: none !important;
+	}
+	[data-testid="stChatInput"] [data-baseweb="textarea"],
+	[data-testid="stChatInput"] [data-baseweb="base-input"],
+	[data-testid="stChatInput"] [data-testid="stChatInputTextArea"] {
+	    width: 100% !important;
+	    max-width: none !important;
+	    min-height: 48px !important;
+	    background: transparent !important;
+	    border: none !important;
+	    box-shadow: none !important;
+	    outline: none !important;
+	}
+	[data-testid="stChatInputTextArea"] {
+	    border-radius: var(--radius-pill) !important;
+	    padding: 0 52px 0 18px !important;
+	    background: transparent !important;
+	    border: none !important;
+	    box-shadow: none !important;
+	}
+	[data-testid="stChatInput"] textarea {
+	    min-height: 48px !important;
+	    line-height: 48px !important;
+	    padding: 0 !important;
+	    background: transparent !important;
+	    border: none !important;
+	    box-shadow: none !important;
+	    resize: none !important;
+	}
+	[data-testid="stChatInput"] button {
+	    margin-right: 8px !important;
+	}
 </style>
 """, unsafe_allow_html=True)
 
