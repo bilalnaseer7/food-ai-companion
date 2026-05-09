@@ -4052,7 +4052,7 @@ def _infer_companion_action(client, messages):
         "- use_rag: true if action is none AND the question is about restaurants or dining out; false otherwise\n\n"
         "Use remix when the user asks to modify a current cook recipe or cocktail — e.g. change serving size, spice level, swap ingredient. "
         "Use remix only for cook or drink, never eat. If remix target is ambiguous across multiple results, ask clarify. "
-        "When action is remix, always populate query with the specific modification from the user's message (e.g. 'adjust to serve 4 people'). Never leave query empty for remix. "
+        "When action is remix, always populate query with the modification intent interpreted from the user's message — rephrase if needed (e.g. 'give me the filet for 4 people' → query: 'adjust portion to 4 servings'). Never leave query empty for remix. "
         "Use search when: (1) the user explicitly asks to find, search, or show restaurantresults — e.g. 'find me', 'search for', 'show me options'; "
         "(2) for cook or drink questions: the user expresses intent to make or have something specific — e.g. 'I want to cook X', 'I'm craving X', 'make me X', 'I want a X cocktail'; "
         "(3) the user expresses dissatisfaction with a conversational answer and wants app results — e.g. 'show me real results', 'can you actually search'. "
