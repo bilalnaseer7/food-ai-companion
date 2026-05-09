@@ -3727,7 +3727,7 @@ def render_companion(client):
                         msgs.append({"role": "assistant", "content": response})
                         st.session_state.companion_messages = msgs
 
-            if prompt := st.chat_input("Ask Food Companion Anything", key="companion_chat_input"):
+            if prompt := st.chat_input("Ask Food Companion anything", key="companion_chat_input"):
                 st.session_state.companion_messages.append({"role": "user", "content": prompt})
                 st.rerun()
 
