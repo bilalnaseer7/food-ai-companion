@@ -1514,7 +1514,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     min-width: 320px !important;
     max-width: none !important;
     height: auto !important;
-    max-height: 72vh !important;
+    max-height: 75vh !important;
     overflow: visible !important;
     background: #ffffff !important;
     border: 1px solid var(--line) !important;
