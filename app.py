@@ -1503,7 +1503,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 	    box-shadow: none !important;
 	}
 	[data-testid="stChatInput"] textarea {
-	    padding: 16px 0 !important;
+	    padding: 28px 0 0 !important;
 	    background: transparent !important;
 	    border: none !important;
 	    box-shadow: none !important;
