@@ -1546,7 +1546,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 	[data-testid="stChatInput"] [data-testid="stChatInputTextArea"] {
 	    width: 100% !important;
 	    max-width: none !important;
-	    max-height: 44px !important;
+	    max-height: 40px !important;
 	    overflow: hidden !important;
 	    background: transparent !important;
 	    border: none !important;
@@ -1566,9 +1566,9 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 	    box-shadow: none !important;
 	    resize: none !important;
 	    padding-left: 2px !important;
-	    height: 24px !important;
-	    min-height: 24px !important;
-	    max-height: 24px !important;
+	    height: 34px !important;
+	    min-height: 34px !important;
+	    max-height: 34px !important;
 	    overflow: hidden !important;
 	}
 	[data-testid="stChatInput"] button {
@@ -3685,7 +3685,7 @@ def _stream_companion(client, messages):
 def render_companion(client):
     with st.container(key="companion_float"):
         with st.popover(":material/chat_bubble:", use_container_width=False):
-            col_title, col_clear = st.columns([3, 0.5])
+            col_title, col_clear = st.columns([3, 0.75])
             with col_title:
                 st.markdown('<p class="companion-title">Food Companion</p>', unsafe_allow_html=True)
             with col_clear:
