@@ -1754,13 +1754,13 @@ def _format_cook_recipe_for_expander(recipe_block):
 
     text = re.sub(r'(?im)^\s*\*{0,2}RECIPE\*{0,2}\s*:\s*.+\n?', '', text)
     text = re.sub(
-        r'(?ims)^\s*\*{0,2}WHY IT FITS\*{0,2}\s*:\s*.*?(?=^\s*\*{0,2}(?:USES FROM PANTRY|MISSING OR SUBSTITUTE INGREDIENTS|INGREDIENTS|STEPS|CAUTION)\*{0,2}\s*:|\Z)',
+        r'(?ims)^\s*\*{0,2}WHY IT FITS\*{0,2}\s*:\s*.*?(?=^\s*\*{0,2}(?:SERVINGS|USES FROM PANTRY|MISSING OR SUBSTITUTE INGREDIENTS|INGREDIENTS|STEPS|CAUTION)\*{0,2}\s*:|\Z)',
         '',
         text,
     )
     text = re.sub(r'(?im)^\s*\*{0,2}CAUTION\*{0,2}\s*:\s*none\.?\s*$', '', text)
 
-    labels = ["USES FROM PANTRY", "MISSING OR SUBSTITUTE INGREDIENTS", "INGREDIENTS", "STEPS", "CAUTION"]
+    labels = ["SERVINGS", "USES FROM PANTRY", "MISSING OR SUBSTITUTE INGREDIENTS", "INGREDIENTS", "STEPS", "CAUTION"]
     label_pattern = "|".join(re.escape(label) for label in labels)
     pattern = (
         r'(?ims)^\s*\*{0,2}(' + label_pattern + r')\*{0,2}\s*:\s*'
@@ -1804,6 +1804,10 @@ def _format_cook_recipe_for_expander(recipe_block):
         value = clean_scalar(sections.get(label, ""))
         if value and value.lower() not in {"none", "n/a", "na"}:
             parts.append(f'<p class="cook-recipe-row"><b>{pretty}:</b> {esc(value)}</p>')
+
+    servings = clean_scalar(sections.get("SERVINGS", ""))
+    if servings:
+        parts.append(f'<p class="cook-recipe-row"><b>Servings:</b> {esc(servings)}</p>')
 
     ingredients_html = list_items(sections.get("INGREDIENTS", ""))
     if ingredients_html:
