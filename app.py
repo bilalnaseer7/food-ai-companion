@@ -3587,6 +3587,15 @@ def render_cocktail_tab(client):
                 thumb_url = thumb_map.get(normalized_lookup_key(cocktail_name), "")
                 if not thumb_url and thumb_candidates:
                     thumb_url = thumb_candidates[idx % len(thumb_candidates)]
+                if not thumb_url:
+                    from src.cocktail_db import _search_by_name
+                    words = [w for w in cocktail_name.split() if len(w) > 3]
+                    for keyword in [cocktail_name] + words:
+                        hits = _search_by_name(keyword)
+                        if hits:
+                            thumb_url = hits[0].get("strDrinkThumb", "")
+                            if thumb_url:
+                                break
                 thumb_src = (
                     image_url_to_data_uri(thumb_url)
                     or thumb_url
