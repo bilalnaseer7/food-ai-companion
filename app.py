@@ -1417,34 +1417,36 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 .stForm [data-testid="stFormSubmitButton"] { background: transparent !important; padding: 0 !important; border: none !important; box-shadow: none !important; }
 
 /* ── Companion chat messages ── */
-[data-testid="stPopoverBody"] .stChatMessage img { display: none !important; }
-[data-testid="stPopoverBody"] .stChatMessage [data-testid="stChatMessageAvatarContainer"],
-[data-testid="stPopoverBody"] .stChatMessage [data-testid="stChatMessageAvatarUser"],
-[data-testid="stPopoverBody"] .stChatMessage [data-testid="stChatMessageAvatarAssistant"] {
+[data-testid="stChatMessageAvatarUser"],
+[data-testid="stChatMessageAvatarCustom"],
+[data-testid="stChatMessageAvatarAssistant"] {
     display: none !important;
 }
-[data-testid="stPopoverBody"] .stChatMessage[data-testid*="assistant"] {
+[data-testid="stChatMessage"] {
+    border-radius: var(--radius) !important;
+    padding: 10px 14px !important;
+    margin-bottom: 8px !important;
+    gap: 0 !important;
+}
+[data-testid="stChatMessage"]:has([aria-label*="from assistant"]),
+[data-testid="stChatMessage"]:has([aria-label*="from ai"]) {
     width: 100% !important;
     max-width: 100% !important;
     margin-left: 0 !important;
     background: var(--bg) !important;
     border: 1px solid var(--line-2) !important;
-    border-radius: var(--radius) !important;
-    padding: 12px 16px !important;
-    margin-bottom: 8px !important;
 }
-[data-testid="stPopoverBody"] .stChatMessage[data-testid*="user"] {
+[data-testid="stChatMessage"]:has([aria-label*="from user"]),
+[data-testid="stChatMessage"]:has([aria-label*="from human"]) {
     width: 65% !important;
     max-width: 65% !important;
     margin-left: auto !important;
     margin-right: 0 !important;
     background: var(--bg-deep) !important;
     border: 1px solid var(--line) !important;
-    border-radius: var(--radius) !important;
-    padding: 10px 14px !important;
-    margin-bottom: 8px !important;
 }
-[data-testid="stPopoverBody"] .stChatMessage .stMarkdown {
+[data-testid="stChatMessage"] .stMarkdown,
+[data-testid="stChatMessageContent"] {
     font-family: var(--sans) !important;
     font-size: 14px !important;
     line-height: 1.6 !important;
