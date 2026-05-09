@@ -2412,6 +2412,8 @@ def init_session():
         "companion_messages": [{"role": "assistant", "content": "Hi, what are you in the mood for?"}],
         "companion_is_open": True,
         "companion_pending_search": None,
+        "companion_pending_remix": None,
+        "companion_pending_clarification": None,
         "companion_scroll_requested": True,
         "eat_zip": "",
     }
@@ -3724,6 +3726,8 @@ def _companion_system_prompt():
         f"{results_section}\n\n"
         "You can answer questions about the current results. Do NOT suggest restaurants or recipes yourself — "
         "instead trigger a search when the user wants to find something new.\n"
+        "If the user asks to change, adjust, remix, make one option spicier/sweeter/easier/vegetarian/etc., "
+        "use the app remix flow for the current Cook or Cocktails results rather than answering manually.\n"
         "Do NOT trigger a search for questions about reviews, ratings, vibe, hours, price, menu, location, "
         "or whether a specific current result is good; answer from the current app results instead. "
         "For example, 'how are the reviews for Soothr?' is a question, not a search request.\n\n"
@@ -3788,6 +3792,46 @@ def _looks_like_current_result_question(text: str) -> bool:
         result_names.append(cocktail_name)
 
     return any(name and name.lower() in lowered for name in result_names)
+
+
+def _current_result_names_for_tab(tab: str) -> list[str]:
+    if tab == "cook":
+        return [
+            recipe_name for recipe_name, _, _
+            in _split_cook_recipes(st.session_state.get("cook_response") or "")
+        ]
+    if tab == "drink":
+        return [
+            cocktail_name for cocktail_name, _, _
+            in _split_cocktail_recipes(st.session_state.get("cocktail_response") or "")
+        ]
+    return [r.get("name", "") for r in (st.session_state.get("eat_fsq_results") or []) if r.get("name")]
+
+
+def _active_remix_tab():
+    active = st.session_state.get("active_tab", "eat")
+    if active == "cook" and st.session_state.get("cook_response"):
+        return "cook"
+    if active == "drink" and st.session_state.get("cocktail_response"):
+        return "drink"
+    if st.session_state.get("cook_response") and not st.session_state.get("cocktail_response"):
+        return "cook"
+    if st.session_state.get("cocktail_response") and not st.session_state.get("cook_response"):
+        return "drink"
+    return None
+
+
+def _matching_current_result(tab: str, requested_name: str) -> str:
+    names = _current_result_names_for_tab(tab)
+    if not names:
+        return ""
+    requested_key = normalized_lookup_key(requested_name)
+    if requested_key:
+        for name in names:
+            name_key = normalized_lookup_key(name)
+            if requested_key == name_key or requested_key in name_key or name_key in requested_key:
+                return name
+    return names[0] if len(names) == 1 else ""
 
 
 def _companion_missing_search_context(tab: str):
@@ -3921,6 +3965,128 @@ def _infer_search_intent(client, messages):
         return {"action": "none", "tab": "", "query": "", "question": ""}
 
 
+def _infer_companion_action(client, messages):
+    active_tab = st.session_state.get("active_tab", "eat")
+    cook_names = ", ".join(_current_result_names_for_tab("cook")) or "none"
+    drink_names = ", ".join(_current_result_names_for_tab("drink")) or "none"
+    conversation = "\n".join(
+        f"{m.get('role', 'user')}: {m.get('content', '')}"
+        for m in messages
+        if m.get("role") != "system"
+    )
+    prompt = (
+        "Classify the user's latest message inside a food companion app.\n"
+        "The app has tabs: eat = restaurants, cook = home food recipes, drink = cocktails/drinks.\n"
+        f"Current active tab: {active_tab}\n"
+        f"Current cook result names: {cook_names}\n"
+        f"Current cocktail result names: {drink_names}\n\n"
+        "Return JSON only with:\n"
+        "- action: one of search, remix, clarify, none\n"
+        "- tab: eat, cook, or drink when relevant; otherwise empty string\n"
+        "- query: concise search query when action is search; remix instruction when action is remix; otherwise empty string\n"
+        "- target: result name to remix when action is remix, or empty if the user did not name one\n"
+        "- question: short clarifying question only when action is clarify; otherwise empty string\n\n"
+        "Use remix when the user asks to modify/change/remix/adjust/make a current cook recipe or cocktail different. "
+        "Use remix only for cook or drink, never eat. If remix target is ambiguous across multiple results, ask clarify. "
+        "Use search when the user wants new restaurants, recipes, or cocktails and the intended tab is clear. "
+        "If a clarification answer says 'recipe' after an original drink/cocktail phrase, choose drink because Cocktails are recipes too. "
+        "If the answer says 'cocktail', 'drink', 'bar', 'gin', 'tonic', 'g+t', or a known mixed drink, choose drink. "
+        "Ask clarify when the request could mean multiple tabs or the target/result is unclear. "
+        "Use none for questions about existing results, reviews, ratings, hours, price, vibe, or general chat.\n\n"
+        f"Conversation:\n{conversation}"
+    )
+    import json as _json
+    try:
+        result = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            max_tokens=140,
+            temperature=0,
+        )
+        data = _json.loads(result.choices[0].message.content or "{}")
+        action = data.get("action", "none")
+        if action not in {"search", "remix", "clarify", "none"}:
+            action = "none"
+        tab = data.get("tab", "")
+        if tab not in {"eat", "cook", "drink"}:
+            tab = ""
+        return {
+            "action": action,
+            "tab": tab,
+            "query": (data.get("query") or "").strip(),
+            "target": (data.get("target") or "").strip(),
+            "question": (data.get("question") or "").strip(),
+        }
+    except Exception:
+        return {"action": "none", "tab": "", "query": "", "target": "", "question": ""}
+
+
+def _resolve_pending_clarification(client, pending_clarification: dict, answer: str) -> dict:
+    original = pending_clarification.get("text", "")
+    question = pending_clarification.get("question", "")
+    return _infer_companion_action(
+        client,
+        [
+            {"role": "system", "content": _companion_system_prompt()},
+            {"role": "user", "content": original},
+            {"role": "assistant", "content": question},
+            {"role": "user", "content": answer},
+        ],
+    )
+
+
+def _start_companion_remix(action: dict) -> tuple[bool, str]:
+    tab = action.get("tab") or _active_remix_tab()
+    if tab not in {"cook", "drink"}:
+        action["needs"] = "tab"
+        st.session_state.companion_pending_remix = action
+        return False, "Which result should I remix: a recipe or a cocktail?"
+
+    names = _current_result_names_for_tab(tab)
+    if not names:
+        label = "recipes" if tab == "cook" else "cocktails"
+        return False, f"I don't have any current {label} to remix yet."
+
+    target = _matching_current_result(tab, action.get("target", ""))
+    if not target:
+        action["tab"] = tab
+        action["needs"] = "target"
+        st.session_state.companion_pending_remix = action
+        options = ", ".join(names[:3])
+        return False, f"Which one should I remix: {options}?"
+
+    instruction = (action.get("query") or "").strip()
+    if not instruction:
+        action["tab"] = tab
+        action["target"] = target
+        action["needs"] = "instruction"
+        st.session_state.companion_pending_remix = action
+        return False, "What would you like changed about it?"
+
+    if tab == "cook":
+        for recipe_name, _, recipe_block in _split_cook_recipes(st.session_state.get("cook_response") or ""):
+            if recipe_name == target:
+                st.session_state.cook_remix_pending = f"{st.session_state.cook_last_craving}. Remix '{recipe_name}': {instruction}"
+                st.session_state.cook_remix_previous = recipe_block
+                st.session_state.cook_remix_active = False
+                st.session_state.cook_remix_card = None
+                st.session_state.active_tab = "cook"
+                st.session_state.companion_tab_switch = 1
+                st.session_state.companion_pending_remix = None
+                return True, f"Remixing **{recipe_name}**: {instruction}"
+    else:
+        st.session_state.drink_remix_pending = f"{st.session_state.drink_last_vibe}. Remix '{target}': {instruction}"
+        st.session_state.drink_remix_active = False
+        st.session_state.drink_remix_card = None
+        st.session_state.active_tab = "drink"
+        st.session_state.companion_tab_switch = 2
+        st.session_state.companion_pending_remix = None
+        return True, f"Remixing **{target}**: {instruction}"
+
+    return False, "I couldn't find that result to remix."
+
+
 def _stream_companion(client, messages):
     stream = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -4035,12 +4201,89 @@ def render_companion(client):
                     import json as _json
                     user_text = msgs[-1].get("content", "")
                     pending = st.session_state.get("companion_pending_search")
+                    pending_remix = st.session_state.get("companion_pending_remix")
+                    pending_clarification = st.session_state.get("companion_pending_clarification")
                     confirmation = (
                         _interpret_search_confirmation(client, pending, user_text)
                         if pending and not pending.get("needs")
                         else None
                     )
-                    if pending and pending.get("needs"):
+                    if pending_clarification:
+                        inferred = _resolve_pending_clarification(client, pending_clarification, user_text)
+                        st.session_state.companion_pending_clarification = None
+                        if inferred and inferred.get("action") == "remix":
+                            started, reply = _start_companion_remix(inferred)
+                            with st.chat_message("assistant", avatar=None):
+                                st.write(reply)
+                            msgs.append({"role": "assistant", "content": reply})
+                            st.session_state.companion_messages = msgs
+                            request_companion_autoscroll()
+                            if started:
+                                st.rerun()
+                        elif inferred and inferred.get("action") == "search":
+                            tab = inferred["tab"]
+                            query = inferred["query"]
+                            needed, question = _companion_missing_search_context(tab)
+                            pending_search = {"tab": tab, "query": query}
+                            if needed:
+                                pending_search["needs"] = needed
+                                reply = question
+                            else:
+                                reply = _companion_confirm_text(pending_search)
+                            with st.chat_message("assistant", avatar=None):
+                                st.write(reply)
+                            msgs.append({"role": "assistant", "content": reply})
+                            st.session_state.companion_messages = msgs
+                            st.session_state.companion_pending_search = pending_search
+                            request_companion_autoscroll()
+                        elif inferred and inferred.get("action") == "clarify":
+                            question = inferred.get("question") or "What kind of search did you mean?"
+                            with st.chat_message("assistant", avatar=None):
+                                st.write(question)
+                            msgs.append({"role": "assistant", "content": question})
+                            st.session_state.companion_messages = msgs
+                            st.session_state.companion_pending_clarification = {
+                                "text": pending_clarification.get("text", ""),
+                                "question": question,
+                            }
+                            request_companion_autoscroll()
+                        else:
+                            reply = "I’m not totally sure what you mean yet. Do you want restaurants, a recipe, or cocktails?"
+                            with st.chat_message("assistant", avatar=None):
+                                st.write(reply)
+                            msgs.append({"role": "assistant", "content": reply})
+                            st.session_state.companion_messages = msgs
+                            st.session_state.companion_pending_clarification = {
+                                "text": pending_clarification.get("text", ""),
+                                "question": reply,
+                            }
+                            request_companion_autoscroll()
+                    elif pending_remix:
+                        needed = pending_remix.get("needs")
+                        if needed == "tab":
+                            inferred_tab = _infer_companion_action(
+                                client,
+                                [
+                                    {"role": "system", "content": _companion_system_prompt()},
+                                    {"role": "user", "content": user_text},
+                                ],
+                            ).get("tab")
+                            if inferred_tab in {"cook", "drink"}:
+                                pending_remix["tab"] = inferred_tab
+                        elif needed == "target":
+                            pending_remix["target"] = user_text
+                        elif needed == "instruction":
+                            pending_remix["query"] = user_text
+                        pending_remix.pop("needs", None)
+                        started, reply = _start_companion_remix(pending_remix)
+                        with st.chat_message("assistant", avatar=None):
+                            st.write(reply)
+                        msgs.append({"role": "assistant", "content": reply})
+                        st.session_state.companion_messages = msgs
+                        request_companion_autoscroll()
+                        if started:
+                            st.rerun()
+                    elif pending and pending.get("needs"):
                         needed = pending["needs"]
                         value = user_text.strip()
                         pending[needed] = value
@@ -4077,6 +4320,10 @@ def render_companion(client):
                             elif revised and revised.get("action") == "clarify":
                                 question = revised.get("question") or "What kind of search did you mean?"
                                 st.session_state.companion_pending_search = None
+                                st.session_state.companion_pending_clarification = {
+                                    "text": confirmation["query"],
+                                    "question": question,
+                                }
                                 with st.chat_message("assistant", avatar=None):
                                     st.write(question)
                                 msgs.append({"role": "assistant", "content": question})
@@ -4136,8 +4383,18 @@ def render_companion(client):
                             request_companion_autoscroll()
                             render_companion_autoscroll_if_new_messages()
                             st.stop()
-                        inferred = _infer_search_intent(client, full)
-                        if inferred and inferred.get("action") == "search":
+                        inferred = _infer_companion_action(client, full)
+                        if inferred and inferred.get("action") == "remix":
+                            started, reply = _start_companion_remix(inferred)
+                            with st.chat_message("assistant", avatar=None):
+                                st.write(reply)
+                            msgs.append({"role": "assistant", "content": reply})
+                            st.session_state.companion_messages = msgs
+                            st.session_state.companion_pending_search = None
+                            request_companion_autoscroll()
+                            if started:
+                                st.rerun()
+                        elif inferred and inferred.get("action") == "search":
                             tab = inferred["tab"]
                             query = inferred["query"]
                             needed, question = _companion_missing_search_context(tab)
@@ -4160,6 +4417,10 @@ def render_companion(client):
                             msgs.append({"role": "assistant", "content": question})
                             st.session_state.companion_messages = msgs
                             st.session_state.companion_pending_search = None
+                            st.session_state.companion_pending_clarification = {
+                                "text": user_text,
+                                "question": question,
+                            }
                             request_companion_autoscroll()
                         else:
                             with st.chat_message("assistant", avatar=None):
