@@ -1595,8 +1595,16 @@ setTimeout(scrollCompanionToBottom, 800);
     var interval = setInterval(function() {
         var btn = document.querySelector('[class*="st-key-companion_float"] [data-testid="stPopoverButton"]');
         if (btn) {
-            var shouldOpen = !sessionStorage.getItem('companionOpened') || document.getElementById('fac-open-now');
-            if (shouldOpen && btn.getAttribute('aria-expanded') !== 'true') {
+            // Track open/close state so reruns can restore it
+            var mo = new MutationObserver(function() {
+                sessionStorage.setItem('companionOpen', btn.getAttribute('aria-expanded') === 'true' ? '1' : '0');
+            });
+            mo.observe(btn, { attributes: true, attributeFilter: ['aria-expanded'] });
+
+            var wasOpen = sessionStorage.getItem('companionOpen') === '1';
+            var firstVisit = !sessionStorage.getItem('companionOpened');
+            var forceOpen = !!document.getElementById('fac-open-now');
+            if ((firstVisit || wasOpen || forceOpen) && btn.getAttribute('aria-expanded') !== 'true') {
                 btn.click();
                 sessionStorage.setItem('companionOpened', '1');
                 setTimeout(scrollCompanionToBottom, 400);
