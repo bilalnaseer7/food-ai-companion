@@ -1532,7 +1532,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 }
 /* messages scroll; input stays pinned below */
 [class*="st-key-companion_msgs"] {
-    max-height: calc(70vh - 190px) !important;
+    max-height: calc(70vh - 120px) !important;
     overflow-y: auto !important;
     height: auto !important;
 }
@@ -3807,34 +3807,49 @@ def request_companion_autoscroll():
 
 
 def render_companion_autoscroll():
-    components.html(
-        """
+    messages = st.session_state.get("companion_messages", [])
+    nonce = stable_widget_key("companion_scroll", messages, datetime.now(EASTERN_TZ).isoformat())
+    anchor_id = f"companion-bottom-{nonce}"
+    st.markdown(
+        f'<div id="{anchor_id}" style="height:1px;width:1px;"></div>',
+        unsafe_allow_html=True,
+    )
+    scroll_script = """
         <script>
         (function() {
             const doc = window.parent.document;
+            const anchorId = __ANCHOR_ID__;
             function scrollDown() {
                 const root = doc.querySelector('[class*="st-key-companion_msgs"]');
-                if (!root) return;
+                const anchor = doc.getElementById(anchorId);
+                if (anchor) {
+                    anchor.scrollIntoView({ block: "end", inline: "nearest" });
+                }
+                if (!root) return false;
                 const nodes = [root, ...root.querySelectorAll('*')];
-                let target = root;
-                let deepestOverflow = 0;
+                let scrolled = false;
                 nodes.forEach((node) => {
                     const overflow = node.scrollHeight - node.clientHeight;
-                    if (overflow > deepestOverflow) {
-                        deepestOverflow = overflow;
-                        target = node;
+                    if (overflow > 0) {
+                        node.scrollTop = node.scrollHeight;
+                        scrolled = true;
                     }
                 });
-                target.scrollTop = target.scrollHeight;
+                return scrolled;
             }
             scrollDown();
             window.requestAnimationFrame(scrollDown);
-            window.setTimeout(scrollDown, 80);
-            window.setTimeout(scrollDown, 240);
-            window.setTimeout(scrollDown, 600);
+            [50, 120, 240, 500, 900, 1400].forEach((delay) => window.setTimeout(scrollDown, delay));
+            const started = Date.now();
+            const interval = window.setInterval(() => {
+                scrollDown();
+                if (Date.now() - started > 1800) window.clearInterval(interval);
+            }, 100);
         })();
         </script>
-        """,
+        """.replace("__ANCHOR_ID__", json.dumps(anchor_id))
+    components.html(
+        scroll_script,
         height=0,
         scrolling=False,
     )
@@ -3941,7 +3956,7 @@ def render_companion(client):
                             st.session_state.companion_messages = msgs
                             request_companion_autoscroll()
 
-            render_companion_autoscroll_if_new_messages()
+                render_companion_autoscroll_if_new_messages()
 
             if prompt := st.chat_input("Ask Food Companion anything", key="companion_chat_input"):
                 st.session_state.companion_messages.append({"role": "user", "content": prompt})
