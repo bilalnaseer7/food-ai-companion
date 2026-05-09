@@ -1540,7 +1540,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 	    border: none !important;
 	    box-shadow: none !important;
 	    resize: none !important;
-	    padding-left: 4px !important;
+	    padding-left: 2px !important;
 	}
 	[data-testid="stChatInput"] button {
 	    margin-right: 8px !important;
