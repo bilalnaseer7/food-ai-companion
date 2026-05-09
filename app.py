@@ -3800,6 +3800,40 @@ def _companion_check_new_results():
     st.session_state.companion_last_sig = sig
 
 
+def render_companion_autoscroll():
+    components.html(
+        """
+        <script>
+        (function() {
+            const doc = window.parent.document;
+            function scrollDown() {
+                const root = doc.querySelector('[class*="st-key-companion_msgs"]');
+                if (!root) return;
+                const nodes = [root, ...root.querySelectorAll('*')];
+                let target = root;
+                let deepestOverflow = 0;
+                nodes.forEach((node) => {
+                    const overflow = node.scrollHeight - node.clientHeight;
+                    if (overflow > deepestOverflow) {
+                        deepestOverflow = overflow;
+                        target = node;
+                    }
+                });
+                target.scrollTop = target.scrollHeight;
+            }
+            scrollDown();
+            window.requestAnimationFrame(scrollDown);
+            window.setTimeout(scrollDown, 80);
+            window.setTimeout(scrollDown, 240);
+            window.setTimeout(scrollDown, 600);
+        })();
+        </script>
+        """,
+        height=0,
+        scrolling=False,
+    )
+
+
 def render_companion(client):
     _companion_check_new_results()
     with st.container(key="companion_float"):
@@ -3857,6 +3891,7 @@ def render_companion(client):
                                 st.write(reply)
                             msgs.append({"role": "assistant", "content": reply})
                             st.session_state.companion_messages = msgs
+                            render_companion_autoscroll()
                             st.stop()
                         full = [{"role": "system", "content": _companion_system_prompt()}] + msgs
                         detection = client.chat.completions.create(
@@ -3883,6 +3918,8 @@ def render_companion(client):
                                 response = st.write_stream(_stream_companion(client, full))
                             msgs.append({"role": "assistant", "content": response})
                             st.session_state.companion_messages = msgs
+
+            render_companion_autoscroll()
 
             if prompt := st.chat_input("Ask Food Companion anything", key="companion_chat_input"):
                 st.session_state.companion_messages.append({"role": "user", "content": prompt})
