@@ -2111,8 +2111,9 @@ def render_trace_panel(rows, title="Why this recommendation?"):
         f"<dt>{html_module.escape(label)}</dt><dd>{html_module.escape(value)}</dd>"
         for label, value in visible
     )
+    panel_id = "trace-" + hashlib.md5("".join(f"{l}{v}" for l, v in visible).encode()).hexdigest()[:12]
     st.markdown(
-        f'<details class="trace-panel">'
+        f'<details id="{panel_id}" class="trace-panel">'
         f'<summary>{html_module.escape(title)}</summary>'
         f'<div class="trace-panel-body"><dl>{body}</dl></div>'
         f'</details>',
@@ -4205,7 +4206,7 @@ def _companion_check_new_results():
     st.session_state.companion_last_sig = sig
 
 
-def request_companion_autoscroll():
+def request_companion_extended_autoscroll():
     st.session_state.companion_scroll_requested = True
 
 
@@ -4293,7 +4294,7 @@ def render_companion(client):
             with col_clear:
                 if st.button("Clear", key="companion_clear", use_container_width=True):
                     st.session_state.companion_messages = [{"role": "assistant", "content": "Hi, what are you in the mood for?"}]
-                    request_companion_autoscroll()
+                    request_companion_extended_autoscroll()
                     st.rerun()
 
             msgs = st.session_state.companion_messages
@@ -4324,7 +4325,7 @@ def render_companion(client):
                                 st.write(reply)
                             msgs.append({"role": "assistant", "content": reply})
                             st.session_state.companion_messages = msgs
-                            request_companion_autoscroll()
+                            request_companion_extended_autoscroll()
                             if started:
                                 render_companion_autoscroll_now()
                                 st.rerun()
@@ -4343,7 +4344,7 @@ def render_companion(client):
                             msgs.append({"role": "assistant", "content": reply})
                             st.session_state.companion_messages = msgs
                             st.session_state.companion_pending_search = pending_search
-                            request_companion_autoscroll()
+                            request_companion_extended_autoscroll()
                         elif inferred and inferred.get("action") == "clarify":
                             question = inferred.get("question") or "What kind of search did you mean?"
                             with st.chat_message("assistant", avatar=None):
@@ -4388,7 +4389,7 @@ def render_companion(client):
                             st.write(reply)
                         msgs.append({"role": "assistant", "content": reply})
                         st.session_state.companion_messages = msgs
-                        request_companion_autoscroll()
+                        request_companion_extended_autoscroll()
                         if started:
                             render_companion_autoscroll_now()
                             st.rerun()
@@ -4408,7 +4409,7 @@ def render_companion(client):
                             st.write(reply)
                         msgs.append({"role": "assistant", "content": reply})
                         st.session_state.companion_messages = msgs
-                        request_companion_autoscroll()
+                        request_companion_extended_autoscroll()
                         st.session_state.companion_pending_search = None
                         st.session_state.companion_search_trigger = _companion_search_trigger_from_pending(pending)
                         st.session_state.active_tab = pending["tab"]
@@ -4450,7 +4451,7 @@ def render_companion(client):
                                     st.write(question)
                                 msgs.append({"role": "assistant", "content": question})
                                 st.session_state.companion_messages = msgs
-                                request_companion_autoscroll()
+                                request_companion_extended_autoscroll()
                                 st.stop()
                             tab = pending["tab"]
                         query = pending["query"]
@@ -4459,7 +4460,7 @@ def render_companion(client):
                             st.write(notice)
                         msgs.append({"role": "assistant", "content": notice})
                         st.session_state.companion_messages = msgs
-                        request_companion_autoscroll()
+                        request_companion_extended_autoscroll()
                         st.session_state.companion_pending_search = None
                         st.session_state.companion_search_trigger = _companion_search_trigger_from_pending(pending)
                         st.session_state.active_tab = tab
@@ -4472,7 +4473,7 @@ def render_companion(client):
                             st.write(reply)
                         msgs.append({"role": "assistant", "content": reply})
                         st.session_state.companion_messages = msgs
-                        request_companion_autoscroll()
+                        request_companion_extended_autoscroll()
                         st.session_state.companion_pending_search = None
                     else:
                         if pending and confirmation["action"] == "unclear":
@@ -4482,7 +4483,7 @@ def render_companion(client):
                                 st.write(reply)
                             msgs.append({"role": "assistant", "content": reply})
                             st.session_state.companion_messages = msgs
-                            request_companion_autoscroll()
+                            request_companion_extended_autoscroll()
                             render_companion_autoscroll_if_new_messages()
                             st.stop()
                         full = [{"role": "system", "content": _companion_system_prompt()}] + msgs
@@ -4491,7 +4492,7 @@ def render_companion(client):
                                 response = st.write_stream(_stream_companion(client, full))
                             msgs.append({"role": "assistant", "content": response})
                             st.session_state.companion_messages = msgs
-                            request_companion_autoscroll()
+                            request_companion_extended_autoscroll()
                             render_companion_autoscroll_if_new_messages()
                             st.stop()
                         inferred = _infer_companion_action(client, full)
@@ -4502,7 +4503,7 @@ def render_companion(client):
                             msgs.append({"role": "assistant", "content": reply})
                             st.session_state.companion_messages = msgs
                             st.session_state.companion_pending_search = None
-                            request_companion_autoscroll()
+                            request_companion_extended_autoscroll()
                             if started:
                                 render_companion_autoscroll_now()
                                 st.rerun()
@@ -4520,7 +4521,7 @@ def render_companion(client):
                                 st.write(confirm)
                             msgs.append({"role": "assistant", "content": confirm})
                             st.session_state.companion_messages = msgs
-                            request_companion_autoscroll()
+                            request_companion_extended_autoscroll()
                             st.session_state.companion_pending_search = pending_search
                         elif inferred and inferred.get("action") == "clarify":
                             question = inferred.get("question") or "What kind of search did you mean?"
@@ -4547,13 +4548,13 @@ def render_companion(client):
                                 response = st.write_stream(_stream_companion(client, rag_full))
                             msgs.append({"role": "assistant", "content": response})
                             st.session_state.companion_messages = msgs
-                            request_companion_autoscroll()
+                            request_companion_extended_autoscroll()
 
                 render_companion_autoscroll_if_new_messages()
 
             if prompt := st.chat_input("Ask Food Companion anything", key="companion_chat_input"):
                 st.session_state.companion_messages.append({"role": "user", "content": prompt})
-                request_companion_autoscroll()
+                request_companion_extended_autoscroll()
                 st.rerun()
 
 
