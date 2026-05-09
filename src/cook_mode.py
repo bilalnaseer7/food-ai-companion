@@ -133,13 +133,19 @@ def build_cook_prompt(context: dict) -> tuple[str, str]:
         f"Occasion/meal type: {meal_context}\n"
         f"Grounding note: {context['grounding_note']}\n"
         f"{previous_block}\n"
-        "Return 3 recipe ideas when the pantry and request can support 3 distinct options; "
-        "return fewer only if there is not enough usable information. "
+        + (
+            "Return exactly 1 revised recipe, based only on the previous suggestion and remix instruction. "
+            if previous else
+            "Return 3 recipe ideas when the pantry and request can support 3 distinct options; "
+            "return fewer only if there is not enough usable information. "
+        )
+        +
         "For each recipe, use this exact structure:\n"
         "RECIPE: <name>\n"
         "WHY IT FITS: <1-2 sentences on why it matches the craving and taste profile>\n"
         "USES FROM PANTRY: <specific available ingredients used>\n"
         "MISSING OR SUBSTITUTE INGREDIENTS: <missing ingredients and substitutes, or 'None'>\n"
+        "SERVINGS: <number of servings, e.g. 'Serves 2' or 'Makes 4 portions'>\n"
         "INGREDIENTS: <complete ingredient list with quantities>\n"
         "STEPS:\n"
         "1. <step>\n"
