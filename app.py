@@ -4140,6 +4140,23 @@ def _start_companion_remix(action: dict) -> tuple[bool, str]:
     return False, "I couldn't find that result to remix."
 
 
+def _companion_rag_context(query: str, profile: dict, client) -> str:
+    try:
+        from src.retrieval import retrieve_restaurants
+        results = retrieve_restaurants(query=query, user_profile=profile, df=get_df(), client=client, top_k=4)
+        if not results:
+            return ""
+        lines = []
+        for r in results:
+            snippets = str(r.get("review_snippets") or "")[:120]
+            lines.append(
+                f"- {r['title']} ({r.get('category','')}) | Popular: {r.get('popular_food','')} | {snippets}"
+            )
+        return "\n\nRelevant restaurants from database:\n" + "\n".join(lines)
+    except Exception:
+        return ""
+
+
 def _stream_companion(client, messages):
     stream = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -4505,8 +4522,13 @@ def render_companion(client):
                             }
                             request_companion_extended_autoscroll()
                         else:
+                            rag_ctx = _companion_rag_context(user_text, st.session_state.get("profile", {}), client)
+                            rag_full = (
+                                [{"role": "system", "content": full[0]["content"] + rag_ctx}] + full[1:]
+                                if rag_ctx else full
+                            )
                             with st.chat_message("assistant", avatar=None):
-                                response = st.write_stream(_stream_companion(client, full))
+                                response = st.write_stream(_stream_companion(client, rag_full))
                             msgs.append({"role": "assistant", "content": response})
                             st.session_state.companion_messages = msgs
                             request_companion_autoscroll()
