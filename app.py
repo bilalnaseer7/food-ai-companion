@@ -1581,6 +1581,11 @@ document.addEventListener('keydown', function(e) {
     }
 }, true);
 
+function scrollCompanionToBottom() {
+    var msgs = document.querySelector('[class*="st-key-companion_msgs"]');
+    if (msgs) msgs.scrollTop = msgs.scrollHeight;
+}
+
 (function openCompanion() {
     var attempts = 0;
     var interval = setInterval(function() {
@@ -1590,12 +1595,29 @@ document.addEventListener('keydown', function(e) {
             if (shouldOpen && btn.getAttribute('aria-expanded') !== 'true') {
                 btn.click();
                 sessionStorage.setItem('companionOpened', '1');
+                setTimeout(scrollCompanionToBottom, 300);
+            } else {
+                scrollCompanionToBottom();
             }
             clearInterval(interval);
         } else if (++attempts > 20) {
             clearInterval(interval);
         }
     }, 150);
+})();
+
+// also scroll to bottom whenever the messages container grows
+(function watchMessages() {
+    var observer = new MutationObserver(function() { scrollCompanionToBottom(); });
+    function attach() {
+        var msgs = document.querySelector('[class*="st-key-companion_msgs"]');
+        if (msgs) {
+            observer.observe(msgs, { childList: true, subtree: true });
+        } else {
+            setTimeout(attach, 300);
+        }
+    }
+    attach();
 })();
 </script>
 """, unsafe_allow_html=True)
