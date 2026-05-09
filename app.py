@@ -4035,11 +4035,13 @@ def _infer_companion_action(client, messages):
         "- question: short clarifying question only when action is clarify; otherwise empty string\n\n"
         "Use remix when the user asks to modify/change/remix/adjust/make a current cook recipe or cocktail different. "
         "Use remix only for cook or drink, never eat. If remix target is ambiguous across multiple results, ask clarify. "
-        "Use search when the user wants new restaurants, recipes, or cocktails and the intended tab is clear. "
+        "Use search only when the user explicitly asks to find, search, or show new results — e.g. 'find me', 'search for', 'show me options', 'look up', 'can you search'. "
+        "Also use search if the user expresses dissatisfaction with a previous conversational answer and wants actual app results — e.g. 'show me real results', 'can you actually search', 'I want to see options'. "
+        "Do NOT use search for general questions about food, restaurants, or what is good in NYC — those should be answered conversationally using none. "
         "If a clarification answer says 'recipe' after an original drink/cocktail phrase, choose drink because Cocktails are recipes too. "
         "If the answer says 'cocktail', 'drink', 'bar', 'gin', 'tonic', 'g+t', or a known mixed drink, choose drink. "
         "Ask clarify when the request could mean multiple tabs or the target/result is unclear. "
-        "Use none for questions about existing results, reviews, ratings, hours, price, vibe, or general chat.\n\n"
+        "Use none for questions about existing results, reviews, ratings, hours, price, vibe, general food questions, and restaurant recommendations the companion can answer from its knowledge.\n\n"
         f"Conversation:\n{conversation}"
     )
     import json as _json
@@ -4208,7 +4210,7 @@ def render_companion_autoscroll():
     delays = (
         "[100, 250, 500, 900, 1400, 2200, 3200, 4600, 6200, 8000]"
         if extended else
-        "[50, 150, 350, 700, 1200, 1800, 2600, 3600]"
+        "[50, 150, 350, 700, 1200, 1800, 2600, 3600, 4600]"
     )
     interval_ms = "8200" if extended else "5200"
     scroll_script = """
