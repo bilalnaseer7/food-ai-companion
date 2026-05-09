@@ -1417,9 +1417,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 .stForm [data-testid="stFormSubmitButton"] { background: transparent !important; padding: 0 !important; border: none !important; box-shadow: none !important; }
 
 /* ── Companion chat messages ── */
-[data-testid="stChatMessageAvatarUser"],
-[data-testid="stChatMessageAvatarCustom"],
-[data-testid="stChatMessageAvatarAssistant"] {
+[data-testid="stChatMessage"] > *:not([data-testid="stChatMessageContent"]) {
     display: none !important;
 }
 [data-testid="stChatMessage"] {
