@@ -1419,9 +1419,9 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 /* ── Companion floating widget ── */
 [class*="st-key-companion_float"] {
     position: fixed !important;
-    bottom: 24px !important;
+    bottom: 54px !important;
     right: 24px !important;
-    z-index: 9998 !important;
+    z-index: 99999 !important;
     width: fit-content !important;
     height: 0 !important;
     overflow: visible !important;
@@ -1442,6 +1442,15 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 [class*="st-key-companion_float"] [data-testid="stPopoverButton"]:hover {
     background: var(--terracotta-dark, #a8503c) !important;
     box-shadow: 0 6px 20px rgba(0,0,0,0.28) !important;
+}
+[class*="st-key-companion_float"] [data-testid="stPopoverContent"] {
+    width: 25vw !important;
+    min-width: 320px !important;
+    height: 66vh !important;
+    overflow-y: auto !important;
+}
+[class*="st-key-companion_float"] [data-testid="stPopoverContent"] > div {
+    min-height: 100% !important;
 }
 </style>
 """, unsafe_allow_html=True)
