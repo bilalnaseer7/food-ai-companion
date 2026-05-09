@@ -4130,6 +4130,7 @@ def request_companion_autoscroll():
 
 def render_companion_autoscroll():
     messages = st.session_state.get("companion_messages", [])
+    nonce = stable_widget_key("companion_scroll", messages, datetime.now(EASTERN_TZ).isoformat())
     scroll_script = """
         <script>
         (function() {
@@ -4160,8 +4161,8 @@ def render_companion_autoscroll():
             }, 100);
         })();
         </script>
-        """.replace("__SCROLL_NONCE__", json.dumps(stable_widget_key("companion_scroll", messages, datetime.now(EASTERN_TZ).isoformat())))
-    with st.container(key="companion_autoscroll"):
+        """.replace("__SCROLL_NONCE__", json.dumps(nonce))
+    with st.container(key=f"companion_autoscroll_{nonce}"):
         components.html(
             scroll_script,
             height=0,
