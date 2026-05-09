@@ -1586,6 +1586,10 @@ function scrollCompanionToBottom() {
     if (msgs) msgs.scrollTop = msgs.scrollHeight;
 }
 
+// Run after every Streamlit rerun — React finishes patching within ~400ms
+setTimeout(scrollCompanionToBottom, 400);
+setTimeout(scrollCompanionToBottom, 800);
+
 (function openCompanion() {
     var attempts = 0;
     var interval = setInterval(function() {
@@ -1595,9 +1599,7 @@ function scrollCompanionToBottom() {
             if (shouldOpen && btn.getAttribute('aria-expanded') !== 'true') {
                 btn.click();
                 sessionStorage.setItem('companionOpened', '1');
-                setTimeout(scrollCompanionToBottom, 300);
-            } else {
-                scrollCompanionToBottom();
+                setTimeout(scrollCompanionToBottom, 400);
             }
             clearInterval(interval);
         } else if (++attempts > 20) {
@@ -1606,7 +1608,6 @@ function scrollCompanionToBottom() {
     }, 150);
 })();
 
-// also scroll to bottom whenever the messages container grows
 (function watchMessages() {
     var observer = new MutationObserver(function() { scrollCompanionToBottom(); });
     function attach() {
