@@ -1728,6 +1728,30 @@ def _split_cook_recipes(response_text):
     return results
 
 
+def _replace_generated_block(response_text, replacement_text, splitter, target_name):
+    original_blocks = splitter(response_text or "")
+    replacement_blocks = splitter(replacement_text or "")
+    if not original_blocks or not replacement_blocks:
+        return replacement_text or response_text or ""
+
+    replacement_block = replacement_blocks[0][2]
+    target_key = normalized_lookup_key(target_name)
+    replaced = False
+    merged = []
+    for name, _, block in original_blocks:
+        name_key = normalized_lookup_key(name)
+        if target_key and not replaced and name_key == target_key:
+            merged.append(replacement_block)
+            replaced = True
+        else:
+            merged.append(block)
+
+    if not replaced:
+        merged[0] = replacement_block
+
+    return "\n\n".join(block.strip() for block in merged if str(block or "").strip())
+
+
 def _format_cook_recipe_for_expander(recipe_block):
     text = str(recipe_block or "").strip()
     if not text:
@@ -2409,7 +2433,9 @@ def init_session():
         "cook_remix_active": False, "drink_remix_active": False,
         "cook_remix_pending": None, "drink_remix_pending": None,
         "cook_remix_card": None, "cook_remix_previous": None,
-        "drink_remix_card": None, "drink_grounding": [],
+        "cook_remix_target": None, "drink_remix_card": None,
+        "drink_remix_previous": None, "drink_remix_target": None,
+        "drink_grounding": [],
         "companion_messages": [{"role": "assistant", "content": "Hi, what are you in the mood for?"}],
         "companion_is_open": True,
         "companion_pending_search": None,
@@ -3318,14 +3344,21 @@ def render_cook_tab(client):
             render_skeletons(3)
         from src.recommend import recommend_recipe
         combined = st.session_state.cook_remix_pending
-        st.session_state.cook_response = recommend_recipe(
+        remix_response = recommend_recipe(
             combined, st.session_state.profile, client=client,
             previous_response=st.session_state.cook_remix_previous,
+        )
+        st.session_state.cook_response = _replace_generated_block(
+            st.session_state.cook_response,
+            remix_response,
+            _split_cook_recipes,
+            st.session_state.cook_remix_target,
         )
         st.session_state.cook_response_version = stable_widget_key("cook_response", st.session_state.cook_response)
         st.session_state.cook_last_craving = combined
         st.session_state.cook_remix_pending = None
         st.session_state.cook_remix_previous = None
+        st.session_state.cook_remix_target = None
         st.session_state.companion_next_results_nudge = "I updated the remix. Want another adjustment, or should we try a different direction?"
         st.rerun()
 
@@ -3425,6 +3458,7 @@ def render_cook_tab(client):
                                 st.session_state.active_tab = "cook"
                                 st.session_state.cook_remix_pending = f"{st.session_state.cook_last_craving}. Remix '{recipe_name}': {remix_input}"
                                 st.session_state.cook_remix_previous = recipe_block
+                                st.session_state.cook_remix_target = recipe_name
                                 st.session_state.cook_remix_active = False
                                 st.session_state.cook_remix_card = None
                                 st.rerun()
@@ -3503,12 +3537,25 @@ def render_cocktail_tab(client):
             render_skeletons(3)
         from src.recommend import recommend_cocktail
         combined = st.session_state.drink_remix_pending
-        response, grounding = recommend_cocktail(combined, st.session_state.profile, previous_response=st.session_state.cocktail_response)
-        st.session_state.cocktail_response = response
-        st.session_state.drink_response_version = stable_widget_key("drink_response", response)
-        st.session_state.drink_grounding = grounding
+        response, grounding = recommend_cocktail(combined, st.session_state.profile, previous_response=st.session_state.drink_remix_previous)
+        st.session_state.cocktail_response = _replace_generated_block(
+            st.session_state.cocktail_response,
+            response,
+            _split_cocktail_recipes,
+            st.session_state.drink_remix_target,
+        )
+        st.session_state.drink_response_version = stable_widget_key("drink_response", st.session_state.cocktail_response)
+        if grounding:
+            existing_grounding = st.session_state.get("drink_grounding", [])
+            seen_grounding = {normalized_lookup_key(c.get("name", "")) for c in existing_grounding}
+            st.session_state.drink_grounding = existing_grounding + [
+                c for c in grounding
+                if normalized_lookup_key(c.get("name", "")) not in seen_grounding
+            ]
         st.session_state.drink_last_vibe = combined
         st.session_state.drink_remix_pending = None
+        st.session_state.drink_remix_previous = None
+        st.session_state.drink_remix_target = None
         st.session_state.companion_next_results_nudge = "I updated the remix. Want another adjustment, or should we try a different direction?"
         st.rerun()
 
@@ -3643,8 +3690,9 @@ def render_cocktail_tab(client):
                         with col2:
                             if st.form_submit_button("Remix  →", type="primary", use_container_width=True) and remix_input:
                                 st.session_state.active_tab = "drink"
-                                st.session_state.drink_remix_pending = f"{st.session_state.drink_last_vibe}. {remix_input}"
-                                st.session_state.cocktail_response = None
+                                st.session_state.drink_remix_pending = f"{st.session_state.drink_last_vibe}. Remix '{cocktail_name}': {remix_input}"
+                                st.session_state.drink_remix_previous = cocktail_block
+                                st.session_state.drink_remix_target = cocktail_name
                                 st.session_state.drink_remix_active = False
                                 st.session_state.drink_remix_card = None
                                 st.rerun()
@@ -4073,6 +4121,7 @@ def _start_companion_remix(action: dict) -> tuple[bool, str]:
             if recipe_name == target:
                 st.session_state.cook_remix_pending = f"{st.session_state.cook_last_craving}. Remix '{recipe_name}': {instruction}"
                 st.session_state.cook_remix_previous = recipe_block
+                st.session_state.cook_remix_target = recipe_name
                 st.session_state.cook_remix_active = False
                 st.session_state.cook_remix_card = None
                 st.session_state.active_tab = "cook"
@@ -4081,6 +4130,11 @@ def _start_companion_remix(action: dict) -> tuple[bool, str]:
                 return True, f"Remixing **{recipe_name}**: {instruction}"
     else:
         st.session_state.drink_remix_pending = f"{st.session_state.drink_last_vibe}. Remix '{target}': {instruction}"
+        for cocktail_name, _, cocktail_block in _split_cocktail_recipes(st.session_state.get("cocktail_response") or ""):
+            if cocktail_name == target:
+                st.session_state.drink_remix_previous = cocktail_block
+                break
+        st.session_state.drink_remix_target = target
         st.session_state.drink_remix_active = False
         st.session_state.drink_remix_card = None
         st.session_state.active_tab = "drink"
