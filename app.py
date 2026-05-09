@@ -4188,16 +4188,22 @@ def render_companion_autoscroll():
             function scrollDown() {
                 const root = doc.querySelector('[class*="st-key-companion_msgs"]');
                 if (!root) return false;
-                root.scrollTop = root.scrollHeight;
+                const nodes = [root, ...root.querySelectorAll('*')];
+                nodes.forEach((node) => {
+                    const overflow = node.scrollHeight - node.clientHeight;
+                    if (overflow > 0) {
+                        node.scrollTop = node.scrollHeight;
+                    }
+                });
                 return true;
             }
             scrollDown();
             window.requestAnimationFrame(scrollDown);
-            [50, 150, 350, 700, 1200, 1800].forEach((delay) => window.setTimeout(scrollDown, delay));
+            [50, 150, 350, 700, 1200, 1800, 2600, 3600].forEach((delay) => window.setTimeout(scrollDown, delay));
             const started = Date.now();
             const interval = window.setInterval(() => {
                 scrollDown();
-                if (Date.now() - started > 4000) window.clearInterval(interval);
+                if (Date.now() - started > 5200) window.clearInterval(interval);
             }, 150);
         })();
         </script>
