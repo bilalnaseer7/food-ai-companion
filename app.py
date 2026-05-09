@@ -4170,7 +4170,7 @@ def _companion_check_new_results():
             msgs.append({"role": "assistant", "content": msg})
             st.session_state.companion_messages = msgs
             st.session_state.pop("companion_scroll_sig", None)
-            request_companion_autoscroll()
+            request_companion_extended_autoscroll()
         st.session_state.companion_is_open = True
     st.session_state.companion_last_sig = sig
 
@@ -4179,9 +4179,21 @@ def request_companion_autoscroll():
     st.session_state.companion_scroll_requested = True
 
 
+def request_companion_extended_autoscroll():
+    st.session_state.companion_scroll_requested = True
+    st.session_state.companion_scroll_extended = True
+
+
 def render_companion_autoscroll():
     messages = st.session_state.get("companion_messages", [])
+    extended = st.session_state.pop("companion_scroll_extended", False)
     nonce = stable_widget_key("companion_scroll", messages, datetime.now(EASTERN_TZ).isoformat())
+    delays = (
+        "[100, 250, 500, 900, 1400, 2200, 3200, 4600, 6200, 8000]"
+        if extended else
+        "[50, 150, 350, 700, 1200, 1800, 2600, 3600]"
+    )
+    interval_ms = "8200" if extended else "5200"
     scroll_script = """
         <script>
         (function() {
@@ -4204,15 +4216,15 @@ def render_companion_autoscroll():
             }
             scrollDown();
             window.requestAnimationFrame(scrollDown);
-            [50, 150, 350, 700, 1200, 1800, 2600, 3600].forEach((delay) => window.setTimeout(scrollDown, delay));
+            __DELAYS__.forEach((delay) => window.setTimeout(scrollDown, delay));
             const started = Date.now();
             const interval = window.setInterval(() => {
                 scrollDown();
-                if (Date.now() - started > 5200) window.clearInterval(interval);
+                if (Date.now() - started > __INTERVAL_MS__) window.clearInterval(interval);
             }, 150);
         })();
         </script>
-        """.replace("__SCROLL_NONCE__", json.dumps(nonce))
+        """.replace("__DELAYS__", delays).replace("__INTERVAL_MS__", interval_ms).replace("__SCROLL_NONCE__", json.dumps(nonce))
     with st.container(key=f"companion_autoscroll_{nonce}"):
         components.html(
             scroll_script,
@@ -4312,7 +4324,7 @@ def render_companion(client):
                                 "text": pending_clarification.get("text", ""),
                                 "question": question,
                             }
-                            request_companion_autoscroll()
+                            request_companion_extended_autoscroll()
                         else:
                             reply = "I’m not totally sure what you mean yet. Do you want restaurants, a recipe, or cocktails?"
                             with st.chat_message("assistant", avatar=None):
@@ -4323,7 +4335,7 @@ def render_companion(client):
                                 "text": pending_clarification.get("text", ""),
                                 "question": reply,
                             }
-                            request_companion_autoscroll()
+                            request_companion_extended_autoscroll()
                     elif pending_remix:
                         needed = pending_remix.get("needs")
                         if needed == "tab":
@@ -4396,7 +4408,7 @@ def render_companion(client):
                                     st.write(question)
                                 msgs.append({"role": "assistant", "content": question})
                                 st.session_state.companion_messages = msgs
-                                request_companion_autoscroll()
+                                request_companion_extended_autoscroll()
                                 st.stop()
                             else:
                                 pending["query"] = confirmation["query"]
@@ -4491,7 +4503,7 @@ def render_companion(client):
                                 "text": user_text,
                                 "question": question,
                             }
-                            request_companion_autoscroll()
+                            request_companion_extended_autoscroll()
                         else:
                             with st.chat_message("assistant", avatar=None):
                                 response = st.write_stream(_stream_companion(client, full))
