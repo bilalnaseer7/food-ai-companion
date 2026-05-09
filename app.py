@@ -630,7 +630,13 @@ div[class*="block-container"] {
     color: #fff !important;
 }
             
-[data-testid="companion_clear"] button
+[class*="st-key-companion_clear"] button {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    color: var(--ink-2) !important;
+    margin: 0 !important;
+}
 
 .suggest-chip { color: var(--ink-2) !important; }
 
@@ -1510,11 +1516,16 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     background: #ffffff !important;
 }
 /* messages scroll; input stays pinned below */
-[class*="st-key-companion_msgs"],
-[class*="st-key-companion_msgs"] > div,
-[class*="st-key-companion_msgs"] [data-testid="stVerticalBlockBorderWrapper"] {
+[class*="st-key-companion_msgs"] {
     max-height: calc(70vh - 190px) !important;
     overflow-y: auto !important;
+    height: auto !important;
+}
+[class*="st-key-companion_msgs"] > div,
+[class*="st-key-companion_msgs"] [data-testid="stVerticalBlockBorderWrapper"],
+[class*="st-key-companion_msgs"] [data-testid="stChatMessage"] {
+    max-height: none !important;
+    overflow: visible !important;
     height: auto !important;
 }
 	[data-testid="stChatInput"] {
