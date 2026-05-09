@@ -4529,7 +4529,7 @@ def render_companion(client):
                             rag_ctx = _companion_rag_context(user_text, client)
                             system_content = full[0]["content"] + rag_ctx
                             if rag_ctx:
-                                system_content += "\n\nEnd your response with one short sentence offering to run a full search for more options."
+                                system_content += "\n\nBold all restaurant names using **name** markdown. End your response with one short sentence offering to run a full search for more options."
                             rag_full = (
                                 [{"role": "system", "content": system_content}] + full[1:]
                                 if rag_ctx else full
