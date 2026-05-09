@@ -1532,7 +1532,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 }
 /* messages scroll; input stays pinned below */
 [class*="st-key-companion_msgs"] {
-    max-height: calc(70vh - 120px) !important;
+    max-height: calc(70vh - 100px) !important;
     overflow-y: auto !important;
     height: auto !important;
 }
