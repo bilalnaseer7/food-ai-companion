@@ -1532,7 +1532,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 }
 /* messages scroll; input stays pinned below */
 [class*="st-key-companion_msgs"] {
-    max-height: calc(70vh - 190px) !important;
+    max-height: calc(70vh - 150px) !important;
     overflow-y: auto !important;
     height: auto !important;
 }
@@ -3808,46 +3808,37 @@ def request_companion_autoscroll():
 
 def render_companion_autoscroll():
     messages = st.session_state.get("companion_messages", [])
-    nonce = stable_widget_key("companion_scroll", messages, datetime.now(EASTERN_TZ).isoformat())
-    anchor_id = f"companion-bottom-{nonce}"
-    st.markdown(
-        f'<div id="{anchor_id}" style="height:1px;width:1px;"></div>',
-        unsafe_allow_html=True,
-    )
     scroll_script = """
         <script>
         (function() {
             const doc = window.parent.document;
-            const anchorId = __ANCHOR_ID__;
             function scrollDown() {
                 const root = doc.querySelector('[class*="st-key-companion_msgs"]');
-                const anchor = doc.getElementById(anchorId);
-                if (anchor) {
-                    anchor.scrollIntoView({ block: "end", inline: "nearest" });
-                }
                 if (!root) return false;
-                const nodes = [root, ...root.querySelectorAll('*')];
-                let scrolled = false;
-                nodes.forEach((node) => {
+                let target = root;
+                let largestOverflow = root.scrollHeight - root.clientHeight;
+                root.querySelectorAll('*').forEach((node) => {
                     const overflow = node.scrollHeight - node.clientHeight;
-                    if (overflow > 0) {
-                        node.scrollTop = node.scrollHeight;
-                        scrolled = true;
+                    if (overflow > largestOverflow) {
+                        largestOverflow = overflow;
+                        target = node;
                     }
                 });
-                return scrolled;
+                if (largestOverflow <= 0) return false;
+                target.scrollTop = target.scrollHeight - target.clientHeight;
+                return true;
             }
             scrollDown();
             window.requestAnimationFrame(scrollDown);
-            [50, 120, 240, 500, 900, 1400].forEach((delay) => window.setTimeout(scrollDown, delay));
+            [50, 120, 240, 500, 900].forEach((delay) => window.setTimeout(scrollDown, delay));
             const started = Date.now();
             const interval = window.setInterval(() => {
                 scrollDown();
-                if (Date.now() - started > 1800) window.clearInterval(interval);
+                if (Date.now() - started > 1100) window.clearInterval(interval);
             }, 100);
         })();
         </script>
-        """.replace("__ANCHOR_ID__", json.dumps(anchor_id))
+        """.replace("__SCROLL_NONCE__", json.dumps(stable_widget_key("companion_scroll", messages, datetime.now(EASTERN_TZ).isoformat())))
     components.html(
         scroll_script,
         height=0,
