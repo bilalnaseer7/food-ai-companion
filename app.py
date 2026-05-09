@@ -3682,10 +3682,11 @@ def _companion_system_prompt():
         f"{results_section}\n\n"
         "You can answer questions about the current results. Do NOT suggest restaurants or recipes yourself — "
         "instead trigger a search when the user wants to find something.\n\n"
-        "Before triggering a search, ask clarifying questions if any key detail is unclear: "
-        "are they eating out or cooking at home? what neighborhood or zip code? "
-        "any cuisine preference or dietary need? occasion or vibe? "
-        "Only trigger a search once you have enough to work with — one or two focused questions at a time, not a list. "
+        "Infer intent from context — if the message mentions restaurants, dining, going out, or a place, use eat. "
+        "If it mentions cooking, making, or a dish at home, use cook. "
+        "If it mentions cocktails, drinks, or a bar, use drink. "
+        "Only ask a clarifying question when the intent is genuinely unclear after reading the message. "
+        "Never ask something the user already answered in their message. "
         "Keep responses under 80 words. No markdown headers."
     )
 
