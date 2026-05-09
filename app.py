@@ -1477,8 +1477,8 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 /* ── Companion floating widget ── */
 [class*="st-key-companion_float"] {
     position: fixed !important;
-    bottom: 110px !important;
-    right: 40px !important;
+    bottom: 100px !important;
+    right: 36px !important;
     z-index: 99999 !important;
     width: fit-content !important;
     height: 0 !important;
@@ -2414,6 +2414,7 @@ def init_session():
         "companion_pending_search": None,
         "companion_pending_remix": None,
         "companion_pending_clarification": None,
+        "companion_next_results_nudge": None,
         "companion_scroll_requested": True,
         "eat_zip": "",
     }
@@ -3324,6 +3325,7 @@ def render_cook_tab(client):
         st.session_state.cook_last_craving = combined
         st.session_state.cook_remix_pending = None
         st.session_state.cook_remix_previous = None
+        st.session_state.companion_next_results_nudge = "I updated the remix. Want another adjustment, or should we try a different direction?"
         st.rerun()
 
     if st.session_state.cook_response:
@@ -3506,6 +3508,7 @@ def render_cocktail_tab(client):
         st.session_state.drink_grounding = grounding
         st.session_state.drink_last_vibe = combined
         st.session_state.drink_remix_pending = None
+        st.session_state.companion_next_results_nudge = "I updated the remix. Want another adjustment, or should we try a different direction?"
         st.rerun()
 
     if st.session_state.cocktail_response:
@@ -4108,7 +4111,10 @@ def _companion_check_new_results():
     sig = (eat_v, cook_v, drink_v)
     last = st.session_state.get("companion_last_sig", ("", "", ""))
     if sig != last and any(sig):
-        msg = "How are the recommendations? Let me know if you'd like to refine them or explore something different."
+        msg = (
+            st.session_state.pop("companion_next_results_nudge", None)
+            or "How are the recommendations? Let me know if you'd like to refine them or explore something different."
+        )
         msgs = st.session_state.companion_messages
         if not msgs or msgs[-1].get("content") != msg:
             msgs.append({"role": "assistant", "content": msg})
