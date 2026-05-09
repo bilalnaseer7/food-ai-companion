@@ -4208,12 +4208,12 @@ def render_companion_autoscroll():
             }
             scrollDown();
             window.requestAnimationFrame(scrollDown);
-            [50, 120, 240, 500, 900].forEach((delay) => window.setTimeout(scrollDown, delay));
+            [50, 150, 350, 700, 1200, 1800].forEach((delay) => window.setTimeout(scrollDown, delay));
             const started = Date.now();
             const interval = window.setInterval(() => {
                 scrollDown();
-                if (Date.now() - started > 1100) window.clearInterval(interval);
-            }, 100);
+                if (Date.now() - started > 4000) window.clearInterval(interval);
+            }, 150);
         })();
         </script>
         """.replace("__SCROLL_NONCE__", json.dumps(nonce))
