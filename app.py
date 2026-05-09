@@ -745,7 +745,7 @@ div[class*="block-container"] {
 .card-meta-top .open { color: var(--sage-2); }
 
 .card-title {
-    font-family: var(--serif); font-weight: 400; font-size: 22px;
+    font-family: var(--serif) !important; font-weight: 400; font-size: 22px;
     line-height: 1.15; letter-spacing: -0.01em;
     margin: 0; color: var(--ink);
 }
@@ -852,7 +852,7 @@ div:has(> [class*="st-key-cook_recipe_card_"]) {
 [class*="st-key-cook_recipe_card_"] h2,
 [class*="st-key-cook_recipe_card_"] h3 { margin-top: 0 !important; }
 .cook-card-title {
-    font-family: var(--serif);
+    font-family: var(--serif) !important;
     font-weight: 400;
     font-size: 22px;
     line-height: 1.15;
@@ -1024,7 +1024,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     gap: 12px;
 }
 .drink-card-title {
-    font-family: var(--serif);
+    font-family: var(--serif) !important;
     font-weight: 400;
     font-size: 22px;
     line-height: 1.15;
@@ -1415,6 +1415,16 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 
 /* Hide form submit's default appearance when used as a chip */
 .stForm [data-testid="stFormSubmitButton"] { background: transparent !important; padding: 0 !important; border: none !important; box-shadow: none !important; }
+
+.companion-title {
+    font-family: var(--serif) !important;
+    font-size: 26px !important;
+    font-weight: 400 !important;
+    letter-spacing: -0.01em !important;
+    line-height: 1.1 !important;
+    margin: 0 0 4px !important;
+    color: var(--ink) !important;
+}
 
 /* ── Companion floating widget ── */
 [class*="st-key-companion_float"] {
@@ -3497,7 +3507,7 @@ def render_companion(client):
         with st.popover(":material/chat_bubble:", use_container_width=False):
             col_title, col_clear = st.columns([3, 1])
             with col_title:
-                st.markdown("**Food Companion**")
+                st.markdown('<p class="companion-title">Food Companion</p>', unsafe_allow_html=True)
             with col_clear:
                 if st.button("Clear", key="companion_clear", use_container_width=True):
                     st.session_state.companion_messages = []
