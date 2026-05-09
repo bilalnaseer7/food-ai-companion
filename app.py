@@ -9,7 +9,6 @@ import base64
 import time
 import requests
 from datetime import datetime
-from urllib.parse import quote
 from zoneinfo import ZoneInfo
 import streamlit as st
 import streamlit.components.v1 as components
@@ -161,7 +160,8 @@ def cocktail_placeholder_image_data_uri(name: str) -> str:
       <path d="M110 608c58-34 163-35 220 0" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="24" stroke-linecap="round"/>
     </svg>
     """
-    return "data:image/svg+xml;charset=utf-8," + quote(" ".join(svg.split()), safe=":/;,=%#()")
+    encoded = base64.b64encode(" ".join(svg.split()).encode("utf-8")).decode("ascii")
+    return f"data:image/svg+xml;base64,{encoded}"
 
 
 def compatible_form(*, key: str, border: bool = False, enter_to_submit: bool = True):
@@ -3613,7 +3613,7 @@ def render_cocktail_tab(client):
 
                     st.markdown(
                         f'<div class="drink-card-layout">'
-                        f'<div class="drink-card-image{" has-photo" if thumb_url else ""}">'
+                        f'<div class="drink-card-image{" has-photo" if thumb_src else ""}">'
                         f'{thumb_html}'
                         f'<span class="ph">mixed / drink</span>'
                         f'</div>'
