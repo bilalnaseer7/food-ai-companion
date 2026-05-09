@@ -1532,7 +1532,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 }
 /* messages scroll; input stays pinned below */
 [class*="st-key-companion_msgs"] {
-    max-height: calc(70vh - 120px) !important;
+    max-height: calc(70vh - 190px) !important;
     overflow-y: auto !important;
     height: auto !important;
 }
@@ -3814,16 +3814,17 @@ def render_companion_autoscroll():
         f'<div id="{anchor_id}" style="height:1px;width:1px;"></div>',
         unsafe_allow_html=True,
     )
-    scroll_script = """
+    components.html(
+        f"""
         <script>
         (function() {
             const doc = window.parent.document;
-            const anchorId = __ANCHOR_ID__;
+            const anchorId = {json.dumps(anchor_id)};
             function scrollDown() {
                 const root = doc.querySelector('[class*="st-key-companion_msgs"]');
                 const anchor = doc.getElementById(anchorId);
                 if (anchor) {
-                    anchor.scrollIntoView({ block: "end", inline: "nearest" });
+                    anchor.scrollIntoView({{ block: "end", inline: "nearest" }});
                 }
                 if (!root) return false;
                 const nodes = [root, ...root.querySelectorAll('*')];
@@ -3847,9 +3848,7 @@ def render_companion_autoscroll():
             }, 100);
         })();
         </script>
-        """.replace("__ANCHOR_ID__", json.dumps(anchor_id))
-    components.html(
-        scroll_script,
+        """,
         height=0,
         scrolling=False,
     )
