@@ -1575,6 +1575,9 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 	[data-testid="stChatInput"] button {
 	    margin-right: 8px !important;
 	}
+	[data-testid="InputInstructions"] {
+	    display: none !important;
+	}
 </style>
 <script>
 document.addEventListener('keydown', function(e) {
