@@ -102,12 +102,12 @@ def get_client():
     return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def get_df():
     return load_reviews(path="data/restaurants.csv", max_rows=3000)
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def get_full_restaurant_df():
     return load_reviews(path="data/restaurants.csv", max_rows=None)
 
@@ -1599,20 +1599,36 @@ document.addEventListener('keydown', function(e) {
 }, true);
 
 function scrollCompanionToBottom() {
-    var msgs = document.querySelector('[class*="st-key-companion_msgs"]');
-    if (msgs) msgs.scrollTop = msgs.scrollHeight;
+    var root = document.querySelector('[class*="st-key-companion_msgs"]');
+    if (!root) return;
+    var candidates = [root].concat(Array.from(root.querySelectorAll('*')));
+    candidates.forEach(function(el) {
+        if (el.scrollHeight > el.clientHeight) {
+            el.scrollTop = el.scrollHeight;
+        }
+    });
+}
+
+function scheduleCompanionScroll() {
+    window.requestAnimationFrame(function() {
+        scrollCompanionToBottom();
+        window.setTimeout(scrollCompanionToBottom, 80);
+        window.setTimeout(scrollCompanionToBottom, 240);
+    });
 }
 
 // Run after every Streamlit rerun — React finishes patching within ~400ms
-setTimeout(scrollCompanionToBottom, 400);
-setTimeout(scrollCompanionToBottom, 800);
+setTimeout(scheduleCompanionScroll, 100);
+setTimeout(scheduleCompanionScroll, 400);
+setTimeout(scheduleCompanionScroll, 800);
 
 (function watchMessages() {
-    var observer = new MutationObserver(function() { scrollCompanionToBottom(); });
+    var observer = new MutationObserver(function() { scheduleCompanionScroll(); });
     function attach() {
         var msgs = document.querySelector('[class*="st-key-companion_msgs"]');
         if (msgs) {
             observer.observe(msgs, { childList: true, subtree: true });
+            scheduleCompanionScroll();
         } else {
             setTimeout(attach, 300);
         }
