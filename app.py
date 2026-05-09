@@ -1489,8 +1489,8 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 	[data-testid="stChatInput"] [data-testid="stChatInputTextArea"] {
 	    width: 100% !important;
 	    max-width: none !important;
-	    min-height: 60px !important;
-	    height: 60px !important;
+	    min-height: 70px !important;
+	    height: 70px !important;
 	    background: transparent !important;
 	    border: none !important;
 	    box-shadow: none !important;
