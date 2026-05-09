@@ -1450,35 +1450,21 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     height: 66vh !important;
     max-height: none !important;
     overflow: hidden !important;
-    display: flex !important;
-    flex-direction: column !important;
     background: #ffffff !important;
-    padding: 0 !important;
 }
-[data-testid="stPopoverBody"] > div {
-    display: flex !important;
-    flex-direction: column !important;
-    flex: 1 !important;
-    min-height: 0 !important;
-    padding: 16px 16px 0 !important;
-}
+[data-testid="stPopoverBody"] > div,
+[data-testid="stPopoverBody"] [data-testid="stVerticalBlockBorderWrapper"],
 [data-testid="stPopoverBody"] [data-testid="stVerticalBlock"] {
-    display: flex !important;
-    flex-direction: column !important;
-    flex: 1 !important;
-    min-height: 0 !important;
-    gap: 0 !important;
-}
-[class*="st-key-companion_msgs"] {
-    flex: 1 !important;
-    overflow-y: auto !important;
-    min-height: 0 !important;
+    background: #ffffff !important;
 }
 [data-testid="stChatInput"] {
-    background: #ffffff !important;
-    border-top: 1px solid var(--line) !important;
-    padding: 10px 16px !important;
-    flex-shrink: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 8px 0 0 !important;
+}
+[data-testid="stChatInputTextArea"] {
+    border-radius: 12px !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -3519,7 +3505,7 @@ def render_companion(client):
 
             msgs = st.session_state.companion_messages
 
-            with st.container(key="companion_msgs"):
+            with st.container(height=440, border=False, key="companion_msgs"):
                 for msg in msgs:
                     with st.chat_message(msg["role"]):
                         st.write(msg["content"])
