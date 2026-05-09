@@ -1565,8 +1565,8 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 	    border: none !important;
 	    box-shadow: none !important;
 	    resize: none !important;
-	    padding-left: 2px !important;
-        padding-top: 10px !important;
+	    padding-left: 3px !important;
+        padding-top: 8px !important;
 	    height: 34px !important;
 	    min-height: 34px !important;
 	    max-height: 34px !important;
