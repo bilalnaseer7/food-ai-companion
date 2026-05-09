@@ -6,6 +6,7 @@ import inspect
 import json
 import re
 import base64
+import time
 import requests
 from datetime import datetime
 from urllib.parse import quote
@@ -4180,6 +4181,11 @@ def render_companion_autoscroll_if_new_messages():
     render_companion_autoscroll()
 
 
+def render_companion_autoscroll_now():
+    render_companion_autoscroll()
+    time.sleep(0.15)
+
+
 def render_companion(client):
     _companion_check_new_results()
     with st.container(key="companion_float"):
@@ -4206,6 +4212,7 @@ def render_companion(client):
                         st.write(msg["content"])
                 if msgs and msgs[-1]["role"] == "user":
                     render_companion_autoscroll_if_new_messages()
+                    time.sleep(0.15)
                     import json as _json
                     user_text = msgs[-1].get("content", "")
                     pending = st.session_state.get("companion_pending_search")
@@ -4227,6 +4234,7 @@ def render_companion(client):
                             st.session_state.companion_messages = msgs
                             request_companion_autoscroll()
                             if started:
+                                render_companion_autoscroll_now()
                                 st.rerun()
                         elif inferred and inferred.get("action") == "search":
                             tab = inferred["tab"]
@@ -4290,6 +4298,7 @@ def render_companion(client):
                         st.session_state.companion_messages = msgs
                         request_companion_autoscroll()
                         if started:
+                            render_companion_autoscroll_now()
                             st.rerun()
                     elif pending and pending.get("needs"):
                         needed = pending["needs"]
@@ -4312,6 +4321,7 @@ def render_companion(client):
                         st.session_state.companion_search_trigger = _companion_search_trigger_from_pending(pending)
                         st.session_state.active_tab = pending["tab"]
                         st.session_state.companion_tab_switch = {"eat": 0, "cook": 1, "drink": 2}[pending["tab"]]
+                        render_companion_autoscroll_now()
                         st.rerun()
                     elif pending and confirmation["action"] in {"confirm", "revise"}:
                         tab = pending["tab"]
@@ -4362,6 +4372,7 @@ def render_companion(client):
                         st.session_state.companion_search_trigger = _companion_search_trigger_from_pending(pending)
                         st.session_state.active_tab = tab
                         st.session_state.companion_tab_switch = {"eat": 0, "cook": 1, "drink": 2}[tab]
+                        render_companion_autoscroll_now()
                         st.rerun()
                     elif pending and confirmation["action"] == "cancel":
                         reply = "Okay, I won't search that."
@@ -4401,6 +4412,7 @@ def render_companion(client):
                             st.session_state.companion_pending_search = None
                             request_companion_autoscroll()
                             if started:
+                                render_companion_autoscroll_now()
                                 st.rerun()
                         elif inferred and inferred.get("action") == "search":
                             tab = inferred["tab"]
