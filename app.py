@@ -745,7 +745,7 @@ div[class*="block-container"] {
 .card-meta-top .open { color: var(--sage-2); }
 
 .card-title {
-    font-family: var(--serif) !important; font-weight: 400; font-size: 22px;
+    font-family: var(--serif); font-weight: 400; font-size: 22px;
     line-height: 1.15; letter-spacing: -0.01em;
     margin: 0; color: var(--ink);
 }
@@ -852,7 +852,7 @@ div:has(> [class*="st-key-cook_recipe_card_"]) {
 [class*="st-key-cook_recipe_card_"] h2,
 [class*="st-key-cook_recipe_card_"] h3 { margin-top: 0 !important; }
 .cook-card-title {
-    font-family: var(--serif) !important;
+    font-family: var(--serif);
     font-weight: 400;
     font-size: 22px;
     line-height: 1.15;
@@ -1024,7 +1024,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     gap: 12px;
 }
 .drink-card-title {
-    font-family: var(--serif) !important;
+    font-family: var(--serif);
     font-weight: 400;
     font-size: 22px;
     line-height: 1.15;
