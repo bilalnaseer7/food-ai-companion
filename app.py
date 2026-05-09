@@ -3605,8 +3605,8 @@ def render_cocktail_tab(client):
 
 
 def restore_active_tab():
-    tab_index = {"eat": 0, "cook": 1, "drink": 2}.get(st.session_state.get("active_tab", "eat"), 0)
-    if tab_index == 0:
+    tab_index = st.session_state.pop("companion_tab_switch", None)
+    if tab_index is None:
         return
 
     components.html(
@@ -3797,6 +3797,7 @@ def render_companion(client):
                         st.session_state.companion_messages = msgs
                         st.session_state.companion_search_trigger = {"tab": tab, "query": query}
                         st.session_state.active_tab = tab
+                        st.session_state.companion_tab_switch = {"eat": 0, "cook": 1, "drink": 2}[tab]
                         st.rerun()
                     else:
                         with st.chat_message("assistant", avatar=None):
