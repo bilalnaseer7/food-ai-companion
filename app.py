@@ -3814,17 +3814,16 @@ def render_companion_autoscroll():
         f'<div id="{anchor_id}" style="height:1px;width:1px;"></div>',
         unsafe_allow_html=True,
     )
-    components.html(
-        f"""
+    scroll_script = """
         <script>
         (function() {
             const doc = window.parent.document;
-            const anchorId = {json.dumps(anchor_id)};
+            const anchorId = __ANCHOR_ID__;
             function scrollDown() {
                 const root = doc.querySelector('[class*="st-key-companion_msgs"]');
                 const anchor = doc.getElementById(anchorId);
                 if (anchor) {
-                    anchor.scrollIntoView({{ block: "end", inline: "nearest" }});
+                    anchor.scrollIntoView({ block: "end", inline: "nearest" });
                 }
                 if (!root) return false;
                 const nodes = [root, ...root.querySelectorAll('*')];
@@ -3848,7 +3847,9 @@ def render_companion_autoscroll():
             }, 100);
         })();
         </script>
-        """,
+        """.replace("__ANCHOR_ID__", json.dumps(anchor_id))
+    components.html(
+        scroll_script,
         height=0,
         scrolling=False,
     )
