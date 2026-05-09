@@ -4091,18 +4091,21 @@ def _infer_companion_action(client, messages):
         return {"action": "none", "tab": "", "query": "", "target": "", "question": "", "use_rag": False}
 
 
-def _resolve_pending_clarification(client, pending_clarification: dict, answer: str) -> dict:
+def _resolve_pending_clarification(client, pending_clarification: dict, answer: str, full_msgs: list | None = None) -> dict:
     original = pending_clarification.get("text", "")
     question = pending_clarification.get("question", "")
-    return _infer_companion_action(
-        client,
-        [
+    if full_msgs:
+        messages = [{"role": "system", "content": _companion_system_prompt()}] + [
+            m for m in full_msgs if m.get("role") != "system"
+        ]
+    else:
+        messages = [
             {"role": "system", "content": _companion_system_prompt()},
             {"role": "user", "content": original},
             {"role": "assistant", "content": question},
             {"role": "user", "content": answer},
-        ],
-    )
+        ]
+    return _infer_companion_action(client, messages)
 
 
 def _start_companion_remix(action: dict) -> tuple[bool, str]:
@@ -4325,7 +4328,7 @@ def render_companion(client):
                         else None
                     )
                     if pending_clarification:
-                        inferred = _resolve_pending_clarification(client, pending_clarification, user_text)
+                        inferred = _resolve_pending_clarification(client, pending_clarification, user_text, full_msgs=msgs)
                         st.session_state.companion_pending_clarification = None
                         if inferred and inferred.get("action") == "remix":
                             started, reply = _start_companion_remix(inferred)
