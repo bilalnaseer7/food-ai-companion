@@ -4058,8 +4058,9 @@ def _infer_companion_action(client, messages):
         "Do NOT use search for general knowledge questions about food, restaurants, or cuisines that the companion can answer conversationally. "
         "If a clarification answer says 'recipe' after an original drink/cocktail phrase, choose drink because Cocktails are recipes too. "
         "If the answer says 'cocktail', 'drink', 'bar', 'gin', 'tonic', 'g+t', or a known mixed drink, choose drink. "
-        "Ask clarify when the request could mean multiple tabs or the target/result is unclear. "
-        "Specifically: 'I want X', 'I'm craving X', or 'I feel like X' where X is a food or cuisine with no eat-out or cook signal must always return clarify — e.g. 'I want jap curry' → clarify: 'Are you looking to eat out or cook it at home?'. "
+        "Ask clarify only when the tab is genuinely unclear and you have not already asked about it. "
+        "Specifically: 'I want X', 'I'm craving X', or 'I feel like X' where X is a food or cuisine with no eat-out or cook signal must return clarify — e.g. 'I want jap curry' → clarify: 'Are you looking to eat out or cook it at home?'. "
+        "If the user already answered the eat/cook/drink question (even vaguely — 'cook', 'eat', 'anything', 'either', 'doesn't matter'), commit to the best-fit tab and return search, never ask again. "
         "Use none for questions about existing results, reviews, ratings, hours, price, vibe, general food questions, and restaurant recommendations the companion can answer from its knowledge.\n\n"
         f"Conversation:\n{conversation}"
     )
@@ -4368,7 +4369,7 @@ def render_companion(client):
                             }
                             request_companion_extended_autoscroll()
                         else:
-                            reply = "I’m not totally sure what you mean yet. Do you want restaurants, a recipe, or cocktails?"
+                            reply = "I'm not totally sure what you mean yet. Do you want restaurants, a recipe, or cocktails?"
                             with st.chat_message("assistant", avatar=None):
                                 st.write(reply)
                             msgs.append({"role": "assistant", "content": reply})
