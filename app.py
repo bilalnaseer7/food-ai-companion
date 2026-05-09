@@ -1507,7 +1507,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     max-width: none !important;
     height: auto !important;
     max-height: 70vh !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     background: #ffffff !important;
 }
 [data-testid="stPopoverBody"] > div,
@@ -1566,7 +1566,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 	    box-shadow: none !important;
 	    resize: none !important;
 	    padding-left: 3px !important;
-        padding-top: 7px !important;
+        padding-top: 8px !important;
 	    height: 34px !important;
 	    min-height: 34px !important;
 	    max-height: 34px !important;
