@@ -1507,7 +1507,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 }
 [class*="st-key-companion_panel"] {
     position: fixed !important;
-    bottom: 128px !important;
+    bottom: 123px !important;
     right: 36px !important;
     z-index: 99998 !important;
     width: 30vw !important;
