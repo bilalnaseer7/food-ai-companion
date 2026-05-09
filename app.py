@@ -1571,6 +1571,13 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 	    margin-right: 8px !important;
 	}
 </style>
+<script>
+document.addEventListener('keydown', function(e) {
+    if (e.shiftKey && e.key === 'Enter' && e.target.closest('[data-testid="stChatInput"]')) {
+        e.preventDefault();
+    }
+}, true);
+</script>
 """, unsafe_allow_html=True)
 
 
