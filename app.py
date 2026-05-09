@@ -3254,7 +3254,7 @@ def render_cook_tab(client):
             value=", ".join(st.session_state.profile.get("pantry", [])),
             placeholder="just dump it all here",
             label_visibility="collapsed",
-            height=88,
+            height=70,
         )
         
         col1, col2 = st.columns([3, 1.2])
@@ -3432,7 +3432,7 @@ def render_cocktail_tab(client):
             value=", ".join(st.session_state.profile.get("bar_inventory", [])),
             placeholder="tell me what you've got, or try 'the basics'",
             label_visibility="collapsed",
-            height=88,
+            height=70,
         )
         col1, col2 = st.columns([3, 1.2])
         
