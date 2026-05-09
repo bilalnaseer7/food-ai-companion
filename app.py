@@ -3764,15 +3764,16 @@ def _companion_system_prompt():
         "Eat Out (restaurants), Cook (home food recipes), Cocktails (drink recipes).\n"
         f"The user is currently on: {tab_label}.\n\n"
         "Be warm, specific, and concise — like a knowledgeable foodie friend.\n\n"
-        f"User profile:\n"
+        f"User profile (use for context and framing, never to redirect away from what the user asked):\n"
         f"- Likes: {liked}\n"
         f"- Dislikes: {disliked}\n"
         f"- Cuisines: {cuisines}\n"
         f"- Budget: {budget}\n"
         f"- Saved: {accepted}"
         f"{results_section}\n\n"
-        "You can answer questions about the current results. "
-        "If relevant restaurants from the database are provided below, use them to answer food and restaurant questions — name specific places, describe what makes them good, and draw on the review snippets. "
+        "Always answer the specific question the user asked. "
+        "If relevant restaurants from the database are provided, use them directly — name specific places, describe what makes them good, and draw on the review snippets. "
+        "Do not redirect the user toward their profile preferences when they ask about something specific. "
         "Only trigger a search when the user explicitly asks to find or search for new results.\n"
         "If the user asks to change, adjust, remix, make one option spicier/sweeter/easier/vegetarian/etc., "
         "use the app remix flow for the current Cook or Cocktails results rather than answering manually.\n"
@@ -4526,8 +4527,11 @@ def render_companion(client):
                             request_companion_extended_autoscroll()
                         else:
                             rag_ctx = _companion_rag_context(user_text, st.session_state.get("profile", {}), client)
+                            system_content = full[0]["content"] + rag_ctx
+                            if rag_ctx:
+                                system_content += "\n\nEnd your response with one short sentence offering to run a full search for more options."
                             rag_full = (
-                                [{"role": "system", "content": full[0]["content"] + rag_ctx}] + full[1:]
+                                [{"role": "system", "content": system_content}] + full[1:]
                                 if rag_ctx else full
                             )
                             with st.chat_message("assistant", avatar=None):
