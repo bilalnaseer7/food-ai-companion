@@ -3791,7 +3791,7 @@ def _looks_like_current_result_question(text: str) -> bool:
 
 
 def _companion_missing_search_context(tab: str):
-    if tab == "eat" and not (st.session_state.get("eat_zip_field") or st.session_state.get("eat_zip") or "").strip():
+    if tab == "eat" and not (st.session_state.get("eat_zip_field") or "").strip():
         return "zip", "What zip code should I search near?"
     pantry_text = (st.session_state.get("cook_pantry_field") or "").strip()
     if tab == "cook" and not pantry_text and not st.session_state.get("profile", {}).get("pantry"):
@@ -3804,7 +3804,7 @@ def _companion_missing_search_context(tab: str):
 
 def _companion_search_trigger_from_pending(pending: dict) -> dict:
     trigger = {"tab": pending["tab"], "query": pending["query"]}
-    zip_value = pending.get("zip") or st.session_state.get("eat_zip_field") or st.session_state.get("eat_zip")
+    zip_value = pending.get("zip") or st.session_state.get("eat_zip_field")
     pantry_value = pending.get("pantry") or st.session_state.get("cook_pantry_field")
     bar_value = pending.get("bar") or st.session_state.get("drink_bar_field")
     if zip_value:
@@ -3872,6 +3872,53 @@ def _interpret_search_confirmation(client, pending: dict, user_text: str) -> dic
         return {"action": action, "query": (data.get("query") or "").strip()}
     except Exception:
         return {"action": "unclear", "query": ""}
+
+
+def _infer_search_intent(client, messages):
+    conversation = "\n".join(
+        f"{m.get('role', 'user')}: {m.get('content', '')}"
+        for m in messages
+        if m.get("role") != "system"
+    )
+    prompt = (
+        "Classify the user's latest message inside a food companion app.\n"
+        "The app has three search tabs: eat = restaurants, cook = home food recipes, drink = cocktails/drinks.\n\n"
+        "Return JSON only with:\n"
+        "- action: one of search, clarify, none\n"
+        "- tab: eat, cook, or drink only when action is search; otherwise empty string\n"
+        "- query: concise search query only when action is search; otherwise empty string\n"
+        "- question: a short clarifying question only when action is clarify; otherwise empty string\n\n"
+        "Use search only when the intended tab is clear. Ask clarify when the request could reasonably mean "
+        "more than one tab, or when a short phrase could be a restaurant/bar name, a dish, or a drink. "
+        "For example, 'hiball' should clarify whether the user means a highball cocktail or a place. "
+        "For 'drinks', use drink. For 'mac n cheese', use cook unless the user asks for a restaurant. "
+        "Use none for questions about existing results, reviews, ratings, hours, price, vibe, or general chat.\n\n"
+        f"Conversation:\n{conversation}"
+    )
+    import json as _json
+    try:
+        result = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            max_tokens=120,
+            temperature=0,
+        )
+        data = _json.loads(result.choices[0].message.content or "{}")
+        action = data.get("action", "none")
+        if action not in {"search", "clarify", "none"}:
+            action = "none"
+        tab = data.get("tab", "")
+        if tab not in {"eat", "cook", "drink"}:
+            tab = ""
+        return {
+            "action": action,
+            "tab": tab,
+            "query": (data.get("query") or "").strip(),
+            "question": (data.get("question") or "").strip(),
+        }
+    except Exception:
+        return {"action": "none", "tab": "", "query": "", "question": ""}
 
 
 def _stream_companion(client, messages):
@@ -4018,7 +4065,37 @@ def render_companion(client):
                     elif pending and confirmation["action"] in {"confirm", "revise"}:
                         tab = pending["tab"]
                         if confirmation["action"] == "revise" and confirmation["query"]:
-                            pending["query"] = confirmation["query"]
+                            revised = _infer_search_intent(
+                                client,
+                                [
+                                    {"role": "system", "content": _companion_system_prompt()},
+                                    {"role": "user", "content": confirmation["query"]},
+                                ],
+                            )
+                            if revised and revised.get("action") == "search":
+                                pending = {"tab": revised["tab"], "query": revised["query"]}
+                            elif revised and revised.get("action") == "clarify":
+                                question = revised.get("question") or "What kind of search did you mean?"
+                                st.session_state.companion_pending_search = None
+                                with st.chat_message("assistant", avatar=None):
+                                    st.write(question)
+                                msgs.append({"role": "assistant", "content": question})
+                                st.session_state.companion_messages = msgs
+                                request_companion_autoscroll()
+                                st.stop()
+                            else:
+                                pending["query"] = confirmation["query"]
+                            missing, question = _companion_missing_search_context(pending["tab"])
+                            if missing:
+                                pending["needs"] = missing
+                                st.session_state.companion_pending_search = pending
+                                with st.chat_message("assistant", avatar=None):
+                                    st.write(question)
+                                msgs.append({"role": "assistant", "content": question})
+                                st.session_state.companion_messages = msgs
+                                request_companion_autoscroll()
+                                st.stop()
+                            tab = pending["tab"]
                         query = pending["query"]
                         notice = _companion_search_notice_text(pending)
                         with st.chat_message("assistant", avatar=None):
@@ -4059,18 +4136,10 @@ def render_companion(client):
                             request_companion_autoscroll()
                             render_companion_autoscroll_if_new_messages()
                             st.stop()
-                        detection = client.chat.completions.create(
-                            model="gpt-4o-mini",
-                            messages=full,
-                            tools=_SEARCH_TOOLS,
-                            tool_choice="auto",
-                            max_tokens=60,
-                        )
-                        tool_calls = detection.choices[0].message.tool_calls
-                        if tool_calls:
-                            args = _json.loads(tool_calls[0].function.arguments)
-                            tab = args["tab"]
-                            query = args["query"]
+                        inferred = _infer_search_intent(client, full)
+                        if inferred and inferred.get("action") == "search":
+                            tab = inferred["tab"]
+                            query = inferred["query"]
                             needed, question = _companion_missing_search_context(tab)
                             pending_search = {"tab": tab, "query": query}
                             if needed:
@@ -4084,6 +4153,14 @@ def render_companion(client):
                             st.session_state.companion_messages = msgs
                             request_companion_autoscroll()
                             st.session_state.companion_pending_search = pending_search
+                        elif inferred and inferred.get("action") == "clarify":
+                            question = inferred.get("question") or "What kind of search did you mean?"
+                            with st.chat_message("assistant", avatar=None):
+                                st.write(question)
+                            msgs.append({"role": "assistant", "content": question})
+                            st.session_state.companion_messages = msgs
+                            st.session_state.companion_pending_search = None
+                            request_companion_autoscroll()
                         else:
                             with st.chat_message("assistant", avatar=None):
                                 response = st.write_stream(_stream_companion(client, full))
