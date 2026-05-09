@@ -4044,12 +4044,14 @@ def _infer_companion_action(client, messages):
         "- tab: eat, cook, or drink when relevant; otherwise empty string\n"
         "- query: concise search query when action is search; remix instruction when action is remix; otherwise empty string\n"
         "- target: result name to remix when action is remix, or empty if the user did not name one\n"
-        "- question: short clarifying question only when action is clarify; otherwise empty string\n\n"
+        "- question: short clarifying question only when action is clarify; otherwise empty string\n"
+        "- use_rag: true if action is none AND the question is about restaurants or dining out; false otherwise\n\n"
         "Use remix when the user asks to modify/change/remix/adjust/make a current cook recipe or cocktail different. "
         "Use remix only for cook or drink, never eat. If remix target is ambiguous across multiple results, ask clarify. "
-        "Use search only when the user explicitly asks to find, search, or show new results — e.g. 'find me', 'search for', 'show me options', 'look up', 'can you search'. "
-        "Also use search if the user expresses dissatisfaction with a previous conversational answer and wants actual app results — e.g. 'show me real results', 'can you actually search', 'I want to see options'. "
-        "Do NOT use search for general questions about food, restaurants, or what is good in NYC — those should be answered conversationally using none. "
+        "Use search when: (1) the user explicitly asks to find, search, or show restaurantresults — e.g. 'find me', 'search for', 'show me options'; "
+        "(2) for cook or drink questions: the user expresses intent to make or have something specific — e.g. 'I want to cook X', 'I'm craving X', 'make me X', 'I want a X cocktail'; "
+        "(3) the user expresses dissatisfaction with a conversational answer and wants app results — e.g. 'show me real results', 'can you actually search'. "
+        "Do NOT use search for general knowledge questions about food, restaurants, or cuisines that the companion can answer conversationally. "
         "If a clarification answer says 'recipe' after an original drink/cocktail phrase, choose drink because Cocktails are recipes too. "
         "If the answer says 'cocktail', 'drink', 'bar', 'gin', 'tonic', 'g+t', or a known mixed drink, choose drink. "
         "Ask clarify when the request could mean multiple tabs or the target/result is unclear. "
@@ -4078,9 +4080,10 @@ def _infer_companion_action(client, messages):
             "query": (data.get("query") or "").strip(),
             "target": (data.get("target") or "").strip(),
             "question": (data.get("question") or "").strip(),
+            "use_rag": bool(data.get("use_rag", False)),
         }
     except Exception:
-        return {"action": "none", "tab": "", "query": "", "target": "", "question": ""}
+        return {"action": "none", "tab": "", "query": "", "target": "", "question": "", "use_rag": False}
 
 
 def _resolve_pending_clarification(client, pending_clarification: dict, answer: str) -> dict:
@@ -4536,7 +4539,7 @@ def render_companion(client):
                             }
                             request_companion_extended_autoscroll()
                         else:
-                            rag_ctx = _companion_rag_context(user_text, client)
+                            rag_ctx = _companion_rag_context(user_text, client) if inferred.get("use_rag") else ""
                             system_content = full[0]["content"] + rag_ctx
                             if rag_ctx:
                                 system_content += "\n\nBold all restaurant names using **name** markdown. End your response with one short sentence offering to run a full search for more options."
