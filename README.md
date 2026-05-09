@@ -43,6 +43,16 @@ All three modes share a persistent taste profile that captures preferences such 
 - Extended `diversity_rerank` in `src/filter_bubble.py` to accept an optional `profile` argument, giving a small tiebreaking bonus to cuisine-preferred restaurants during diversity reranking.
 - Helped validate and debug the Milestone 3 personalization/evaluation logic around retrieval fallback behavior, profile-weighted alignment, filter-bubble measurement, and the Reddit/PRAW grounding artifact added with Bilal.
 
+## Milestone 3 Owen Update
+
+- Agentic Food Companion chat panel that can infer whether the user wants Eat Out, Cook at Home, Cocktail, or remix actions; has context of active tabs and current search results; switch tabs if user asks for something not on current tab; ask for missing zip code, pantry items, or bar inventory when needed; confirm searches before running them; ask clarifying questions when intent is ambiguous; and route confirmed actions into the same recommendation state used by the main UI.
+- Polished the chat experience with preserved message formatting, message autoscroll behavior, search/remix follow-up messages, and support for running Eat Out, Cook, and Cocktail searches from the companion.
+- Added RAG to the Food Companion chat layer, grounding conversational responses in the 10k-row NYC restaurant dataset by retrieving the 4 most relevant restaurants via embedding similarity on each turn.
+- Implemented result cards across Eat Out, Cook at Home, and Cocktail modes so recommendations use a consistent card layout with clearer titles, strong visual hierarchy, action buttons, closed-by-default recipe/details expanders, and restaurant opening/closing time information.
+- Cocktail result cards with left-edge image rails, CocktailDB/photo fallback handling, formatted full recipes, per-card save/pass/remix controls, and image-muted loading behavior that matches the Eat Out interaction pattern.
+- Cook at Home cards with drink-mode-sized dish titles, better spacing around full recipe expanders, cleaned recipe formatting, and targeted remix behavior so a single remixed dish stays in the same card position while other results remain stable.
+- Added sidebar analytics/profile visibility in `app.py`, including a clearer taste-profile summary and mode-level feedback signals so saved, passed, pantry, bar, and preference data are easier to inspect.
+
 ## Current Milestone 2 Scope
 
 This repository implements the **Eat Out** mode prototype for evaluation, plus a full interactive Streamlit app covering all three modes.
