@@ -3760,7 +3760,7 @@ def render_companion(client):
 
     if st.session_state.get("companion_is_open", False):
         with st.container(key="companion_panel"):
-            col_title, col_clear, col_close = st.columns([3, 0.75])
+            col_title, col_clear = st.columns([3, 0.75])
             with col_title:
                 st.markdown('<p class="companion-title">Food Companion</p>', unsafe_allow_html=True)
             with col_clear:
