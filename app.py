@@ -1489,8 +1489,8 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 	[data-testid="stChatInput"] [data-testid="stChatInputTextArea"] {
 	    width: 100% !important;
 	    max-width: none !important;
-	    min-height: 100px !important;
-	    height: 100px !important;
+	    min-height: 120px !important;
+	    height: 120px !important;
 	    background: transparent !important;
 	    border: none !important;
 	    box-shadow: none !important;
@@ -1503,7 +1503,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 	    box-shadow: none !important;
 	}
 	[data-testid="stChatInput"] textarea {
-	    padding: 38px 0 0 !important;
+	    padding: 48px 0 0 !important;
 	    background: transparent !important;
 	    border: none !important;
 	    box-shadow: none !important;
