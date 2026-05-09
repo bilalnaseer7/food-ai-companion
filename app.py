@@ -1419,7 +1419,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 /* ── Companion floating widget ── */
 [class*="st-key-companion_float"] {
     position: fixed !important;
-    bottom: 54px !important;
+    bottom: 154px !important;
     right: 24px !important;
     z-index: 99999 !important;
     width: fit-content !important;
