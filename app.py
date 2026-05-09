@@ -1511,7 +1511,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     bottom: 123px !important;
     right: 36px !important;
     z-index: 99998 !important;
-    width: 30vw !important;
+    width: 25vw !important;
     min-width: 320px !important;
     max-width: none !important;
     height: auto !important;
