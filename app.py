@@ -1428,7 +1428,6 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 }
 [data-testid="stChatMessage"]:has([aria-label*="from assistant"]),
 [data-testid="stChatMessage"]:has([aria-label*="from ai"]) {
-    width: 100% !important;
     max-width: 100% !important;
     margin-left: 0 !important;
     background: transparent !important;
@@ -1436,7 +1435,6 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 }
 [data-testid="stChatMessage"]:has([aria-label*="from user"]),
 [data-testid="stChatMessage"]:has([aria-label*="from human"]) {
-    width: 65% !important;
     max-width: 65% !important;
     margin-left: auto !important;
     margin-right: 0 !important;
@@ -3579,7 +3577,7 @@ def render_companion(client):
                 st.markdown('<p class="companion-title">Food Companion</p>', unsafe_allow_html=True)
             with col_clear:
                 if st.button("Clear", key="companion_clear", use_container_width=True):
-                    st.session_state.companion_messages = [{"role": "assistant", "content": "Hi — what are you in the mood for?"}]
+                    st.session_state.companion_messages = [{"role": "assistant", "content": "Hi, what are you in the mood for?"}]
                     st.rerun()
 
             msgs = st.session_state.companion_messages
