@@ -3710,7 +3710,10 @@ def _companion_system_prompt():
         f"- Saved: {accepted}"
         f"{results_section}\n\n"
         "You can answer questions about the current results. Do NOT suggest restaurants or recipes yourself — "
-        "instead trigger a search when the user wants to find something.\n\n"
+        "instead trigger a search when the user wants to find something new.\n"
+        "Do NOT trigger a search for questions about reviews, ratings, vibe, hours, price, menu, location, "
+        "or whether a specific current result is good; answer from the current app results instead. "
+        "For example, 'how are the reviews for Soothr?' is a question, not a search request.\n\n"
         "Infer intent from context — if the message mentions restaurants, dining, going out, or a place, use eat. "
         "If it mentions cooking, making, or a dish at home, use cook. "
         "If it mentions cocktails, drinks, or a bar, use drink. "
@@ -3727,7 +3730,8 @@ _SEARCH_TOOLS = [
             "name": "search",
             "description": (
                 "Trigger a search in the food app. Use this when the user wants to find restaurants, "
-                "recipes to cook, or cocktails. Do NOT use for follow-up questions about existing results."
+                "recipes to cook, or cocktails. Do NOT use for follow-up questions about existing results, "
+                "including reviews, ratings, hours, vibe, price, menu, or location questions."
             ),
             "parameters": {
                 "type": "object",
@@ -3751,6 +3755,26 @@ _SEARCH_TOOLS = [
         }
     }
 ]
+
+
+def _looks_like_current_result_question(text: str) -> bool:
+    lowered = (text or "").lower()
+    question_terms = (
+        "review", "reviews", "rating", "ratings", "rated", "hours", "open",
+        "price", "expensive", "cheap", "menu", "location", "address", "vibe",
+        "good", "worth", "how is", "how are", "tell me about"
+    )
+    if not any(term in lowered for term in question_terms):
+        return False
+
+    result_names = []
+    result_names.extend(r.get("name", "") for r in (st.session_state.get("eat_fsq_results") or []))
+    for recipe_name, _, _ in _split_cook_recipes(st.session_state.get("cook_response") or ""):
+        result_names.append(recipe_name)
+    for cocktail_name, _, _ in _split_cocktail_recipes(st.session_state.get("cocktail_response") or ""):
+        result_names.append(cocktail_name)
+
+    return any(name and name.lower() in lowered for name in result_names)
 
 
 def _interpret_search_confirmation(client, pending: dict, user_text: str) -> dict:
@@ -3937,6 +3961,14 @@ def render_companion(client):
                             render_companion_autoscroll_if_new_messages()
                             st.stop()
                         full = [{"role": "system", "content": _companion_system_prompt()}] + msgs
+                        if _looks_like_current_result_question(user_text):
+                            with st.chat_message("assistant", avatar=None):
+                                response = st.write_stream(_stream_companion(client, full))
+                            msgs.append({"role": "assistant", "content": response})
+                            st.session_state.companion_messages = msgs
+                            request_companion_autoscroll()
+                            render_companion_autoscroll_if_new_messages()
+                            st.stop()
                         detection = client.chat.completions.create(
                             model="gpt-4o-mini",
                             messages=full,
