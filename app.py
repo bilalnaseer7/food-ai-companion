@@ -1485,8 +1485,8 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     overflow: visible !important;
 }
 [class*="st-key-companion_float"] [data-testid="stPopoverButton"] {
-    width: 70px !important;
-    height: 55px !important;
+    width: 75px !important;
+    height: 60px !important;
     border-radius: 40% !important;
     padding: 0 !important;
     font-size: 22px !important;
