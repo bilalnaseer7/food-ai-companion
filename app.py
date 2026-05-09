@@ -1498,19 +1498,33 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     min-width: 320px !important;
     max-width: none !important;
     height: 70vh !important;
-    max-height: none !important;
+    max-height: 70vh !important;
     overflow: hidden !important;
     background: #ffffff !important;
+    display: flex !important;
+    flex-direction: column !important;
 }
 [data-testid="stPopoverBody"] > div,
 [data-testid="stPopoverBody"] [data-testid="stVerticalBlockBorderWrapper"],
 [data-testid="stPopoverBody"] [data-testid="stVerticalBlock"] {
     background: #ffffff !important;
 }
+/* messages area grows, input stays at bottom */
+[data-testid="stPopoverBody"] > div > [data-testid="stVerticalBlock"] {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+[class*="st-key-companion_msgs"] {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    min-height: 0 !important;
+}
 [class*="st-key-companion_msgs"] > div,
 [class*="st-key-companion_msgs"] [data-testid="stVerticalBlockBorderWrapper"] {
-    height: calc(70vh - 100px) !important;
-    max-height: calc(70vh - 100px) !important;
+    height: auto !important;
+    max-height: none !important;
 }
 	[data-testid="stChatInput"] {
 	    background: transparent !important;
@@ -3591,7 +3605,7 @@ def render_companion(client):
 
             msgs = st.session_state.companion_messages
 
-            with st.container(height=480, border=False, key="companion_msgs"):
+            with st.container(border=False, key="companion_msgs"):
                 for msg in msgs:
                     with st.chat_message(msg["role"], avatar=None):
                         st.write(msg["content"])
