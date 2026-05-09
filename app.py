@@ -1489,8 +1489,8 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 	[data-testid="stChatInput"] [data-testid="stChatInputTextArea"] {
 	    width: 100% !important;
 	    max-width: none !important;
-	    min-height: 80px !important;
-	    height: 80px !important;
+	    min-height: 60px !important;
+	    height: 60px !important;
 	    background: transparent !important;
 	    border: none !important;
 	    box-shadow: none !important;
@@ -3566,7 +3566,7 @@ def render_companion(client):
                     msgs.append({"role": "assistant", "content": response})
                     st.session_state.companion_messages = msgs
 
-            if prompt := st.chat_input("Ask about food…", key="companion_chat_input"):
+            if prompt := st.chat_input("Ask Food Companion Anything", key="companion_chat_input"):
                 st.session_state.companion_messages.append({"role": "user", "content": prompt})
                 st.rerun()
 
