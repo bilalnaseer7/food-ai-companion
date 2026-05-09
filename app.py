@@ -1580,6 +1580,21 @@ document.addEventListener('keydown', function(e) {
         e.preventDefault();
     }
 }, true);
+
+(function openCompanion() {
+    if (sessionStorage.getItem('companionOpened')) return;
+    var attempts = 0;
+    var interval = setInterval(function() {
+        var btn = document.querySelector('[class*="st-key-companion_float"] [data-testid="stPopoverButton"]');
+        if (btn) {
+            btn.click();
+            sessionStorage.setItem('companionOpened', '1');
+            clearInterval(interval);
+        } else if (++attempts > 20) {
+            clearInterval(interval);
+        }
+    }, 150);
+})();
 </script>
 """, unsafe_allow_html=True)
 
