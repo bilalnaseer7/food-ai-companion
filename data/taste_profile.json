@@ -146,10 +146,6 @@
   ],
   "inferred_budget_level": 3.99,
   "inferred_budget_count": 24,
-  "bar_inventory": [
-    "the basics"
-  ],
-  "pantry": [
-    "all"
-  ]
+  "bar_inventory": [],
+  "pantry": []
 }
