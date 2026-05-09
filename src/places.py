@@ -147,34 +147,61 @@ def _fmt_time(h: int, m: int) -> str:
     return f"{h12}:{m:02d} {ampm}" if m else f"{h12} {ampm}"
 
 
+def _period_point_datetime(point: dict, now, *, prefer_past: bool = False):
+    from datetime import datetime, timedelta
+
+    if not point:
+        return None
+
+    hour = point.get("hour", 0)
+    minute = point.get("minute", 0)
+    date_info = point.get("date") or {}
+    if date_info.get("year") and date_info.get("month") and date_info.get("day"):
+        return datetime(
+            date_info["year"],
+            date_info["month"],
+            date_info["day"],
+            hour,
+            minute,
+            tzinfo=now.tzinfo,
+        )
+
+    google_day = point.get("day")
+    if google_day is None:
+        return None
+
+    google_today = (now.weekday() + 1) % 7
+    days_until = (google_day - google_today) % 7
+    dt = (now.replace(hour=0, minute=0, second=0, microsecond=0)
+          + timedelta(days=days_until, hours=hour, minutes=minute))
+    if prefer_past and dt > now:
+        dt -= timedelta(days=7)
+    return dt
+
+
 def _closes_at_str(periods: list) -> str:
-    from datetime import datetime
+    from datetime import datetime, timedelta
     from zoneinfo import ZoneInfo
     if not periods:
         return ""
     now = datetime.now(ZoneInfo("America/New_York"))
-    google_today = (now.weekday() + 1) % 7
-    google_yesterday = (google_today - 1) % 7
-    current_mins = now.hour * 60 + now.minute
 
     for period in periods:
         o = period.get("open", {})
         c = period.get("close", {})
-        if not o or not c:
+        if not o:
             continue
-        open_day, open_mins = o.get("day"), o.get("hour", 0) * 60 + o.get("minute", 0)
-        close_day, close_h, close_m = c.get("day"), c.get("hour", 0), c.get("minute", 0)
-        close_mins = close_h * 60 + close_m
+        if not c:
+            continue
 
-        # Period started today and closes today (or tomorrow overnight)
-        if open_day == google_today and open_mins <= current_mins:
-            if close_day == google_today and current_mins < close_mins:
-                return f"Open until {_fmt_time(close_h, close_m)}"
-            if close_day != google_today:  # closes past midnight
-                return f"Open until {_fmt_time(close_h, close_m)}"
-        # Period started yesterday and closes today (overnight)
-        if open_day == google_yesterday and close_day == google_today and current_mins < close_mins:
-            return f"Open until {_fmt_time(close_h, close_m)}"
+        open_dt = _period_point_datetime(o, now, prefer_past=True)
+        close_dt = _period_point_datetime(c, now)
+        if not open_dt or not close_dt:
+            continue
+        if close_dt <= open_dt:
+            close_dt += timedelta(days=1)
+        if open_dt <= now < close_dt:
+            return f"Open until {_fmt_time(close_dt.hour, close_dt.minute)}"
     return ""
 
 
@@ -221,15 +248,14 @@ def _parse_place(raw: dict) -> dict:
     open_now = None
     next_open = ""
     closes_at = ""
-    hours = raw.get("regularOpeningHours") or raw.get("currentOpeningHours") or {}
+    current_hours = raw.get("currentOpeningHours") or {}
+    regular_hours = raw.get("regularOpeningHours") or {}
+    hours = current_hours or regular_hours
     if hours:
-        open_now = hours.get("openNow")
-        # currentOpeningHours tends to have richer period data; use it if available
-        periods = (
-            (raw.get("currentOpeningHours") or {}).get("periods")
-            or hours.get("periods")
-            or []
-        )
+        open_now = current_hours.get("openNow")
+        if open_now is None:
+            open_now = regular_hours.get("openNow")
+        periods = current_hours.get("periods") or regular_hours.get("periods") or []
         if open_now is False:
             next_open = _next_open_str(periods)
         elif open_now is True:
