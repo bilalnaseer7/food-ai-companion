@@ -1514,7 +1514,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     min-width: 320px !important;
     max-width: none !important;
     height: auto !important;
-    max-height: 70vh !important;
+    max-height: 71vh !important;
     overflow: visible !important;
     background: #ffffff !important;
     border: 1px solid var(--line) !important;
@@ -2384,6 +2384,7 @@ def init_session():
         "drink_remix_card": None, "drink_grounding": [],
         "companion_messages": [{"role": "assistant", "content": "Hi, what are you in the mood for?"}],
         "companion_is_open": True,
+        "companion_pending_search": None,
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -3101,8 +3102,9 @@ def render_eat_tab(client, df):
 
     render_recent_strip()
 
-    _ct_eat = st.session_state.pop("companion_search_trigger", None)
+    _ct_eat = st.session_state.get("companion_search_trigger")
     if _ct_eat and _ct_eat.get("tab") == "eat":
+        st.session_state.pop("companion_search_trigger", None)
         run_search = True
         query = _ct_eat["query"]
 
@@ -3235,8 +3237,9 @@ def render_cook_tab(client):
 
     render_recent_strip()
 
-    _ct_cook = st.session_state.pop("companion_search_trigger", None)
+    _ct_cook = st.session_state.get("companion_search_trigger")
     if _ct_cook and _ct_cook.get("tab") == "cook":
+        st.session_state.pop("companion_search_trigger", None)
         run_cook = True
         craving = _ct_cook["query"]
 
@@ -3412,8 +3415,9 @@ def render_cocktail_tab(client):
 
     render_recent_strip()
 
-    _ct_drink = st.session_state.pop("companion_search_trigger", None)
+    _ct_drink = st.session_state.get("companion_search_trigger")
     if _ct_drink and _ct_drink.get("tab") == "drink":
+        st.session_state.pop("companion_search_trigger", None)
         run_cocktail = True
         vibe = _ct_drink["query"]
 
@@ -3721,6 +3725,40 @@ _SEARCH_TOOLS = [
 ]
 
 
+def _interpret_search_confirmation(client, pending: dict, user_text: str) -> dict:
+    import json as _json
+
+    tab_label = {"eat": "Eat Out", "cook": "Cook", "drink": "Cocktails"}.get(pending.get("tab"), pending.get("tab", ""))
+    prompt = (
+        "Classify the user's reply to a pending food-app search confirmation.\n"
+        f"Pending search tab: {tab_label}\n"
+        f"Pending search query: {pending.get('query', '')}\n\n"
+        "Return JSON only with:\n"
+        "- action: one of confirm, cancel, revise, unclear\n"
+        "- query: a revised query only when action is revise, otherwise empty string\n\n"
+        "confirm = user wants to run the pending search.\n"
+        "cancel = user clearly rejects or cancels the search.\n"
+        "revise = user wants to search but changes the query.\n"
+        "unclear = user did not clearly confirm, cancel, or revise.\n\n"
+        f"User reply: {user_text}"
+    )
+    try:
+        result = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            max_tokens=80,
+            temperature=0,
+        )
+        data = _json.loads(result.choices[0].message.content or "{}")
+        action = data.get("action", "unclear")
+        if action not in {"confirm", "cancel", "revise", "unclear"}:
+            action = "unclear"
+        return {"action": action, "query": (data.get("query") or "").strip()}
+    except Exception:
+        return {"action": "unclear", "query": ""}
+
+
 def _stream_companion(client, messages):
     stream = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -3776,34 +3814,64 @@ def render_companion(client):
                         st.write(msg["content"])
                 if msgs and msgs[-1]["role"] == "user":
                     import json as _json
-                    full = [{"role": "system", "content": _companion_system_prompt()}] + msgs
-                    detection = client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=full,
-                        tools=_SEARCH_TOOLS,
-                        tool_choice="auto",
-                        max_tokens=60,
-                    )
-                    tool_calls = detection.choices[0].message.tool_calls
-                    if tool_calls:
-                        args = _json.loads(tool_calls[0].function.arguments)
-                        tab = args["tab"]
-                        query = args["query"]
+                    user_text = msgs[-1].get("content", "")
+                    pending = st.session_state.get("companion_pending_search")
+                    confirmation = _interpret_search_confirmation(client, pending, user_text) if pending else None
+                    if pending and confirmation["action"] in {"confirm", "revise"}:
+                        tab = pending["tab"]
+                        query = confirmation["query"] if confirmation["action"] == "revise" and confirmation["query"] else pending["query"]
                         tab_label = {"eat": "Eat Out", "cook": "Cook", "drink": "Cocktails"}[tab]
-                        confirm = f"Searching **{tab_label}** for: *{query}*"
+                        notice = f"Searching **{tab_label}** for: *{query}*"
                         with st.chat_message("assistant", avatar=None):
-                            st.write(confirm)
-                        msgs.append({"role": "assistant", "content": confirm})
+                            st.write(notice)
+                        msgs.append({"role": "assistant", "content": notice})
                         st.session_state.companion_messages = msgs
+                        st.session_state.companion_pending_search = None
                         st.session_state.companion_search_trigger = {"tab": tab, "query": query}
                         st.session_state.active_tab = tab
                         st.session_state.companion_tab_switch = {"eat": 0, "cook": 1, "drink": 2}[tab]
                         st.rerun()
-                    else:
+                    elif pending and confirmation["action"] == "cancel":
+                        reply = "Okay, I won't search that."
                         with st.chat_message("assistant", avatar=None):
-                            response = st.write_stream(_stream_companion(client, full))
-                        msgs.append({"role": "assistant", "content": response})
+                            st.write(reply)
+                        msgs.append({"role": "assistant", "content": reply})
                         st.session_state.companion_messages = msgs
+                        st.session_state.companion_pending_search = None
+                    else:
+                        if pending and confirmation["action"] == "unclear":
+                            tab_label = {"eat": "Eat Out", "cook": "Cook", "drink": "Cocktails"}[pending["tab"]]
+                            reply = f"Just to confirm, should I search **{tab_label}** for: *{pending['query']}*?"
+                            with st.chat_message("assistant", avatar=None):
+                                st.write(reply)
+                            msgs.append({"role": "assistant", "content": reply})
+                            st.session_state.companion_messages = msgs
+                            st.stop()
+                        full = [{"role": "system", "content": _companion_system_prompt()}] + msgs
+                        detection = client.chat.completions.create(
+                            model="gpt-4o-mini",
+                            messages=full,
+                            tools=_SEARCH_TOOLS,
+                            tool_choice="auto",
+                            max_tokens=60,
+                        )
+                        tool_calls = detection.choices[0].message.tool_calls
+                        if tool_calls:
+                            args = _json.loads(tool_calls[0].function.arguments)
+                            tab = args["tab"]
+                            query = args["query"]
+                            tab_label = {"eat": "Eat Out", "cook": "Cook", "drink": "Cocktails"}[tab]
+                            confirm = f"Would you like me to search **{tab_label}** for: *{query}*?"
+                            with st.chat_message("assistant", avatar=None):
+                                st.write(confirm)
+                            msgs.append({"role": "assistant", "content": confirm})
+                            st.session_state.companion_messages = msgs
+                            st.session_state.companion_pending_search = {"tab": tab, "query": query}
+                        else:
+                            with st.chat_message("assistant", avatar=None):
+                                response = st.write_stream(_stream_companion(client, full))
+                            msgs.append({"role": "assistant", "content": response})
+                            st.session_state.companion_messages = msgs
 
             if prompt := st.chat_input("Ask Food Companion anything", key="companion_chat_input"):
                 st.session_state.companion_messages.append({"role": "user", "content": prompt})
