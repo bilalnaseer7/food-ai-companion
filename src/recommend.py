@@ -1,6 +1,7 @@
 from openai import OpenAI
 from src.cook_mode import generate_cook_recommendations
 from src.retrieval import retrieve_restaurants
+import json
 import re
 
 
@@ -123,6 +124,16 @@ def recommend_recipe(craving: str, profile: dict, client: OpenAI | None = None, 
     return generate_cook_recommendations(client, craving, profile, previous_response=previous_response)
 
 
+def explicit_cocktail_search_terms(vibe: str) -> list[str]:
+    text = " ".join(str(vibe or "").lower().split())
+    compact = re.sub(r"[^a-z0-9]", "", text)
+    if compact in {"gt", "gandt", "ginandtonic", "gintonic"}:
+        return ["Gin Tonic", "Gin and Tonic"]
+    if "gin" in text and "tonic" in text:
+        return ["Gin Tonic", "Gin and Tonic"]
+    return []
+
+
 def infer_cocktail_search_terms(client: OpenAI, vibe: str, bar_inventory: list[str]) -> list[str]:
     fallback = ["margarita", "daiquiri", "negroni", "old fashioned", "martini", "mojito"]
     vibe_text = " ".join(str(vibe or "").split())
@@ -181,7 +192,7 @@ def infer_cocktail_search_terms(client: OpenAI, vibe: str, bar_inventory: list[s
 def recommend_cocktail(vibe: str, profile: dict, previous_response: str | None = None) -> str:
     bar = profile.get("bar_inventory", [])
     if not bar:
-        return "Your bar is empty. Add some spirits and mixers in the Cocktails tab."
+        return "Your bar is empty. Add some spirits and mixers in the Cocktails tab.", []
 
     from src.cocktail_db import (
         find_cocktails_by_name,
@@ -194,7 +205,10 @@ def recommend_cocktail(vibe: str, profile: dict, previous_response: str | None =
     bar = normalize_bar_inventory(bar, client_inst)
     matched = [] if is_vague_bar_inventory(bar) else find_matching_cocktails(bar, top_k=12)
     if not matched:
-        search_terms = infer_cocktail_search_terms(client_inst, vibe, bar)
+        search_terms = explicit_cocktail_search_terms(vibe)
+        for term in infer_cocktail_search_terms(client_inst, vibe, bar):
+            if term.lower() not in {existing.lower() for existing in search_terms}:
+                search_terms.append(term)
         matched = find_cocktails_by_name(search_terms, top_k=12)
     grounding_block = format_for_prompt(matched)
     has_grounding = bool(matched)
@@ -228,8 +242,13 @@ def recommend_cocktail(vibe: str, profile: dict, previous_response: str | None =
         f"Available bar: {', '.join(bar)}\n"
         f"{grounding_section}"
         f"{previous_block}\n"
-        "Recommend 3 cocktails when the bar inventory and CocktailDB candidates can support 3 distinct, good-fit options; "
-        "return fewer only if there are not 3 viable cocktails. "
+        + (
+            "Recommend exactly 1 revised cocktail, based only on the previous suggestion and remix instruction. "
+            if previous else
+            "Recommend 3 cocktails when the bar inventory and CocktailDB candidates can support 3 distinct, good-fit options; "
+            "return fewer only if there are not 3 viable cocktails. "
+        )
+        +
         "For each, use this exact structure so the app can format it:\n"
         "COCKTAIL: <name>\n"
         "WHY IT FITS: <1 concise sentence for the card only; do not repeat this idea elsewhere>\n"
