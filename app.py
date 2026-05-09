@@ -1553,14 +1553,14 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 	[data-testid="stChatInput"] > div {
 	    width: 100% !important;
 	    max-width: none !important;
-	    overflow: visible !important;
+	    overflow: hidden !important;
 	}
 	[data-testid="stChatInput"] [data-baseweb="textarea"],
 	[data-testid="stChatInput"] [data-baseweb="base-input"],
 	[data-testid="stChatInput"] [data-testid="stChatInputTextArea"] {
 	    width: 100% !important;
 	    max-width: none !important;
-	    overflow: visible !important;
+	    overflow: hidden !important;
 	    background: transparent !important;
 	    border: none !important;
 	    box-shadow: none !important;
