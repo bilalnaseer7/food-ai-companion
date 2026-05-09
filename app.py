@@ -1469,8 +1469,8 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 }
 [class*="st-key-companion_msgs"] > div,
 [class*="st-key-companion_msgs"] [data-testid="stVerticalBlockBorderWrapper"] {
-    height: calc(70vh - 135px) !important;
-    max-height: calc(70vh - 135px) !important;
+    height: calc(70vh - 130px) !important;
+    max-height: calc(70vh - 130px) !important;
 }
 	[data-testid="stChatInput"] {
 	    background: transparent !important;
@@ -1478,6 +1478,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 	    box-shadow: none !important;
 	    padding: 8px 0 0 !important;
 	    width: 100% !important;
+	    height: 80px !important;
 	}
 	[data-testid="stChatInput"] > div {
 	    width: 100% !important;
