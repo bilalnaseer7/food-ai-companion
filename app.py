@@ -1497,34 +1497,15 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     width: 30vw !important;
     min-width: 320px !important;
     max-width: none !important;
-    height: 70vh !important;
+    height: auto !important;
     max-height: 70vh !important;
-    overflow: hidden !important;
+    overflow-y: auto !important;
     background: #ffffff !important;
-    display: flex !important;
-    flex-direction: column !important;
 }
 [data-testid="stPopoverBody"] > div,
 [data-testid="stPopoverBody"] [data-testid="stVerticalBlockBorderWrapper"],
 [data-testid="stPopoverBody"] [data-testid="stVerticalBlock"] {
     background: #ffffff !important;
-}
-/* messages area grows, input stays at bottom */
-[data-testid="stPopoverBody"] > div > [data-testid="stVerticalBlock"] {
-    flex: 1 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;
-}
-[class*="st-key-companion_msgs"] {
-    flex: 1 !important;
-    overflow-y: auto !important;
-    min-height: 0 !important;
-}
-[class*="st-key-companion_msgs"] > div,
-[class*="st-key-companion_msgs"] [data-testid="stVerticalBlockBorderWrapper"] {
-    height: auto !important;
-    max-height: none !important;
 }
 	[data-testid="stChatInput"] {
 	    background: transparent !important;
@@ -1532,7 +1513,6 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 	    box-shadow: none !important;
 	    padding: 8px 0 0 !important;
 	    width: 100% !important;
-	    height: 120px !important;
 	}
 	[data-testid="stChatInput"] > div {
 	    width: 100% !important;
@@ -1543,8 +1523,6 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 	[data-testid="stChatInput"] [data-testid="stChatInputTextArea"] {
 	    width: 100% !important;
 	    max-width: none !important;
-	    min-height: 120px !important;
-	    height: 120px !important;
 	    background: transparent !important;
 	    border: none !important;
 	    box-shadow: none !important;
@@ -1557,7 +1535,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 	    box-shadow: none !important;
 	}
 	[data-testid="stChatInput"] textarea {
-	    padding: 48px 0 0 !important;
+        line-height: 1.5 !important;
 	    background: transparent !important;
 	    border: none !important;
 	    box-shadow: none !important;
