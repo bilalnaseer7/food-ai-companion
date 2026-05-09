@@ -1618,12 +1618,7 @@ document.addEventListener('keydown', function(e) {
 function scrollCompanionToBottom() {
     var root = document.querySelector('[class*="st-key-companion_msgs"]');
     if (!root) return;
-    var candidates = [root].concat(Array.from(root.querySelectorAll('*')));
-    candidates.forEach(function(el) {
-        if (el.scrollHeight > el.clientHeight) {
-            el.scrollTop = el.scrollHeight;
-        }
-    });
+    root.scrollTop = root.scrollHeight;
 }
 
 function scheduleCompanionScroll() {
@@ -4193,17 +4188,7 @@ def render_companion_autoscroll():
             function scrollDown() {
                 const root = doc.querySelector('[class*="st-key-companion_msgs"]');
                 if (!root) return false;
-                let target = root;
-                let largestOverflow = root.scrollHeight - root.clientHeight;
-                root.querySelectorAll('*').forEach((node) => {
-                    const overflow = node.scrollHeight - node.clientHeight;
-                    if (overflow > largestOverflow) {
-                        largestOverflow = overflow;
-                        target = node;
-                    }
-                });
-                if (largestOverflow <= 0) return false;
-                target.scrollTop = target.scrollHeight - target.clientHeight;
+                root.scrollTop = root.scrollHeight;
                 return true;
             }
             scrollDown();
