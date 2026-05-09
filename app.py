@@ -1420,7 +1420,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 [class*="st-key-companion_float"] {
     position: fixed !important;
     bottom: 100px !important;
-    right: 24px !important;
+    right: 34px !important;
     z-index: 99999 !important;
     width: fit-content !important;
     height: 0 !important;
@@ -1449,7 +1449,36 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     max-width: none !important;
     height: 66vh !important;
     max-height: none !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+}
+[data-testid="stPopoverBody"] > div {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 !important;
+    min-height: 0 !important;
+    padding: 16px 16px 0 !important;
+}
+[data-testid="stPopoverBody"] [data-testid="stVerticalBlock"] {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 !important;
+    min-height: 0 !important;
+    gap: 0 !important;
+}
+[class*="st-key-companion_msgs"] {
+    flex: 1 !important;
     overflow-y: auto !important;
+    min-height: 0 !important;
+}
+[data-testid="stChatInput"] {
+    background: #ffffff !important;
+    border-top: 1px solid var(--line) !important;
+    padding: 10px 16px !important;
+    flex-shrink: 0 !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -3482,24 +3511,28 @@ def render_companion(client):
         with st.popover(":material/chat_bubble:", use_container_width=False):
             col_title, col_clear = st.columns([3, 1])
             with col_title:
-                st.markdown("**Your Food Companion**")
+                st.markdown("**Food Companion**")
             with col_clear:
                 if st.button("Clear", key="companion_clear", use_container_width=True):
                     st.session_state.companion_messages = []
                     st.rerun()
 
             msgs = st.session_state.companion_messages
-            for msg in msgs:
-                with st.chat_message(msg["role"]):
-                    st.write(msg["content"])
+
+            with st.container(key="companion_msgs"):
+                for msg in msgs:
+                    with st.chat_message(msg["role"]):
+                        st.write(msg["content"])
+                if msgs and msgs[-1]["role"] == "user":
+                    full = [{"role": "system", "content": _companion_system_prompt()}] + msgs
+                    with st.chat_message("assistant"):
+                        response = st.write_stream(_stream_companion(client, full))
+                    msgs.append({"role": "assistant", "content": response})
+                    st.session_state.companion_messages = msgs
 
             if prompt := st.chat_input("Ask about food…", key="companion_chat_input"):
-                msgs.append({"role": "user", "content": prompt})
-                full = [{"role": "system", "content": _companion_system_prompt()}] + msgs
-                with st.chat_message("assistant"):
-                    response = st.write_stream(_stream_companion(client, full))
-                msgs.append({"role": "assistant", "content": response})
-                st.session_state.companion_messages = msgs
+                st.session_state.companion_messages.append({"role": "user", "content": prompt})
+                st.rerun()
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
