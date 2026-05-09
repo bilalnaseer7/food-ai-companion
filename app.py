@@ -1485,17 +1485,20 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
     overflow: visible !important;
 }
 [class*="st-key-companion_float"] [data-testid="stPopoverButton"] {
-    width: 75px !important;
-    height: 60px !important;
+    width: 70px !important;
+    height: 55px !important;
     border-radius: 40% !important;
     padding: 0 !important;
-    font-size: 22px !important;
     background: var(--terracotta) !important;
     color: white !important;
     border: none !important;
     box-shadow: 0 4px 16px rgba(0,0,0,0.22) !important;
     min-height: 0 !important;
     line-height: 1 !important;
+}
+[class*="st-key-companion_float"] [data-testid="stPopoverButton"] svg {
+    width: 48px !important;
+    height: 48px !important;
 }
 [class*="st-key-companion_float"] [data-testid="stPopoverButton"]:hover {
     background: var(--terracotta-2, #a8503c) !important;
@@ -3615,8 +3618,12 @@ def _companion_system_prompt():
         f"- Saved: {accepted}"
         f"{results_section}\n\n"
         "You can answer questions about the current results. Do NOT suggest restaurants or recipes yourself — "
-        "instead trigger a search when the user wants to find something. "
-        "Keep responses under 150 words. No markdown headers."
+        "instead trigger a search when the user wants to find something.\n\n"
+        "Before triggering a search, ask clarifying questions if any key detail is unclear: "
+        "are they eating out or cooking at home? what neighborhood or zip code? "
+        "any cuisine preference or dietary need? occasion or vibe? "
+        "Only trigger a search once you have enough to work with — one or two focused questions at a time, not a list. "
+        "Keep responses under 80 words. No markdown headers."
     )
 
 
@@ -3639,7 +3646,7 @@ _SEARCH_TOOLS = [
                     },
                     "query": {
                         "type": "string",
-                        "description": "The search query distilled from the user message"
+                        "description": "A short search query close to the user's words. Do not add profile preferences, cuisine types, or budget — the app handles personalization separately."
                     }
                 },
                 "required": ["tab", "query"]
