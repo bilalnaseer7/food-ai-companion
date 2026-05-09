@@ -3139,7 +3139,6 @@ def render_eat_tab(client, df):
         run_search = True
         query = _ct_eat["query"]
         zipcode = _ct_eat.get("zip", zipcode)
-        st.session_state.eat_zip_field = zipcode
 
     if run_search and query:
         st.session_state.eat_zip = zipcode
@@ -3280,7 +3279,6 @@ def render_cook_tab(client):
         craving = _ct_cook["query"]
         if _ct_cook.get("pantry"):
             pantry_input = _ct_cook["pantry"]
-            st.session_state.cook_pantry_field = pantry_input
 
     if run_cook and craving:
         st.session_state.active_tab = "cook"
@@ -3463,7 +3461,6 @@ def render_cocktail_tab(client):
         vibe = _ct_drink["query"]
         if _ct_drink.get("bar"):
             bar_input = _ct_drink["bar"]
-            st.session_state.drink_bar_field = bar_input
 
     if run_cocktail and vibe:
         st.session_state.active_tab = "drink"
@@ -3831,6 +3828,18 @@ def _companion_confirm_text(pending: dict) -> str:
     return f"Would you like me to search **{tab_label}** for: *{pending['query']}*{extra}?"
 
 
+def _companion_search_notice_text(pending: dict) -> str:
+    tab_label = {"eat": "Eat Out", "cook": "Cook", "drink": "Cocktails"}[pending["tab"]]
+    extra = ""
+    if pending.get("zip"):
+        extra = f" near {pending['zip']}"
+    elif pending.get("pantry"):
+        extra = f" using: {pending['pantry']}"
+    elif pending.get("bar"):
+        extra = f" using: {pending['bar']}"
+    return f"Searching **{tab_label}** for: *{pending['query']}*{extra}"
+
+
 def _interpret_search_confirmation(client, pending: dict, user_text: str) -> dict:
     import json as _json
 
@@ -3990,26 +3999,28 @@ def render_companion(client):
                         pending[needed] = value
                         if needed == "zip":
                             st.session_state.eat_zip = value
-                            st.session_state.eat_zip_field = value
                         elif needed == "pantry":
-                            st.session_state.cook_pantry_field = value
+                            st.session_state.profile["pantry"] = [p.strip() for p in value.split(",") if p.strip()]
                         elif needed == "bar":
-                            st.session_state.drink_bar_field = value
+                            st.session_state.profile["bar_inventory"] = [b.strip() for b in value.split(",") if b.strip()]
                         pending.pop("needs", None)
-                        st.session_state.companion_pending_search = pending
-                        reply = _companion_confirm_text(pending)
+                        reply = _companion_search_notice_text(pending)
                         with st.chat_message("assistant", avatar=None):
                             st.write(reply)
                         msgs.append({"role": "assistant", "content": reply})
                         st.session_state.companion_messages = msgs
                         request_companion_autoscroll()
+                        st.session_state.companion_pending_search = None
+                        st.session_state.companion_search_trigger = _companion_search_trigger_from_pending(pending)
+                        st.session_state.active_tab = pending["tab"]
+                        st.session_state.companion_tab_switch = {"eat": 0, "cook": 1, "drink": 2}[pending["tab"]]
+                        st.rerun()
                     elif pending and confirmation["action"] in {"confirm", "revise"}:
                         tab = pending["tab"]
                         if confirmation["action"] == "revise" and confirmation["query"]:
                             pending["query"] = confirmation["query"]
                         query = pending["query"]
-                        tab_label = {"eat": "Eat Out", "cook": "Cook", "drink": "Cocktails"}[tab]
-                        notice = f"Searching **{tab_label}** for: *{query}*"
+                        notice = _companion_search_notice_text(pending)
                         with st.chat_message("assistant", avatar=None):
                             st.write(notice)
                         msgs.append({"role": "assistant", "content": notice})
