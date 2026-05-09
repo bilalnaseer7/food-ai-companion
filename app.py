@@ -1578,9 +1578,8 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 	    border: none !important;
 	    box-shadow: none !important;
 	    resize: none !important;
-	    padding-left: 8px !important;
 	    padding-right: 52px !important;
-        padding-top: 10px !important;
+        padding-top: 8px !important;
         padding-bottom: 10px !important;
 	    overflow-y: auto !important;
 	}
