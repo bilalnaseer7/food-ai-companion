@@ -1418,7 +1418,7 @@ div:has(> [class*="st-key-drink_recipe_card_"]) {
 
 .companion-title {
     font-family: var(--serif) !important;
-    font-size: 26px !important;
+    font-size: 22px !important;
     font-weight: 400 !important;
     letter-spacing: -0.01em !important;
     line-height: 1.1 !important;
