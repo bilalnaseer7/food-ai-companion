@@ -45,7 +45,7 @@ All three modes share a persistent taste profile that captures preferences such 
 
 ## Milestone 3 Owen Update
 
-- Agentic Food Companion chat panel that can infer whether the user wants Eat Out, Cook at Home, Cocktail, or remix actions; has context of active tabs and current search results; switch tabs if user asks for something not on current tab; ask for missing zip code, pantry items, or bar inventory when needed; confirm searches before running them; ask clarifying questions when intent is ambiguous; and route confirmed actions into the same recommendation state used by the main UI.
+- Added agentic Food Companion chat panel that can infer whether the user wants Eat Out, Cook at Home, Cocktail, or remix actions; has context of active tabs and current search results; switch tabs if user asks for something not on current tab; ask for missing zip code, pantry items, or bar inventory when needed; confirm searches before running them; ask clarifying questions when intent is ambiguous; and route confirmed actions into the same recommendation state used by the main UI.
 - Polished the chat experience with preserved message formatting, message autoscroll behavior, search/remix follow-up messages, and support for running Eat Out, Cook, and Cocktail searches from the companion.
 - Added RAG to the Food Companion chat layer, grounding conversational responses in the 10k-row NYC restaurant dataset by retrieving the 4 most relevant restaurants via embedding similarity on each turn.
 - Implemented result cards across Eat Out, Cook at Home, and Cocktail modes so recommendations use a consistent card layout with clearer titles, strong visual hierarchy, action buttons, closed-by-default recipe/details expanders, and restaurant opening/closing time information.
