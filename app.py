@@ -3264,6 +3264,11 @@ def render_empty(tab):
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
 def render_eat_tab(client, df):
+    _ct_eat_prefill = st.session_state.get("companion_search_trigger")
+    if _ct_eat_prefill and _ct_eat_prefill.get("tab") == "eat" and _ct_eat_prefill.get("zip"):
+        st.session_state.eat_zip = _ct_eat_prefill["zip"]
+        st.session_state.eat_zip_field = _ct_eat_prefill["zip"]
+
     prefill = st.session_state.eat_prefill or ""
     st.session_state.eat_prefill = ""
     if "eat_zip_field" not in st.session_state:
@@ -4064,6 +4069,8 @@ def _companion_search_trigger_from_pending(pending: dict) -> dict:
     bar_value = pending.get("bar") or st.session_state.get("drink_bar_field")
     if zip_value:
         trigger["zip"] = zip_value
+    if pending.get("tab") == "eat" and zip_value:
+        trigger["query"] = _strip_zip_from_eat_query(trigger["query"])
     if pantry_value:
         trigger["pantry"] = pantry_value
     if bar_value:
@@ -4083,6 +4090,13 @@ def _companion_pending_search(tab: str, query: str, source_text: str = "") -> di
 def _extract_zip_code(text: str) -> str:
     match = re.search(r"\b(\d{5})(?:-\d{4})?\b", text or "")
     return match.group(1) if match else ""
+
+
+def _strip_zip_from_eat_query(query: str) -> str:
+    cleaned = re.sub(r"\b(?:near|around|in)\s+\d{5}(?:-\d{4})?\b", " ", query or "", flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b\d{5}(?:-\d{4})?\b", " ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" ,.-")
+    return cleaned or (query or "").strip()
 
 
 def _eat_zip_correction_pending(client, user_text: str) -> dict | None:
@@ -4122,7 +4136,7 @@ def _eat_zip_correction_pending(client, user_text: str) -> dict | None:
         return None
     pending = {
         "tab": "eat",
-        "query": last_query,
+        "query": _strip_zip_from_eat_query(last_query),
         "zip": zip_value,
         "options": dict(st.session_state.get("eat_last_options") or {}),
     }
@@ -4786,6 +4800,7 @@ def render_companion(client):
                                 zip_value = followup.get("zip") or _extract_zip_code(user_text)
                                 if zip_value:
                                     pending_search["zip"] = zip_value
+                                    pending_search["query"] = _strip_zip_from_eat_query(pending_search["query"])
                                 needed, question = (
                                     (None, None)
                                     if pending_search.get("zip")
