@@ -4129,6 +4129,50 @@ def _eat_zip_correction_pending(client, user_text: str) -> dict | None:
     return pending
 
 
+def _classify_eat_followup(client, user_text: str) -> dict:
+    last_query = st.session_state.get("eat_last_query") or ""
+    if not last_query:
+        return {"action": "none", "query": "", "zip": ""}
+    current_options = _describe_eat_options(st.session_state.get("eat_last_options") or {}) or "none"
+    current_names = ", ".join(_current_result_names_for_tab("eat")[:5]) or "none"
+    prompt = (
+        "Classify the user's latest message after an Eat Out recommendation search.\n"
+        f"Previous Eat Out query: {last_query}\n"
+        f"Previous Eat Out options: {current_options}\n"
+        f"Current result names: {current_names}\n\n"
+        "Return JSON only with:\n"
+        "- action: one of current_filter, new_search, none\n"
+        "- query: concise Eat Out search query when action is new_search, otherwise empty\n"
+        "- zip: corrected/requested 5-digit ZIP when present, otherwise empty\n\n"
+        "current_filter = the user only wants to refine the existing results, such as 'under 0.5 miles', "
+        "'only open now', 'top two', or 'sort by rating', without asking for a different food, cuisine, restaurant type, or location.\n"
+        "new_search = the user asks for a materially different restaurant search, even if it also includes filters. "
+        "Examples: 'give me the top two ramen places in 10019', 'now sushi near 10003', 'open Thai under 1 mile'.\n"
+        "none = a question, comment, correction handled elsewhere, or not about Eat Out filtering/searching.\n\n"
+        f"Latest user message: {user_text}"
+    )
+    import json as _json
+    try:
+        result = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            max_tokens=100,
+            temperature=0,
+        )
+        data = _json.loads(result.choices[0].message.content or "{}")
+        action = data.get("action", "none")
+        if action not in {"current_filter", "new_search", "none"}:
+            action = "none"
+        return {
+            "action": action,
+            "query": (data.get("query") or "").strip(),
+            "zip": _extract_zip_code(data.get("zip", "")),
+        }
+    except Exception:
+        return {"action": "none", "query": "", "zip": ""}
+
+
 def _companion_confirm_text(pending: dict) -> str:
     tab_label = {"eat": "Eat Out", "cook": "Cook", "drink": "Cocktails"}[pending["tab"]]
     extra = ""
@@ -4735,11 +4779,18 @@ def render_companion(client):
                             render_companion_autoscroll_now()
                             st.rerun()
                         if _looks_like_eat_result_adjustment(user_text):
-                            options = _eat_options_from_text(user_text)
-                            if options.get("open_now"):
-                                query = st.session_state.get("eat_last_query") or user_text
+                            followup = _classify_eat_followup(client, user_text)
+                            if followup.get("action") == "new_search":
+                                query = followup.get("query") or user_text
                                 pending_search = _companion_pending_search("eat", query, user_text)
-                                needed, question = _companion_missing_search_context("eat")
+                                zip_value = followup.get("zip") or _extract_zip_code(user_text)
+                                if zip_value:
+                                    pending_search["zip"] = zip_value
+                                needed, question = (
+                                    (None, None)
+                                    if pending_search.get("zip")
+                                    else _companion_missing_search_context("eat")
+                                )
                                 if needed:
                                     pending_search["needs"] = needed
                                     reply = question
@@ -4752,17 +4803,37 @@ def render_companion(client):
                                 st.session_state.companion_pending_search = pending_search
                                 request_companion_extended_autoscroll()
                                 st.stop()
-                            adjusted = _apply_eat_options(st.session_state.get("eat_fsq_results") or [], options)
-                            if adjusted:
-                                st.session_state.eat_fsq_results = adjusted
-                                st.session_state.eat_llm_response = f"Showing {_describe_eat_options(options)} from the current results."
-                                reply = f"Done — showing {_describe_eat_options(options)}."
-                                with st.chat_message("assistant", avatar=None):
-                                    st.write(reply)
-                                msgs.append({"role": "assistant", "content": reply})
-                                st.session_state.companion_messages = msgs
-                                request_companion_extended_autoscroll()
-                                st.rerun()
+                            if followup.get("action") == "none":
+                                pass
+                            else:
+                                options = _eat_options_from_text(user_text)
+                                if options.get("open_now"):
+                                    query = st.session_state.get("eat_last_query") or user_text
+                                    pending_search = _companion_pending_search("eat", query, user_text)
+                                    needed, question = _companion_missing_search_context("eat")
+                                    if needed:
+                                        pending_search["needs"] = needed
+                                        reply = question
+                                    else:
+                                        reply = _companion_confirm_text(pending_search)
+                                    with st.chat_message("assistant", avatar=None):
+                                        st.write(reply)
+                                    msgs.append({"role": "assistant", "content": reply})
+                                    st.session_state.companion_messages = msgs
+                                    st.session_state.companion_pending_search = pending_search
+                                    request_companion_extended_autoscroll()
+                                    st.stop()
+                                adjusted = _apply_eat_options(st.session_state.get("eat_fsq_results") or [], options)
+                                if adjusted:
+                                    st.session_state.eat_fsq_results = adjusted
+                                    st.session_state.eat_llm_response = f"Showing {_describe_eat_options(options)} from the current results."
+                                    reply = f"Done — showing {_describe_eat_options(options)}."
+                                    with st.chat_message("assistant", avatar=None):
+                                        st.write(reply)
+                                    msgs.append({"role": "assistant", "content": reply})
+                                    st.session_state.companion_messages = msgs
+                                    request_companion_extended_autoscroll()
+                                    st.rerun()
                         if _looks_like_current_result_question(user_text):
                             with st.chat_message("assistant", avatar=None):
                                 response = st.write_stream(_stream_companion(client, full))
