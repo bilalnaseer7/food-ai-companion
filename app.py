@@ -4727,7 +4727,7 @@ def render_companion(client):
                                 msgs.append({"role": "assistant", "content": question})
                                 st.session_state.companion_messages = msgs
                                 request_companion_extended_autoscroll()
-                                st.stop()
+                                st.rerun()
                             else:
                                 pending["query"] = confirmation["query"]
                                 if pending.get("tab") == "eat":
@@ -4743,7 +4743,7 @@ def render_companion(client):
                                 msgs.append({"role": "assistant", "content": question})
                                 st.session_state.companion_messages = msgs
                                 request_companion_extended_autoscroll()
-                                st.stop()
+                                st.rerun()
                             tab = pending["tab"]
                         query = pending["query"]
                         notice = _companion_search_notice_text(pending)
@@ -4776,7 +4776,7 @@ def render_companion(client):
                             st.session_state.companion_messages = msgs
                             request_companion_extended_autoscroll()
                             render_companion_autoscroll_if_new_messages()
-                            st.stop()
+                            st.rerun()
                         full = [{"role": "system", "content": _companion_system_prompt()}] + msgs
                         correction_pending = _eat_zip_correction_pending(client, user_text)
                         if correction_pending:
@@ -4817,7 +4817,7 @@ def render_companion(client):
                                 st.session_state.companion_messages = msgs
                                 st.session_state.companion_pending_search = pending_search
                                 request_companion_extended_autoscroll()
-                                st.stop()
+                                st.rerun()
                             if followup.get("action") == "none":
                                 pass
                             else:
@@ -4837,7 +4837,7 @@ def render_companion(client):
                                     st.session_state.companion_messages = msgs
                                     st.session_state.companion_pending_search = pending_search
                                     request_companion_extended_autoscroll()
-                                    st.stop()
+                                    st.rerun()
                                 adjusted = _apply_eat_options(st.session_state.get("eat_fsq_results") or [], options)
                                 if adjusted:
                                     st.session_state.eat_fsq_results = adjusted
@@ -4856,7 +4856,7 @@ def render_companion(client):
                             st.session_state.companion_messages = msgs
                             request_companion_extended_autoscroll()
                             render_companion_autoscroll_if_new_messages()
-                            st.stop()
+                            st.rerun()
                         inferred = _infer_companion_action(client, full)
                         if inferred and inferred.get("action") == "remix":
                             started, reply = _start_companion_remix(inferred)
