@@ -3010,6 +3010,26 @@ def _parse_requested_result_count(text: str, default: int = 5) -> int:
     return default
 
 
+def _parse_distance_limit_mi(text: str) -> float | None:
+    lowered = (text or "").lower()
+    patterns = [
+        r"\bwithin\s+(\d+(?:\.\d+)?)\s*(?:mi|mile|miles)\b",
+        r"\b(?:under|less than|no more than|max(?:imum)?|at most)\s+(\d+(?:\.\d+)?)\s*(?:mi|mile|miles)\b",
+        r"\b(\d+(?:\.\d+)?)\s*(?:mi|mile|miles)\s+(?:away|or less|radius|max|maximum)\b",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, lowered)
+        if not match:
+            continue
+        try:
+            return max(0.05, min(25.0, float(match.group(1))))
+        except ValueError:
+            return None
+    if "walking distance" in lowered or "walkable" in lowered:
+        return 1.0
+    return None
+
+
 def _eat_options_from_text(text: str) -> dict:
     lowered = (text or "").lower()
     options = {}
@@ -3022,6 +3042,9 @@ def _eat_options_from_text(text: str) -> dict:
         )
     ):
         options["open_now"] = True
+    distance_limit = _parse_distance_limit_mi(lowered)
+    if distance_limit is not None:
+        options["distance_limit_mi"] = distance_limit
     count = _parse_requested_result_count(lowered)
     if count != 5:
         options["limit"] = count
@@ -3034,6 +3057,12 @@ def _apply_eat_options(results: list[dict], options: dict) -> list[dict]:
     adjusted = list(results or [])
     if options.get("open_now"):
         adjusted = [r for r in adjusted if r.get("open_now") is True]
+    distance_limit = options.get("distance_limit_mi")
+    if isinstance(distance_limit, (int, float)):
+        adjusted = [
+            r for r in adjusted
+            if r.get("distance_mi") is not None and float(r.get("distance_mi")) <= float(distance_limit)
+        ]
     if options.get("sort_by") == "rating":
         adjusted.sort(key=lambda r: float(r.get("rating") or 0), reverse=True)
     limit = options.get("limit")
@@ -3048,6 +3077,8 @@ def _describe_eat_options(options: dict) -> str:
         parts.append("open now")
     if options.get("sort_by") == "rating":
         parts.append("sorted by rating")
+    if options.get("distance_limit_mi"):
+        parts.append(f"within {options['distance_limit_mi']:g} mi")
     if options.get("limit"):
         parts.append(f"top {options['limit']}")
     return ", ".join(parts)
@@ -3062,7 +3093,7 @@ def _looks_like_eat_result_adjustment(text: str) -> bool:
         name = (result.get("name") or "").strip().lower()
         if name and name in lowered:
             return False
-    if not any(word in lowered for word in ("show", "only", "filter", "top", "sort", "open", "rating", "rated")):
+    if not any(word in lowered for word in ("show", "only", "filter", "top", "sort", "open", "rating", "rated", "within", "mile", "miles", "walk")):
         return False
     return bool(_eat_options_from_text(text))
 
@@ -3262,6 +3293,9 @@ def render_eat_tab(client, df):
         eat_options = {}
 
     if run_search and query:
+        query_options = _eat_options_from_text(query)
+        if query_options:
+            eat_options = {**query_options, **eat_options}
         st.session_state.eat_zip = zipcode
         st.session_state.eat_last_query = query
         st.session_state.eat_last_options = eat_options
@@ -3326,6 +3360,9 @@ def render_eat_tab(client, df):
             for row in fsq_restaurants:
                 if row.get("lat") and row.get("lng"):
                     row["distance_mi"] = round(_haversine_mi(origin[0], origin[1], row["lat"], row["lng"]), 2)
+            fsq_restaurants = _apply_eat_options(fsq_restaurants, {
+                "distance_limit_mi": eat_options.get("distance_limit_mi")
+            })
 
         st.session_state.eat_results = retrieved
         st.session_state.eat_search_origin = origin
