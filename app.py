@@ -4041,7 +4041,10 @@ def _matching_current_result(tab: str, requested_name: str) -> str:
 
 
 def _companion_missing_search_context(tab: str):
-    if tab == "eat" and not (st.session_state.get("eat_zip_field") or "").strip():
+    if tab == "eat" and not (
+        (st.session_state.get("eat_zip_field") or "").strip()
+        or (st.session_state.get("eat_zip") or "").strip()
+    ):
         return "zip", "What zip code should I search near?"
     pantry_text = (st.session_state.get("cook_pantry_field") or "").strip()
     if tab == "cook" and not pantry_text and not st.session_state.get("profile", {}).get("pantry"):
@@ -4074,6 +4077,55 @@ def _companion_pending_search(tab: str, query: str, source_text: str = "") -> di
         options = _eat_options_from_text(f"{source_text} {query}")
         if options:
             pending["options"] = options
+    return pending
+
+
+def _extract_zip_code(text: str) -> str:
+    match = re.search(r"\b(\d{5})(?:-\d{4})?\b", text or "")
+    return match.group(1) if match else ""
+
+
+def _eat_zip_correction_pending(client, user_text: str) -> dict | None:
+    last_query = st.session_state.get("eat_last_query") or ""
+    if not last_query:
+        return None
+    current_zip = st.session_state.get("eat_zip") or st.session_state.get("eat_zip_field") or ""
+    prompt = (
+        "Classify whether the user is correcting the ZIP/location for the most recent Eat Out search.\n"
+        f"Previous Eat Out search query: {last_query}\n"
+        f"Previous ZIP/location: {current_zip or 'not set'}\n\n"
+        "Return JSON only with:\n"
+        "- action: correct_zip or none\n"
+        "- zip: the corrected 5-digit US ZIP code when action is correct_zip, otherwise empty\n\n"
+        "Use correct_zip when the latest user message is best understood as replacing or correcting the prior "
+        "search ZIP/location, including terse replies like '10019', 'make it 10019', or 'I meant Chelsea 10011'. "
+        "Use none when the message asks a new question, starts a new search, confirms/cancels something else, "
+        "or does not provide a clear replacement ZIP.\n\n"
+        f"Latest user message: {user_text}"
+    )
+    import json as _json
+    try:
+        result = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            max_tokens=60,
+            temperature=0,
+        )
+        data = _json.loads(result.choices[0].message.content or "{}")
+        if data.get("action") != "correct_zip":
+            return None
+        zip_value = _extract_zip_code(data.get("zip", ""))
+    except Exception:
+        zip_value = ""
+    if not zip_value:
+        return None
+    pending = {
+        "tab": "eat",
+        "query": last_query,
+        "zip": zip_value,
+        "options": dict(st.session_state.get("eat_last_options") or {}),
+    }
     return pending
 
 
@@ -4571,6 +4623,8 @@ def render_companion(client):
                     elif pending and pending.get("needs"):
                         needed = pending["needs"]
                         value = user_text.strip()
+                        if needed == "zip":
+                            value = _extract_zip_code(user_text) or value
                         pending[needed] = value
                         if needed == "zip":
                             st.session_state.eat_zip = value
@@ -4666,6 +4720,20 @@ def render_companion(client):
                             render_companion_autoscroll_if_new_messages()
                             st.stop()
                         full = [{"role": "system", "content": _companion_system_prompt()}] + msgs
+                        correction_pending = _eat_zip_correction_pending(client, user_text)
+                        if correction_pending:
+                            reply = _companion_search_notice_text(correction_pending)
+                            with st.chat_message("assistant", avatar=None):
+                                st.write(reply)
+                            msgs.append({"role": "assistant", "content": reply})
+                            st.session_state.companion_messages = msgs
+                            request_companion_extended_autoscroll()
+                            st.session_state.companion_pending_search = None
+                            st.session_state.companion_search_trigger = _companion_search_trigger_from_pending(correction_pending)
+                            st.session_state.active_tab = "eat"
+                            st.session_state.companion_tab_switch = 0
+                            render_companion_autoscroll_now()
+                            st.rerun()
                         if _looks_like_eat_result_adjustment(user_text):
                             options = _eat_options_from_text(user_text)
                             if options.get("open_now"):
