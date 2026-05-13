@@ -4081,7 +4081,12 @@ def _companion_search_trigger_from_pending(pending: dict) -> dict:
 def _companion_pending_search(tab: str, query: str, source_text: str = "") -> dict:
     pending = {"tab": tab, "query": query}
     if tab == "eat":
-        options = _eat_options_from_text(f"{source_text} {query}")
+        combined_text = f"{source_text} {query}"
+        zip_value = _extract_zip_code(combined_text)
+        if zip_value:
+            pending["zip"] = zip_value
+            pending["query"] = _strip_zip_from_eat_query(query)
+        options = _eat_options_from_text(combined_text)
         if options:
             pending["options"] = options
     return pending
