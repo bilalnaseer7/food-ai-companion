@@ -2444,6 +2444,7 @@ def init_session():
         "companion_next_results_nudge": None,
         "companion_scroll_requested": True,
         "eat_zip": "",
+        "eat_last_options": {},
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -2987,6 +2988,93 @@ def merge_curated_results(priority_rows, fallback_rows, top_k=5):
     return merged
 
 
+def _parse_requested_result_count(text: str, default: int = 5) -> int:
+    lowered = (text or "").lower()
+    word_numbers = {
+        "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+        "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+    }
+    patterns = [
+        r"\btop\s+(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten)\b",
+        r"\b(?:show|give|return|only)\s+(?:me\s+)?(?:the\s+)?(?:top\s+)?(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten)\b",
+        r"\b(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:options|places|results|restaurants)\b",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, lowered)
+        if not match:
+            continue
+        raw = match.group(1)
+        count = int(raw) if raw.isdigit() else word_numbers.get(raw)
+        if count:
+            return max(1, min(5, count))
+    return default
+
+
+def _eat_options_from_text(text: str) -> dict:
+    lowered = (text or "").lower()
+    options = {}
+    if any(
+        phrase in lowered
+        for phrase in (
+            "open now", "open right now", "currently open", "only open",
+            "open places", "open restaurants", "places that are open",
+            "restaurants that are open",
+        )
+    ):
+        options["open_now"] = True
+    count = _parse_requested_result_count(lowered)
+    if count != 5:
+        options["limit"] = count
+    if "rating" in lowered or "rated" in lowered or "highest rated" in lowered or "best rated" in lowered:
+        options["sort_by"] = "rating"
+    return options
+
+
+def _apply_eat_options(results: list[dict], options: dict) -> list[dict]:
+    adjusted = list(results or [])
+    if options.get("open_now"):
+        adjusted = [r for r in adjusted if r.get("open_now") is True]
+    if options.get("sort_by") == "rating":
+        adjusted.sort(key=lambda r: float(r.get("rating") or 0), reverse=True)
+    limit = options.get("limit")
+    if isinstance(limit, int) and limit > 0:
+        adjusted = adjusted[:limit]
+    return adjusted
+
+
+def _describe_eat_options(options: dict) -> str:
+    parts = []
+    if options.get("open_now"):
+        parts.append("open now")
+    if options.get("sort_by") == "rating":
+        parts.append("sorted by rating")
+    if options.get("limit"):
+        parts.append(f"top {options['limit']}")
+    return ", ".join(parts)
+
+
+def _looks_like_eat_result_adjustment(text: str) -> bool:
+    lowered = (text or "").lower()
+    results = st.session_state.get("eat_fsq_results") or []
+    if not results:
+        return False
+    for result in results:
+        name = (result.get("name") or "").strip().lower()
+        if name and name in lowered:
+            return False
+    if not any(word in lowered for word in ("show", "only", "filter", "top", "sort", "open", "rating", "rated")):
+        return False
+    return bool(_eat_options_from_text(text))
+
+
+def _restaurant_hours_text(row: dict) -> str:
+    if row.get("open_now") is True:
+        return row.get("closes_at") or "Open now"
+    if row.get("open_now") is False:
+        return row.get("next_open") or "Closed"
+    return "Hours unknown"
+
+
 # ── Empty state ───────────────────────────────────────────────────────────────
 CHIP_TARGETS = {
     "eat": "hand-rolled pasta, candlelit, walking distance…",
@@ -3169,10 +3257,14 @@ def render_eat_tab(client, df):
         run_search = True
         query = _ct_eat["query"]
         zipcode = _ct_eat.get("zip", zipcode)
+        eat_options = _ct_eat.get("options", {})
+    else:
+        eat_options = {}
 
     if run_search and query:
         st.session_state.eat_zip = zipcode
         st.session_state.eat_last_query = query
+        st.session_state.eat_last_options = eat_options
         st.session_state.active_tab = "eat"
         refresh_preference_tags(st.session_state.profile)
         save_profile(st.session_state.profile)
@@ -3198,7 +3290,12 @@ def render_eat_tab(client, df):
 
         def _run_places():
             origin = geocode_location(zipcode + " New York") if zipcode else (40.7128, -74.0060)
-            restaurants = search_restaurants(query=query, borough=borough, limit=8)
+            restaurants = search_restaurants(
+                query=query,
+                borough=borough,
+                open_now=bool(eat_options.get("open_now")),
+                limit=8,
+            )
             return origin, restaurants
 
         retrieved = []
@@ -3246,6 +3343,7 @@ def render_eat_tab(client, df):
             selected = live_results[:5]
         if not selected and retrieved:
             selected = curated_to_cards(retrieved)
+        selected = _apply_eat_options(selected, eat_options)
         if selected and not response:
             response = f"Showing direct matches for {query}."
         if not selected:
@@ -3753,7 +3851,9 @@ def _companion_system_prompt():
     if eat_results:
         last_q = st.session_state.get("eat_last_query", "your search")
         snippets = "; ".join(
-            f"{r.get('name','')} — {(r.get('blurb') or '')[:80]}"
+            f"{r.get('name','')} — {_restaurant_hours_text(r)}"
+            f" | Rating: {r.get('rating', 'N/A')}"
+            f" | {(r.get('blurb') or '')[:80]}"
             for r in eat_results[:5] if r.get("name")
         )
         ctx.append(f"Eat Out results for '{last_q}': {snippets}")
@@ -3791,8 +3891,9 @@ def _companion_system_prompt():
         "Only trigger a search when the user explicitly asks to find or search for new results.\n"
         "If the user asks to change, adjust, remix, make one option spicier/sweeter/easier/vegetarian/etc., "
         "use the app remix flow for the current Cook or Cocktails results rather than answering manually.\n"
-        "Do NOT trigger a search for questions about reviews, ratings, vibe, hours, price, menu, location, "
+        "Do NOT trigger a search for questions about reviews, ratings, vibe, hours, open status, price, menu, location, "
         "or whether a specific current result is good; answer from the current app results instead. "
+        "For open-status questions, use the current app result's hours field and say when hours are unknown. "
         "For example, 'how are the reviews for Soothr?' is a question, not a search request.\n\n"
         "Infer intent from context — if the message mentions restaurants, dining, going out, or a place, use eat. "
         "If it mentions cooking, making, or a dish at home, use cook. "
@@ -3911,6 +4012,8 @@ def _companion_missing_search_context(tab: str):
 
 def _companion_search_trigger_from_pending(pending: dict) -> dict:
     trigger = {"tab": pending["tab"], "query": pending["query"]}
+    if pending.get("options"):
+        trigger["options"] = pending["options"]
     zip_value = pending.get("zip") or st.session_state.get("eat_zip_field")
     pantry_value = pending.get("pantry") or st.session_state.get("cook_pantry_field")
     bar_value = pending.get("bar") or st.session_state.get("drink_bar_field")
@@ -3923,6 +4026,15 @@ def _companion_search_trigger_from_pending(pending: dict) -> dict:
     return trigger
 
 
+def _companion_pending_search(tab: str, query: str, source_text: str = "") -> dict:
+    pending = {"tab": tab, "query": query}
+    if tab == "eat":
+        options = _eat_options_from_text(f"{source_text} {query}")
+        if options:
+            pending["options"] = options
+    return pending
+
+
 def _companion_confirm_text(pending: dict) -> str:
     tab_label = {"eat": "Eat Out", "cook": "Cook", "drink": "Cocktails"}[pending["tab"]]
     extra = ""
@@ -3932,6 +4044,9 @@ def _companion_confirm_text(pending: dict) -> str:
         extra = f" using: {pending['pantry']}"
     elif pending.get("bar"):
         extra = f" using: {pending['bar']}"
+    option_text = _describe_eat_options(pending.get("options", {})) if pending["tab"] == "eat" else ""
+    if option_text:
+        extra = f"{extra} ({option_text})"
     return f"Would you like me to search **{tab_label}** for: *{pending['query']}*{extra}?"
 
 
@@ -3944,6 +4059,9 @@ def _companion_search_notice_text(pending: dict) -> str:
         extra = f" using: {pending['pantry']}"
     elif pending.get("bar"):
         extra = f" using: {pending['bar']}"
+    option_text = _describe_eat_options(pending.get("options", {})) if pending["tab"] == "eat" else ""
+    if option_text:
+        extra = f"{extra} ({option_text})"
     return f"Searching **{tab_label}** for: *{pending['query']}*{extra}"
 
 
@@ -4053,7 +4171,8 @@ def _infer_companion_action(client, messages):
         "Use remix when the user asks to modify a current cook recipe or cocktail — e.g. change serving size, spice level, swap ingredient. "
         "Use remix only for cook or drink, never eat. If remix target is ambiguous across multiple results, ask clarify. "
         "When action is remix, always populate query with the modification intent interpreted from the user's message — rephrase if needed (e.g. 'give me the filet for 4 people' → query: 'adjust portion to 4 servings'). Never leave query empty for remix. "
-        "Use search when: (1) the user explicitly asks to find, search, or show restaurantresults — e.g. 'find me', 'search for', 'show me options'; "
+        "Use search when: (1) the user explicitly asks to find, search, or show restaurant results — e.g. 'find me', 'search for', 'show me options'; "
+        "(1b) the user asks to filter or rerank restaurant results with constraints like 'only open now', 'show places open now', 'top two by rating', or 'highest rated'; "
         "(2) for cook or drink questions: the user expresses intent to make or have something specific — e.g. 'I want to cook X', 'I'm craving X', 'make me X', 'I want a X cocktail'; "
         "(3) the user expresses dissatisfaction with a conversational answer and wants app results — e.g. 'show me real results', 'can you actually search'. "
         "Do NOT use search for general knowledge questions about food, restaurants, or cuisines that the companion can answer conversationally. "
@@ -4346,7 +4465,8 @@ def render_companion(client):
                             tab = inferred["tab"]
                             query = inferred["query"]
                             needed, question = _companion_missing_search_context(tab)
-                            pending_search = {"tab": tab, "query": query}
+                            source_text = f"{pending_clarification.get('text', '')} {user_text}"
+                            pending_search = _companion_pending_search(tab, query, source_text)
                             if needed:
                                 pending_search["needs"] = needed
                                 reply = question
@@ -4440,7 +4560,7 @@ def render_companion(client):
                                 ],
                             )
                             if revised and revised.get("action") == "search":
-                                pending = {"tab": revised["tab"], "query": revised["query"]}
+                                pending = _companion_pending_search(revised["tab"], revised["query"], confirmation["query"])
                             elif revised and revised.get("action") == "clarify":
                                 question = revised.get("question") or "What kind of search did you mean?"
                                 st.session_state.companion_pending_search = None
@@ -4456,6 +4576,10 @@ def render_companion(client):
                                 st.stop()
                             else:
                                 pending["query"] = confirmation["query"]
+                                if pending.get("tab") == "eat":
+                                    options = _eat_options_from_text(confirmation["query"])
+                                    if options:
+                                        pending["options"] = options
                             missing, question = _companion_missing_search_context(pending["tab"])
                             if missing:
                                 pending["needs"] = missing
@@ -4500,6 +4624,35 @@ def render_companion(client):
                             render_companion_autoscroll_if_new_messages()
                             st.stop()
                         full = [{"role": "system", "content": _companion_system_prompt()}] + msgs
+                        if _looks_like_eat_result_adjustment(user_text):
+                            options = _eat_options_from_text(user_text)
+                            if options.get("open_now"):
+                                query = st.session_state.get("eat_last_query") or user_text
+                                pending_search = _companion_pending_search("eat", query, user_text)
+                                needed, question = _companion_missing_search_context("eat")
+                                if needed:
+                                    pending_search["needs"] = needed
+                                    reply = question
+                                else:
+                                    reply = _companion_confirm_text(pending_search)
+                                with st.chat_message("assistant", avatar=None):
+                                    st.write(reply)
+                                msgs.append({"role": "assistant", "content": reply})
+                                st.session_state.companion_messages = msgs
+                                st.session_state.companion_pending_search = pending_search
+                                request_companion_extended_autoscroll()
+                                st.stop()
+                            adjusted = _apply_eat_options(st.session_state.get("eat_fsq_results") or [], options)
+                            if adjusted:
+                                st.session_state.eat_fsq_results = adjusted
+                                st.session_state.eat_llm_response = f"Showing {_describe_eat_options(options)} from the current results."
+                                reply = f"Done — showing {_describe_eat_options(options)}."
+                                with st.chat_message("assistant", avatar=None):
+                                    st.write(reply)
+                                msgs.append({"role": "assistant", "content": reply})
+                                st.session_state.companion_messages = msgs
+                                request_companion_extended_autoscroll()
+                                st.rerun()
                         if _looks_like_current_result_question(user_text):
                             with st.chat_message("assistant", avatar=None):
                                 response = st.write_stream(_stream_companion(client, full))
@@ -4524,7 +4677,7 @@ def render_companion(client):
                             tab = inferred["tab"]
                             query = inferred["query"]
                             needed, question = _companion_missing_search_context(tab)
-                            pending_search = {"tab": tab, "query": query}
+                            pending_search = _companion_pending_search(tab, query, user_text)
                             if needed:
                                 pending_search["needs"] = needed
                                 confirm = question
