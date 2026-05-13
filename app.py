@@ -4269,6 +4269,7 @@ def _infer_search_intent(client, messages):
         "- action: one of search, clarify, none\n"
         "- tab: eat, cook, or drink only when action is search; otherwise empty string\n"
         "- query: concise search query only when action is search; otherwise empty string\n"
+        "- zip: 5-digit ZIP code only when the user provided one for an Eat Out search; otherwise empty string\n"
         "- question: a short clarifying question only when action is clarify; otherwise empty string\n\n"
         "Use search only when the intended tab is clear. Ask clarify when the request could reasonably mean "
         "more than one tab, or when a short phrase could be a restaurant/bar name, a dish, or a drink. "
@@ -4297,10 +4298,11 @@ def _infer_search_intent(client, messages):
             "action": action,
             "tab": tab,
             "query": (data.get("query") or "").strip(),
+            "zip": _extract_zip_code(data.get("zip", "")),
             "question": (data.get("question") or "").strip(),
         }
     except Exception:
-        return {"action": "none", "tab": "", "query": "", "question": ""}
+        return {"action": "none", "tab": "", "query": "", "zip": "", "question": ""}
 
 
 def _infer_companion_action(client, messages):
@@ -4322,6 +4324,7 @@ def _infer_companion_action(client, messages):
         "- action: one of search, remix, clarify, none\n"
         "- tab: eat, cook, or drink when relevant; otherwise empty string\n"
         "- query: concise search query when action is search; remix instruction when action is remix; otherwise empty string\n"
+        "- zip: 5-digit ZIP code only when action is search, tab is eat, and the user provided one; otherwise empty string\n"
         "- target: result name to remix when action is remix, or empty if the user did not name one\n"
         "- question: short clarifying question only when action is clarify; otherwise empty string\n"
         "- use_rag: true if action is none AND the question is about restaurants or dining out; false otherwise\n\n"
@@ -4361,12 +4364,13 @@ def _infer_companion_action(client, messages):
             "action": action,
             "tab": tab,
             "query": (data.get("query") or "").strip(),
+            "zip": _extract_zip_code(data.get("zip", "")),
             "target": (data.get("target") or "").strip(),
             "question": (data.get("question") or "").strip(),
             "use_rag": bool(data.get("use_rag", False)),
         }
     except Exception:
-        return {"action": "none", "tab": "", "query": "", "target": "", "question": "", "use_rag": False}
+        return {"action": "none", "tab": "", "query": "", "zip": "", "target": "", "question": "", "use_rag": False}
 
 
 def _resolve_pending_clarification(client, pending_clarification: dict, answer: str, full_msgs: list | None = None) -> dict:
@@ -4621,9 +4625,16 @@ def render_companion(client):
                         elif inferred and inferred.get("action") == "search":
                             tab = inferred["tab"]
                             query = inferred["query"]
-                            needed, question = _companion_missing_search_context(tab)
                             source_text = f"{pending_clarification.get('text', '')} {user_text}"
                             pending_search = _companion_pending_search(tab, query, source_text)
+                            if tab == "eat" and inferred.get("zip"):
+                                pending_search["zip"] = inferred["zip"]
+                                pending_search["query"] = _strip_zip_from_eat_query(pending_search["query"])
+                            needed, question = (
+                                (None, None)
+                                if tab == "eat" and pending_search.get("zip")
+                                else _companion_missing_search_context(tab)
+                            )
                             if needed:
                                 pending_search["needs"] = needed
                                 reply = question
@@ -4720,6 +4731,9 @@ def render_companion(client):
                             )
                             if revised and revised.get("action") == "search":
                                 pending = _companion_pending_search(revised["tab"], revised["query"], confirmation["query"])
+                                if revised["tab"] == "eat" and revised.get("zip"):
+                                    pending["zip"] = revised["zip"]
+                                    pending["query"] = _strip_zip_from_eat_query(pending["query"])
                             elif revised and revised.get("action") == "clarify":
                                 question = revised.get("question") or "What kind of search did you mean?"
                                 st.session_state.companion_pending_search = None
@@ -4877,8 +4891,15 @@ def render_companion(client):
                         elif inferred and inferred.get("action") == "search":
                             tab = inferred["tab"]
                             query = inferred["query"]
-                            needed, question = _companion_missing_search_context(tab)
                             pending_search = _companion_pending_search(tab, query, user_text)
+                            if tab == "eat" and inferred.get("zip"):
+                                pending_search["zip"] = inferred["zip"]
+                                pending_search["query"] = _strip_zip_from_eat_query(pending_search["query"])
+                            needed, question = (
+                                (None, None)
+                                if tab == "eat" and pending_search.get("zip")
+                                else _companion_missing_search_context(tab)
+                            )
                             if needed:
                                 pending_search["needs"] = needed
                                 confirm = question
