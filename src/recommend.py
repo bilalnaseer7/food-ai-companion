@@ -282,7 +282,8 @@ def combined_recommend(client: OpenAI, query: str, user_profile: dict, csv_resul
 
     fsq_block = "\n".join([
         f"- {r['name']} | {', '.join(r.get('categories', [])[:2])} | "
-        f"Rating: {r.get('rating', 'N/A')}/5 | {open_status(r)} | {r.get('address', '')}"
+        f"Rating: {r.get('rating', 'N/A')}/5 | {open_status(r)} | "
+        f"Distance: {r.get('distance_mi', 'unknown')} mi | {r.get('address', '')}"
         for r in fsq_results
     ]) if fsq_results else "No live results available."
 
@@ -291,7 +292,8 @@ def combined_recommend(client: OpenAI, query: str, user_profile: dict, csv_resul
         "You have two sources of restaurant data: a curated dataset and live Google Places results. "
         "Use both sources together with the user's taste profile to select and rank the best 5 restaurants. "
         "Treat budget as general comfort context, not a hard filter; explicit user intent such as Michelin, tasting menu, splurge, cheap eats, or casual should override the stored budget. "
-        "If the user asks for walking distance, interpret that as less than 1 mile from the requested location. "
+        "Use the provided Distance field for proximity requests. If the user asks for walking distance, interpret that as less than 1 mile from the requested location. "
+        "If the user gives a specific distance limit, prioritize restaurants within that distance and only go outside it when too few candidates are available. "
         "If the user explicitly asks for places that are open now, only choose live results marked openNow=true. Otherwise, do not exclude options based on open status. "
         "Only recommend restaurants from the provided lists. Do not invent any."
     )

@@ -3322,6 +3322,11 @@ def render_eat_tab(client, df):
         except Exception as e:
             search_notes.append(f"Exact cuisine fallback skipped: {e}")
 
+        if origin:
+            for row in fsq_restaurants:
+                if row.get("lat") and row.get("lng"):
+                    row["distance_mi"] = round(_haversine_mi(origin[0], origin[1], row["lat"], row["lng"]), 2)
+
         st.session_state.eat_results = retrieved
         st.session_state.eat_search_origin = origin
         st.session_state.eat_fsq_results = fsq_restaurants
